@@ -1,0 +1,98 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+env/
+venv/
+.ipynb_checkpoints/
+
+# Data & Datasets (Too large for GitHub)
+data/
+mit-bih-arrhythmia-database-1.0.0/
+*.csv
+*.npy
+*.pth
+
+# Training Artifacts & Logs
+results/
+experiments/
+logs/
+wandb/
+
+# IDE
+.vscode/
+.idea/
+
+# --- Experimental / Deprecated Scripts (Ignored for Clean Release) ---
+
+# Training Variations
+src/train_fair_fight.py
+src/train_wildcard.py
+src/train_extreme.py
+src/train_asymmetric.py
+src/train_attention.py
+src/train_contrastive.py
+src/train_disagreement.py
+src/train_ensemble.py
+src/train_features.py
+src/train_fusion_single.py
+src/train_rr_first.py
+src/train_sequence.py
+src/train_sequence_mixup.py
+src/train_cascade.py
+src/train_pure_wavkan.py
+src/train_extended_rr.py
+
+# Evaluation scripts for experiments
+src/eval_fair_fight.py
+src/eval_extreme.py
+src/eval_ensemble.py
+src/eval_mc_dropout.py
+src/eval_tta.py
+src/eval_50_epochs.py
+src/eval_all_experiments.py
+
+# Exploratory Tools
+src/check_data_validity.py
+src/check_model_size.py
+src/clinical_analysis.py
+src/dashboard.py
+src/find_hero_seed.py
+src/optimize_thresholds.py
+src/analyze_rr_importance.py
+src/analyze_rr_importance_5.py
+src/plot_cm_delta.py
+src/visualize_beats.py
+
+# Temporary Run Scripts
+launch_*.cmd
+test_validation.sh
+*.log
+*.tmp
+*.bak
+temp_line66.txt
+
+# Duplicate / Deprecated Models
+models/wavkan.py
+
+# Paper 1 Submission Artifacts (Keep Local, Do Not Push)
+WavKAN_CL_Submission/
+WavKAN_CL_Submission.zip
+manuscript_v_ai_backup.tex
+manuscript_complete.pdf
+references.bib
+
+# Figures & Generated Images (Keep Local)
+fig_*.png
+fig_*.pdf
+final_*.png
+wavkan_*.png
+
+# Paper 2: Large Datasets (Safety Net)
+data/raw/ptb-xl/
+*.dat
+*.hea
+*.atr
