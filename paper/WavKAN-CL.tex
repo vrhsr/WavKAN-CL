@@ -336,7 +336,7 @@ This observation indicates that mid-range short-term rhythm context plays a domi
 \end{figure}
 
 \subsection{Comparison with Recent Inter-Patient Studies}
-\textbf{Kolmogorov-Arnold Networks in Biomedical Signals:} Recent work has begun exploring KAN-based architectures for ECG classification \cite{zhao_mak-net_2025}. However, most implementations rely on standard MLPs which utilize fixed activation functions. Our work distinguishes itself by using \textbf{Learnable Mexican Hat Wavelets}, which naturally conform to QRS morphology \cite{addison_wavelet_2005}. As noted by Bozorgasl \& Chen \cite{bozorgasl_liu_2024}, replacing fixed activations with learnable wavelets provides structural transparency (``glass-box''), contrasting with the opaque ``black-box'' nature of conventional CNNs and Transformers (Fig. \ref{fig:wavelets}).
+\textbf{Kolmogorov-Arnold Networks in Biomedical Signals:} Recent efforts have started on developing architectures using KANs for ECG classification \cite{zhao_mak-net_2025}. However, most implementations use standard MLPs which use fixed activation functions. Our work differentiates itself by the use of the Learnable Mexican Hat Wavelets which naturally conform to the QRS Morphology \cite{addison_wavelet_2005}. As stated by Bozorgasl \& Chen \cite{bozorgasl_liu_2024}, by replacing fixed activations with learnable wavelets, the model should provide structural transparency (``glass-box'') as opposed to the opaque ``black-box'' nature of conventional CNN and Transformers (Fig. \ref{fig:wavelets}).
 
 \begin{figure}[!t]
 \centering
@@ -345,9 +345,7 @@ This observation indicates that mid-range short-term rhythm context plays a domi
 \label{fig:wavelets}
 \end{figure}
 
-\textbf{Lightweight and Edge-Deployable ECG Models:} The push for resource-efficient ECG classifiers is critical for wearable health monitoring. Farag \cite{farag_tiny_2023} demonstrated that tiny matched-filter CNNs can achieve competitive performance at minimal cost ($\approx$ 15KB). Similarly, Elsheikhy et al. \cite{elsheikhy_lightweight_2025} highlighted the need for lightweight architectures for edge deployment. 
-
-Our work fits this Green AI paradigm. WavKAN-CL achieves a Ventricular (V) recall of 0.90---comparable to deep baselines like Guo et al. \cite{guo_inter-patient_2018}---while utilizing only \textbf{95k parameters}. This represents a $>90\%$ size reduction compared to standard DenseNet or Transformer baselines, prioritizing clinical safety and deployment feasibility over raw S-class sensitivity.
+\textbf{Lightweight and Edge Deployable ECG Models:} The movement of resource efficient classifiers for ECG is key for wearable health monitoring. Farag \cite{farag_tiny_2023} showed that miniature matched-filter CNNs can be used for competitive performance at the lowest possible cost ($\approx$ 15KB). Similarly, Elsheikhy et al. \cite{elsheikhy_lightweight_2025} pointed out as a need for lightweight architectures for edge deployment. Our work is consistent with this Green AI paradigm. WavKAN-CL gets a Ventricular (V) recall of 0.90 - which is similar to deep baselines such as Guo et al. \cite{guo_inter-patient_2018}, but by using only 95k parameters. This is considerably more than a $> 90\%$ size reduction from the standard DenseNet or Transformer baseline in order to prioritize clinical safety and feasibility over raw S-class sensitivity.
 
 %% 7. CONCLUSION
 \section{Conclusion}
