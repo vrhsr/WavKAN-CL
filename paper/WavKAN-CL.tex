@@ -173,7 +173,7 @@ As detailed in Table \ref{tab:split_protocol}, the MIT-BIH Arrhythmia Database i
 \end{tabular}
 \end{table}
 
-\subsection{Distribution of Classes and AAMI Mapping}
+\subsection{Class Distribution and AAMI Mapping}
 Raw annotations were taken from the MIT-BIH database and mapped to the five AAMI EC57 super-classes: Normal(N), Supraventricular(S), Ventricular(V), Fusion (F), and Unknown (Q) \cite{luz_survey_2016, silva_systematic_2025}. The distribution of classes and the mapping are summed up in Table \ref{tab:class_dist}. In line with recent literature \cite{farag_tiny_2023}, the class of the Q is reported for completeness yet not included in loss weighting because of insignificant sample ($< 0.02\%$).
 
 \begin{table}[ht]
@@ -225,8 +225,8 @@ Pure WavKAN & WavKAN (Mexican Hat) & No & Standard CE Loss \\
 Based on our ablation experiments, three critical findings have been discovered about the WavKAN-CL framework:
 
 \begin{itemize}
-    \item \textbf{Curriculum Impact:} The developed curriculum learning strategy averted the majority N-class from dominating gradient updates early in training. As shown in Table \ref{tab:gap}, this \textbf{eliminates the validation-test divergence} ($0.06 \to 0.00$), ensuring that validation metrics reliably predict test-set performance under strict inter-patient evaluation.
-    \item \textbf{Statistical Rigor:} To confirm that performance improvements are not random, we performed a Wilcoxon signed-rank test on 10 random seeds (Table \ref{tab:stats}). Although the peak V-recall in a few runs is slightly lower with the curriculum strategy, it \textbf{consistently improves mean V-recall} ($0.871 \to 0.898$) and significantly decreases variance ($\pm 0.021 \to \pm 0.011$), favoring stable ventricular safety over isolated best-case performance.
+    \item \textbf{Curriculum Impact:} The developed curriculum learning strategy averted the majority N-class from dominating gradient updates early in training. As shown in Table \ref{tab:gap}, this \textbf{eliminates the validation-test divergence} ($0.06 \to 0.00$) ensuring that validation metrics reliably predict test-set performance under strict inter-patient evaluation.
+    \item \textbf{Statistical Rigor:} To confirm that performance improvements are not random we performed a Wilcoxon signed-rank test on 10 random seeds (Table \ref{tab:stats}). Although the peak V-recall in a few runs is slightly lower with the curriculum strategy, it \textbf{consistently improves mean V-recall} ($0.871 \to 0.898$) and significantly decreases variance ($\pm 0.021 \to \pm 0.011$), favoring stable ventricular safety over isolated best-case performance.
     \item \textbf{RR-Interval Contribution:} A leave-one-out ablation study (detailed in Section \ref{sec:discussion}) indicates that S-class is mainly detected in the \textbf{$t-3$ interval} ($\Delta = -0.062$, $p < 0.05$), while proximal intervals ($t-1$, $t-2$) contribute minimally. This validates the architectural choice of a 5-beat contextual window.
 \end{itemize}
 
@@ -317,7 +317,7 @@ Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & 0.89 & 0.9
 \label{sec:discussion}
 
 \subsection{Performance Analysis and Limitations}
-Although the model has high precision on V-class arrhythmias, the global Macro-F1 score (0.362) reflects the difficulty of the task. As systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, shifting from intra-patient to strict inter-patient evaluation often deteriorates F1 scores by $>15\%$ due to significant inter-subject variability. Our results correlate with benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025}, who found inter-patient F1 scores for unaugmented datasets in the $0.35-0.40$ range. This confirms that the model has not simply memorized the training distribution. The core contribution is its stability; WavKAN-CL maintains \textbf{low validation-test divergence} (Gap $\le$ 0.01 across all seeds), validating the effectiveness of the curriculum learning schedule.
+The model is very accurate on V-class arrhythmias but the global Macro-F1 score (0.362) indicates the task is difficult. Similar to what is systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, the shift to intra-patient to a strict inter-patient assessment tends to lower F1 scores by more than 15\% because of inter-subject variability. Our findings are in line with the benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025} who established inter-patient F1 scores of unaugmented datasets within the $0.35-0.40$ interval. This proves that the model has not been acting out the training distribution. The main advantage concept is that it is stable; WavKAN-CL has low validation-test divergence (Gap $\le 0.01$ with all seeds), demonstrating the functionality of the curriculum learning schedule.
 
 \subsection{Failure Case Analysis}
 Confusion lingers between Normal (N) and Supraventricular (S) beats, especially in the early curriculum stages. This is attributed to the minute morphological differences in S-beats, which mimic N-beats in the absence of distinct P-wave abnormalities. As noted by Zhou et al. \cite{zhou_inter-patient_2024}, without synthetic augmentation (e.g., SMOTE), defining a robust boundary for the minority S-class ($<2\%$ of data) is the main challenge of inter-patient schemes. Fusion (F) beats remain particularly difficult due to severe sample shortage and indistinct morphology. Future work could incorporate P-wave specific attention heads to resolve this ambiguity, though this would increase computational cost.
