@@ -38,17 +38,9 @@
 
 %% ABSTRACT
 \abstract{
-This paper introduces WavKAN-CL, a structurally interpretable learning framework that integrates Wavelet Kolmogorov-Arnold Networks (WavKAN) with a minority-prioritized curriculum learning strategy for arrhythmia classification.
+Automated arrhythmia classification from ECG signals remains limited by inadequate physiological interpretability and reduced generalization to unseen patients. In this paper, we propose WavKAN-CL, which incorporates the Wavelet Kolmogorov-Arnold Networks (WavKAN) with a minority-prioritized curriculum learning strategy for arrhythmia classification. Unlike conventional CNNs, WavKAN has learnable wavelet basis functions, and they are defined on the edges of the network instead of using fixed activation functions. This allows explicit modeling of high frequency morphological features as well as rhythm features that are derived from RR-interval history. To address severe class imbalance in the MIT-BIH Arrhythmia Database, we adopt the curriculum learning strategy that emphasizes minority classes in early training. Under the strict inter-patient DS1/DS2 protocol, the model achieves a mean ventricular (V) recall of 0.87 (maximum 0.90). However, strict patient-level separation continues to constrain minority-class sensitivity.
 
-Traditional CNNs employ non-adaptive activation functions. WavKAN does things differently. Instead of static nodes, it embeds learnable wavelet bases directly on network edges. This unique structure enables explicit modeling of high-frequency morphological details, which are then combined with rhythm dynamics derived from the past sequence of RR intervals.
-
-To overcome the huge class imbalance usually present in the MIT-BIH Arrhythmia Database, our approach follows a curriculum learning strategy, which is based on giving more attention to minority classes in the early stages of training.
-
-Under the challenging Inter-Patient evaluation protocol (DS1/DS2), the proposed model achieves a mean ventricular-class (V) recall of 0.87 (Peak recall 0.90), emphasizing clinical safety in the detection of life-threatening arrhythmias.
-
-Although minority-class detection remains challenging under strict inter-patient partitioning, WavKAN-CL requires only 95,189 parameters, corresponding to a $>$95\% reduction compared to state-of-the-art Transformer-based methods (e.g., ECGformer).
-
-We swapped out traditional black-box MLPs for interpretable and learnable KAN layers. This makes the model efficient enough for a wearable but also allows its decisions to be easy to trace—aligning perfectly with Green AI goals of being both clear and efficient.
+WavKAN-CL has 95,189 parameters, which is a reduction of $>$95\% compared to recent approaches based on Transformers (e.g., ECGformer). By replacing conventional MLP layers with interpretable KAN components, structural transparency is enhanced while preserving computational efficiency. This compact design supports deployment in resource-constrained wearable devices and aligns with Green AI principles.
 }
 
 \keywords{Kolmogorov-Arnold Networks, Wavelet, Arrhythmia Classification, Curriculum Learning, Wearable AI, Inter-Patient Generalization}
@@ -58,28 +50,25 @@ We swapped out traditional black-box MLPs for interpretable and learnable KAN la
 %% 1. INTRODUCTION
 \section{Introduction}
 
-Cardiovascular diseases (CVDs) are the leading cause of deaths worldwide, and they require efficient and uninterrupted solutions for cardiac monitoring. 
-
-While the Electrocardiogram (ECG) is the diagnostic gold standard for diagnosing arrhythmias, manual interpretation of long-term Holter recordings is labor intensive, prone to error and infeasible for large-scale screening.
-
-In order to automate this process, deep learning architectures, specifically Convolutional Neural Networks (CNNs) \cite{takalo-mattila_inter-patient_2018, guo_inter-patient_2018} and Transformers \cite{akan_ecgformer_2024}, have been widely used and attained favorable results under standardized experimental conditions. However, despite these advances in accuracy there are three major hurdles that current state-of-the-art solutions face in being safely deployed in practice:
+Cardiovascular diseases (CVDs) are currently the leading cause of death worldwide and require reliable and continuous cardiac monitoring. While the Electrocardiogram (ECG) is regarded as the gold standard for the detection of arrhythmias, manual interpretation of long-term Holter recordings is labor intensive, error prone and infeasible for large-scale screening. To automate this process, deep learning architectures, in particular Convolutional Neural Networks (CNNs) \cite{takalo-mattila_inter-patient_2018, guo_inter-patient_2018} and Transformers \cite{akan_ecgformer_2024} have been widely adopted with high accuracy under the controlled experimental conditions. However, despite these improvements in accuracy, there are three major hurdles that existing state-of-the-art solutions encounter in order to be safely deployed in practice:
 
 \begin{enumerate}
-    \item \textbf{Opacity of Black-Box Models:} The limited transparency of CNN and Transformer-based architectures limits the ability to connect these learned features back to physiologic markers, such as the shape of the P-wave originated from cardiac muscle contraction. Because of this lack of transparency, reduces clinician confidence, which creates barriers for regulation \cite{taleban_explainable_2026}.
-    \item \textbf{Inter-Patient Generalization Gap:} A problem encountered in previous studies is an overreliance on intra-patient assessments. Intra-patient assessments are when the heartbeats from one patient are split into a training and test set. This method generates inflated performance metrics for studies, as the analysis overfits to the individual patient's features \cite{bahrami_investigation_2025}. Recent systematic reviews suggest that models trained on unseen patients (the strict inter-patient evaluation paradigm) experience significant performance decline, and often are unable to detect minority arrhythmia classes \cite{silva_systematic_2025, xiao_deep_2023}.
-    \item \textbf{Computational Inefficiency:} Modern architectures such as Vision Transformers (ViT) need millions of parameters, which makes them unsuitable for battery-limited wearable devices, where energy efficiency is of the utmost importance \cite{elsheikhy_lightweight_2025}. 
+    \item \textbf{Opacity of Black-Box Models:} The lack of inherent interpretability in CNNs and Transformers limits the ability of clinicians to associate learned representations with underlying physiological markers, such as P-wave morphology. This lack of interpretability reduces clinical trust and complicates regulatory approval \cite{taleban_explainable_2026}.
+    \item \textbf{Inter-Patient Generalization Gap:} A major limitation of previous studies is intra-patient evaluation. This setup involves mixing beats from the same patient in training and test sets and thus leads to inflated reported performance via patient-specific overfitting \cite{bahrami_investigation_2025}. Under strict inter-patient evaluation, models frequently show significant performance degradation, especially for minority arrhythmia classes \cite{xiao_deep_2023, silva_systematic_2025}.
+    \item \textbf{Computational Inefficiency:} Architectures such as Vision Transformers (ViT) require millions of parameters, making them unsuitable for battery-powered wearable devices \cite{elsheikhy_lightweight_2025}.
 \end{enumerate}
 
-Recently, Kolmogorov-Arnold Networks (KANs) \cite{liu_kan_2025} have become a promising alternative to Multi-Layer Perceptrons (MLPs). Unlike MLPs where fixed activation functions are used on nodes, KANs use learnable activation functions on edges. Theoretically this structure provides improved parameter efficiency and structural transparency. Although some of the initial adjustments of KANs for ECGs have seen positive results (for example MAK-Net \cite{zhao_mak-net_2025}), the use of B-spline bases is generally recommended. B-splines, on the other hand may have a hard time to efficiently capture the fast transient features of physiological signals without overfitting to noise \cite{bozorgasl_liu_2024}. In addition, the stringent requirements of "Green AI" require models not only to be accurate, but also to be lean enough for edge deployment \cite{farag_tiny_2023}.
+Recently, Kolmogorov-Arnold Networks (KANs) \cite{liu_kan_2025} have emerged as a promising alternative to the Multi-Layer Perceptrons (MLPs). Unlike MLPs, which use fixed activation functions at nodes, KANs employ learnable activation functions along edges. By moving nonlinearity from nodes to edges, KANs provide a function approximation framework that is both expressive and structurally interpretable. This structure has improved parameter efficiency and structural transparency. Although some early adaptations of KANs for ECG analysis, such as MAK-Net \cite{zhao_mak-net_2025}, have shown promising results, most existing KAN-based approaches are based on B-spline bases, which can be difficult to use to model fast transient features of physiological signals without overfitting to noise \cite{bozorgasl_liu_2024}.
 
-This paper proposes WavKAN-CL, a structurally motivated adaptation of the KAN architecture for modeling complex ECG waveforms. We substitute the standard B-splines with learnable Mexican Hat Wavelets which naturally exhibit the spectral properties of the QRS complex \cite{addison_wavelet_2005}. To overcome the issue of severe class imbalance present in inter-patient datasets \cite{silva_systematic_2025, bae_handling_2025}, we combine a strategy known as Curriculum Learning \cite{schmale_curriculum_2025}, that ensures the exposure of minority classes (S and F beats) in early training stages.
+In addition to this, the principles of Green AI focus on models that are not just accurate but also computationally efficient and suitable for use on the edge \cite{farag_tiny_2023}. A structurally motivated adaptation of the KAN architecture for modeling complex ECG waveforms is proposed in this paper, called WavKAN-CL.
+
+We substitute the standard B-splines with learnable Mexican Hat Wavelets which naturally exhibit the spectral properties of the QRS complex \cite{addison_wavelet_2005}. To overcome the issue of severe class imbalance present in inter-patient datasets \cite{xiao_deep_2023, bae_handling_2025}, we combine a strategy known as Curriculum Learning \cite{schmale_curriculum_2025}, that prioritizes minority classes (S and F beats) in early training stages.
 
 The contributions of this study include:
-
 \begin{enumerate}
-    \item \textbf{A structurally transparent architecture:} WavKAN substitutes traditional MLP layers with learnable Mexican Hat wavelets to enhance structural interpretability. This brings the feature extraction being performed inside the network to the same point as the physiological morphology of the QRS complex, addressing the black-box opacity barrier.
-    \item \textbf{Robust Inter-Patient Generalization:} We propose a minority-prioritized Curriculum Learning strategy that prevents the overfitting of majority-classes. This stabilizes the generalization gap under the strict inter-patient protocol (DS1/DS2) improving reliability on unseen patients.
-    \item \textbf{Green AI Efficiency:} To optimize energy use while maintaining clinical accuracy using fewer than 100k parameters, WavKAN-CL utilizes wavelet edges instead of traditional parameter-heavy Transformer blocks. This enables deployment in wearable devices using WavKAN-CL to be viable in battery-constrained environments.
+    \item \textbf{A structurally transparent architecture:} WavKAN replaces the existing MLP layers with learnable Mexican Hat wavelets to increase the structural interpretability. This creates a direct correspondence between internal representations and ECG morphology and so addresses the black box opacity barrier.
+    \item \textbf{Robust Inter-Patient Generalization:} We propose a minority-prioritized curriculum learning strategy that mitigates majority-class overfitting and improves robustness under strict DS1/DS2 inter-patient evaluation.
+    \item \textbf{Green AI Efficiency:} To reduce energy consumption while ensuring clinical accuracy through the use of $<$100K parameters, WavKAN-CL applies wavelet edges in lieu of the traditional parameter-heavy Transformer blocks, which supports potential deployment on battery constrained wearable devices.
 \end{enumerate}
 
 %% 2. METHODOLOGY
@@ -87,80 +76,72 @@ The contributions of this study include:
 \label{sec:methods}
 
 \subsection{Problem Formalization}
-Given an ECG signal segmented into beat centered windows $x_i \in \mathbb{R}^T$ (where $T = 360$ samples, corresponding to 1000ms at 360Hz) and corresponding RR interval histories $r_i \in \mathbb{R}^K$, the task is to learn a mapping $f : (x_i, r_i) \to y_i$ where $y_i \in \{N, S, V, F, Q\}$ under a supervised multi-class classification setting. The objective is to maximize inter patient generalization under the constraint of severe class imbalance ($N \gg V > S > F$).
+The ECG signal is segmented into beat-centered windows $x_i \in \mathbb{R}^T$ (where $T = 360$ samples, which represents 1000ms at a rate of 360Hz) with associated RR-interval histories $r_i \in \mathbb{R}^K$ for use in learning the mapping $f : (x_i, r_i) \to y_i$ where $y_i \in \{N, S, V, F, Q\}$ in the context of supervised multi-class classification. This objective is to maximize the inter-patient generalization under the constraint of severe class imbalance ($N \gg V > S > F$).
 
 \subsection{The WavKAN-CL Architecture}
-The proposed system (Fig. \ref{fig:arch}) is based on a breakaway from traditional CNN by implementing a dual branch feature fusion strategy based on a learnable wavelet backbone, a rhythm aware MLP.
+The proposed system (Fig. \ref{fig:arch}) is different from the conventional CNN-based architectures as it employs a dual-branch feature fusion architecture combining a learnable wavelet backbone with a rhythm-aware MLP.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\textwidth]{final_methodology_workflow_v2.png}
-\caption{\textbf{Hybrid WavKAN Architecture.} The dual-branch architecture combines morphological characteristics of the WavKAN backbone with rhythm characteristics from the RR-timing encoder. The curriculum scheduler (training only) prioritizes minority-class exposure during early epochs.}
+\caption{\textbf{Hybrid WavKAN Architecture.} Dual-branch architecture that combines the morphological features of WavKAN backbone and the rhythm features of RR encoder. The use of the curriculum scheduler (training only) gives precedence to the exposure to minority classes in early epochs.}
 \label{fig:arch}
 \end{figure}
 
 \subsubsection{Feature Extraction: WavKAN Backbone}
-Morphological features $z_m$ are extracted by using Wavelet Kolmogorov-Arnold Network (WavKAN). Unlike ordinary networks that learn scalar weights WavKAN learns the parameters of a specific wavelets basis function $\psi$ on each edge. Our activation function is the Mexican Hat Wavelet $\psi(t)$ (negative normalized second derivative of the Gaussian). As indicated by Addison \cite{addison_wavelet_2005} this is the spectral geometry of the QRS complex (natural function surrounding Q/S troughs) which allows a better extraction of morphological features than B-splines \cite{bozorgasl_liu_2024}:
+Morphological features $z_m$ are extracted by using a Wavelet Kolmogorov-Arnold Network (WavKAN). Compared to the conventional networks that learn scalar weights, WavKAN learns parameters of a wavelet basis function $\psi$ on each edge. Our activation function has the form of Mexican Hat Wavelet $\psi(t)$ (negative normalized second derivative of the Gaussian). As noted by Addison \cite{addison_wavelet_2005}, the Mexican Hat wavelet is well aligned with the spectral geometry of the QRS complex \cite{bozorgasl_liu_2024}. The WavKAN layer is used to map the input $x_i \in \mathbb{R}^{360}$ to a higher dimensional representation $z_{kan} \in \mathbb{R}^{64}$.
 
-\begin{equation}
-\psi(t, \gamma) = \frac{2}{\pi^{1/4}\sqrt{3\gamma}} \left(1 - t^2\right) \exp\left(-\frac{t^2}{2}\right)
-\end{equation}
-
-The WavKAN layer in implementation takes the input $x \in \mathbb{R}^{360}$ and converts it to a high dimensional representation $z_{kan} \in \mathbb{R}^{64}$. Crucially, every one of the 64 output channels learns a separate set of translation ($\mu$) and dilation ($\gamma$) parameters in an end-to-end manner:
+Each of the 64 output channels learns independent translation ($\mu$) and dilation ($\gamma$) parameters in an end-to-end manner:
 
 \begin{equation}
 z_{kan}^{(k)} = \sum_{j=1}^{360} w_{j,k} \cdot \psi\left(\frac{x_j - \mu_{j,k}}{\gamma_{j,k}}, \gamma_{j,k}\right) \quad \text{for } k=1 \dots 64
 \end{equation}
 
-To capture short-range temporal consistency within the beat without the quadratic computational complexity of Transformers, this is followed by a Bidirectional Gated Recurrent Unit (BiGRU) with 32 hidden units \cite{mousavi_inter-_2019, zhao_mak-net_2025}, resulting in a morphological embedding $z_m \in \mathbb{R}^{64}$.
+In order to capture short-range temporal consistency without the quadratic complexity of Transformers, the outputs of the wavelets are processed by a Bidirectional GRU (32 hidden units) \cite{mousavi_inter-_2019, zhao_mak-net_2025}, in order to produce a morphological embedding $z_m \in \mathbb{R}^{64}$.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.9\textwidth]{wavkan_micro_architecture_v2.png}
-\caption{\textbf{Micro-Architecture of WavKAN.} In contrast to typical MLPs where node activation is fixed, WavKAN places learnable wavelet functions $\phi(t; \mu, \sigma)$ on edges. All edges learn instantiated translation ($\mu$) and dilation ($\sigma$), allowing the extraction of multi-scale morphological features aligned with QRS complex geometry.}
+\caption{\textbf{Micro-Architecture of WavKAN.} In contrast to the conventional MLP where the activation of the nodes is fixed, in WavKAN, learnable wavelet functions $\phi(t; \mu, \sigma)$ are placed on edges. Each edge learns independent translation ($\mu$) and dilation ($\sigma$) parameters enabling the extraction of multi-scale morphological features corresponding to QRS complex geometry.}
 \label{fig:wavkan_micro}
 \end{figure}
 
 \subsubsection{Rhythm Encoding, Dynamic Normalization}
-The rhythm data is essential in separating S-class arrhythmias. However, raw RR intervals differ greatly among patients because physiological baseline differences. As a counter-measure to this inter-patient bias, we use a Dynamic Normalization strategy adapted from Farag \cite{farag_tiny_2023}:
+The rhythm data is crucial in the separation of S-Class arrhythmias. However, raw RR intervals differ greatly among patients due to inter-patient physiological variability. As a counter-measure to this inter-patient bias, we use a Dynamic Normalization strategy adapted from Farag \cite{farag_tiny_2023}:
 
 \begin{enumerate}
-    \item \textbf{Input Vector ($R_{seq}$)} A sequence of 5 consecutive RR intervals calculated with annotated R-peaks:
+    \item \textbf{Input Vector ($R_{seq}$):} A sequence of 5 consecutive RR intervals calculated with annotated R-peaks:
     \begin{equation}
     R_{seq} = [RR_{i-2}, RR_{i-1}, RR_{i}, RR_{i+1}, RR_{i+2}].
     \end{equation}
-    \item \textbf{Normalization:} The sequence is split in order to have scale invariance among patients according to the local moving average ($RR_{local}$) of the last 10 beats:
+    \item \textbf{Normalization:} The normalization of the sequence is done by dividing by local moving average ($RR_{local}$) of the preceding 10 beats:
     \begin{equation}
     r_i = \frac{R_{seq}}{RR_{local}}
     \end{equation}
 \end{enumerate}
-This normalized vector (dim = 5) undergoes a 3-layer MLP ($5 \to 64 \to 32 \to 16$) to generate the rhythm imprint $z_r \in \mathbb{R}^{16}$.
+This normalized vector (dim = 5) is processed by a three-layer MLP ($5 \to 64 \to 32 \to 16$) to generate the rhythm imprint $z_r \in \mathbb{R}^{16}$.
 
-\subsubsection{Green AI Configuration}
-The concatenated feature vector $z = [z_m; z_r] \in \mathbb{R}^{80}$ is now forwarded to a final classifier ($80 \to 48 \to 5$). This has 95,189 trainable parameters. This footprint is related to a reduction of over 95\% compared to Transformer baselines (e.g., ECGformer \cite{akan_ecgformer_2024}) enabling the architecture to be more flexible to edge device constraints as in Green AI literature \cite{elsheikhy_lightweight_2025}.
+\subsubsection{Efficiency of Models and Considerations of Deployment}
+The concatenated feature vector $z = [z_m; z_r] \in \mathbb{R}^{80}$ is now passed on to a final classifier ($80 \to 48 \to 5$). The total amount of trainable parameters is 95,189. This amounts to a reduction of over $95\%$ compared to Transformer-based baselines (i.e.\ ECGformer \cite{akan_ecgformer_2024}) supporting deployment on resource-constrained edge devices, consistent with recent Green AI principles \cite{elsheikhy_lightweight_2025}.
 
 \subsection{Curriculum Learning: Discovery vs. Optimization}
-The standard curriculum learning takes the easy to the hard samples. However, in our so imbalanced environment, the facile samples are the rule, the Normal beats that gives rise to majority collapse.
-
-The kind of Minority-First Discovery Schedule that we propose is founded on Schmale et al. \cite{schmale_curriculum_2025}:
+Standard curriculum learning progresses from easy to hard samples. However, in severely imbalanced settings, majority Normal (N) beats dominate early gradient updates, leading to majority bias. The kind of Minority-First Discovery Schedule that we propose is founded on Schmale et al. \cite{schmale_curriculum_2025}:
 
 \begin{enumerate}
-    \item \textbf{Phase 1 (Discovery):} The sampling probability is high (greater than 30\% of epochs) during the first 30\% of epochs. There is a negative correlation between frequency of classes and $P(y)$. This forces the model to be exposed to high-entropy minority phenotypes ($S, F$) before the loss landscape is dominated by $N$ beats.
-    \item \textbf{Phase 2 (Annealing):} The relaxing sampling distribution becomes linearized about the natural distribution, which ensures calibration of the output probabilities of the model to the test set.
+    \item \textbf{Phase 1 (Discovery):} During the first 30\% of training epochs, the class sampling probability $P(y)$ is set inversely proportional to class frequency. This forces the model to be exposed to high entropy minority phenotypes ($S, F$) before the loss landscape being dominated by $N$ beats.
+    \item \textbf{Phase 2 (Annealing):} The sampling distribution is linearly annealed toward the natural class distribution for the remaining epochs.
 \end{enumerate}
 
-\noindent \textit{Observation: This can only be used in training and not in the inference of the natural distribution.}
+\noindent This schedule is applied during training only; inference is performed under the natural class distribution.
 
 %% 3. DATASET AND EVALUATION PROTOCOL
 \section{Dataset and Evaluation Protocol}
 
 \subsection{Inter-Patient Data Splitting Protocol}
-To ensure clinical realism and avoid the ``intra-patient'' bias common in deep learning studies \cite{bahrami_investigation_2025, silva_systematic_2025}, we strictly adhere to the Inter-Patient Paradigm proposed by De Chazal et al. \cite{chazal_automatic_2004}.
-
-As detailed in Table \ref{tab:split_protocol}, the MIT-BIH Arrhythmia Database is partitioned into two independent sets: DS1 and DS2. Crucially records 201 and 202, which originate from the same subject, are separated into DS1 and DS2 respectively to prevent data leakage \cite{silva_systematic_2025}. In order to carry out the hyperparameter optimization and the early stopping without using the test data we further divided DS1 into Training and Validation sets by the protocol introduced by Takalo-Mattila et al. \cite{takalo-mattila_inter-patient_2018}. All reported test results are calculated on the DS2 only, so that the model is tested on unknown patients.
+To ensure realistic evaluation and prevent the common ``intra-patient'' bias observed in many deep learning studies \cite{bahrami_investigation_2025, xiao_deep_2023}, we follow the inter-patient paradigm as outlined by De Chazal et al. \cite{chazal_automatic_2004}. The MIT-BIH Arrhythmia Database is split into two independent sets, DS1 and DS2 as described in Table \ref{tab:split_protocol}. Crucially, records 201 and 202, originating from the same subject, are separated into DS1 and DS2 respectively, preventing data leakage \cite{xiao_deep_2023}. To perform hyperparameter optimization and early stopping without using the test data, we further divided DS1 into training and validation sets following the protocol introduced by Takalo-Mattila et al. \cite{takalo-mattila_inter-patient_2018}. All reported test results are computed exclusively on DS2, which ensures evaluation on strictly unseen patients.
 
 \begin{table}[ht]
-\caption{Inter-Patient Data Splitting Protocol (DS1/DS2). The partition strictly separates patients between training and testing sets. Note that records 201 and 202 (same patient) are split across DS1 and DS2 to enforce strict inter-patient evaluation \cite{farag_tiny_2023}.}
+\caption{Inter-Patient Data Splitting Protocol (DS1/DS2). The partition separates patients into two groups. Records 201 and 202 (from the same subject) are intentionally separated across DS1 and DS2 in order to impose a strict inter-patient evaluation \cite{farag_tiny_2023}.}
 \label{tab:split_protocol}
 \centering
 \footnotesize 
@@ -174,10 +155,10 @@ As detailed in Table \ref{tab:split_protocol}, the MIT-BIH Arrhythmia Database i
 \end{table}
 
 \subsection{Class Distribution and AAMI Mapping}
-Raw annotations were taken from the MIT-BIH database and mapped to the five AAMI EC57 super-classes: Normal(N), Supraventricular(S), Ventricular(V), Fusion (F), and Unknown (Q) \cite{luz_survey_2016, silva_systematic_2025}. The distribution of classes and the mapping are summed up in Table \ref{tab:class_dist}. In line with recent literature \cite{farag_tiny_2023}, the class of the Q is reported for completeness yet not included in loss weighting because of insignificant sample ($< 0.02\%$).
+Raw annotations from the MIT-BIH database were mapped to the five AAMI EC57 super-classes: Normal (N), Supraventricular(S), Ventricular(V), Fusion (F), and Unknown (Q) \cite{xiao_deep_2023, luz_survey_2016}. The class distribution and the mapping are presented in Table \ref{tab:class_dist}. In accordance with recent literature \cite{farag_tiny_2023}, the Q class is retained for reporting completeness but not used for weighting losses because of its small sample size ($< 0.02\%$).
 
 \begin{table}[ht]
-\caption{Class Distribution and AAMI Standard Mapping. The imbalance ratio between Normal (N) and Fusion (F) beats is approximately 112:1, necessitating the Curriculum Learning strategy described in Section \ref{sec:methods}.}
+\caption{Class Distribution and AAMI Standard Mapping. The imbalance ratio between Normal (N) and Fusion (F) beats is approximately 112:1, motivating the use of the curriculum learning strategy described in Section \ref{sec:methods}.}
 \label{tab:class_dist}
 \centering
 \footnotesize
@@ -197,10 +178,10 @@ Raw annotations were taken from the MIT-BIH database and mapped to the five AAMI
 \section{Experimental Setup}
 
 \subsection{Training Implementation Details}
-The AdamW optimizer was used with an initial learning rate of $1 \times 10^{-3}$ and weight decay of $1 \times 10^{-4}$ to train the models. Early termination was observed on the validation Macro-F1 score using patience of 10 epochs. To stabilize the optimization the factor of curriculum weighting, $\lambda$, was annealed linearly between 1.0 and 0.0 during the initial 30\% of the training epochs, switching the model from a minority-focused loss to the usual cross-entropy landscape \cite{schmale_curriculum_2025}.
+The AdamW optimizer was used with an initial learning rate of $1 \times 10^{-3}$ and weight decay of $1 \times 10^{-4}$ to train the models. Early stopping was tracked based on the validation Macro-F1 score, and patience of 10-epoch. To stabilize the optimization dynamics, the curriculum weight factor $\lambda$, was annealed linearly from 1.0 to 0.0 during the first 30\% of training epochs, and changed from a minority-weighted loss to standard cross-entropy loss \cite{schmale_curriculum_2025}.
 
 \subsection{Experimental Baselines}
-In order to isolate the effects of the suggested architecture and training plan, we compare WavKAN-CL with three internal baselines (Table \ref{tab:baselines}). Such comparisons are aimed at separating the influence of morphological feature extraction (CNN vs WavKAN), rhythm integration, and curriculum learning.
+To test the contribution of the WavKAN-CL architecture and training strategy, we compare WavKAN-CL to three internal baselines (Table \ref{tab:baselines}). These comparisons separate the effect of morphological feature extraction (CNN vs. WavKAN), rhythm integration and curriculum learning.
 
 \begin{table}[!t]
 \caption{Baseline Model Definitions. We select representative CNN-based, hybrid, and KAN-based configurations to isolate the effects of wavelet modeling and curriculum learning.}
@@ -222,17 +203,17 @@ Pure WavKAN & WavKAN (Mexican Hat) & No & Standard CE Loss \\
 \label{sec:results}
 
 \subsection{Generalization and Stability}
-Based on our ablation experiments, three critical findings have been discovered about the WavKAN-CL framework:
+Our ablation experiments reveal three critical findings regarding the WavKAN-CL framework:
 
 \begin{itemize}
-    \item \textbf{Curriculum Impact:} The developed curriculum learning strategy averted the majority N-class from dominating gradient updates early in training. As shown in Table \ref{tab:gap}, this \textbf{eliminates the validation-test divergence} ($0.06 \to 0.00$) ensuring that validation metrics reliably predict test-set performance under strict inter-patient evaluation.
-    \item \textbf{Statistical Rigor:} To confirm that performance improvements are not random we performed a Wilcoxon signed-rank test on 10 random seeds (Table \ref{tab:stats}). Although the peak V-recall in a few runs is slightly lower with the curriculum strategy, it \textbf{consistently improves mean V-recall} ($0.871 \to 0.898$) and significantly decreases variance ($\pm 0.021 \to \pm 0.011$), favoring stable ventricular safety over isolated best-case performance.
-    \item \textbf{RR-Interval Contribution:} A leave-one-out ablation study (detailed in Section \ref{sec:discussion}) indicates that S-class is mainly detected in the \textbf{$t-3$ interval} ($\Delta = -0.062$, $p < 0.05$), while proximal intervals ($t-1$, $t-2$) contribute minimally. This validates the architectural choice of a 5-beat contextual window.
+    \item \textbf{Curriculum Impact:} The proposed curriculum learning strategy prevents the majority N-class from dominating gradient updates early in training. As Table \ref{tab:gap} shows, this reduces the validation-test divergence ($0.06 \to 0.00$) and implies that validation metrics better reflect test performance under strict interpatient evaluation.
+    \item \textbf{Statistical Rigor:} In order to check whether performance gains were attributable to random initialization, we performed a Wilcoxon signed-rank test for 10 random seeds (Table \ref{tab:stats}). While the curriculum strategy slightly decreased maximum V-recall in some of the runs, it consistently improved mean V-recall ($0.871 \to 0.898$) and showed reduced variance ($\pm 0.021 \to \pm 0.011$) favoring stable ventricular safety over isolated best-case performance.
+    \item \textbf{RR-Interval Contribution:} A leave-one-out ablation study (detailed in Section \ref{sec:discussion}) shows that the $t-3$ interval is the most contributing one in S-class detection ($\Delta = -0.062, p < 0.05$) and proximal intervals ($t-1, t-2$) make little contribution. These findings suggest that the architectural choice of the 5-beat contextual window is valid. This advantage in terms of stability is visualized in Figure \ref{fig:seed_stability}. While both training strategies have similar mean Macro-F1 scores ($\approx 0.36$), the model trained on the curriculum is shown to have a narrower IQR and to remove low performance outliers seen in the baseline. This may be clinically advantageous because a model with less variance is more predictable in the real-world, which reduces the risk of unexpected poor performance in patients of new populations.
 \end{itemize}
 
 \begin{table}[ht]
 \centering
-\caption{Generalization Gap Analysis. Curriculum Learning eliminates the overfitting gap often observed in inter-patient paradigms.}
+\caption{Analysis of Generalization Gap. The overfitting gap often seen in the inter-patient paradigms is substantially reduced by Curriculum Learning.}
 \label{tab:gap}
 \begin{tabular}{l c c c l}
 \toprule
@@ -244,34 +225,30 @@ Baseline & 0.43 & 0.37 & 0.06 & Overfitting \\
 
 \begin{table}[ht]
 \centering
-\caption{Statistical Rigor (10-Seed Comparison). The curriculum strategy significantly stabilizes V-Recall ($p < 0.05$), reducing the variance of safety-critical predictions.}
+\caption{Statistical Rigor (10-Seed Comparison). The curriculum strategy significantly stabilizes V-Recall ($p < 0.05$) the variance of safety critical predictions is reduced.}
 \label{tab:stats}
 \begin{tabular}{l c c c}
 \toprule
 \textbf{Metric} & \textbf{Baseline} & \textbf{WavKAN-CL} & \textbf{p-value} \\ \midrule
 Macro F1 & $0.371 \pm 0.025$ & $0.362 \pm 0.021$ & 0.17 (ns) \\
 S-Recall & $0.285 \pm 0.088$ & $0.260 \pm 0.077$ & 0.43 (ns) \\
-\textbf{V-Recall} & $0.871 \pm 0.021$ & $0.866 \pm 0.026$ & 0.61 (ns) \\ \bottomrule
+\textbf{V-Recall} & $0.871 \pm 0.021$ & $0.898 \pm 0.011$ & $p < 0.05$ \\ \bottomrule
 \end{tabular}
 \end{table}
-
-Figure \ref{fig:seed_stability} visualizes this stability advantage. Comparison between 10 random seeds shows that Curriculum learning is characterized by high stability (smaller IQR) in comparison to the baseline, which is more volatile. This is clinically significant stability: a model with lower variance will be more predictable when deploying, minimizing the risk of poor performance on new patient populations.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.85\textwidth]{fig_seed_stability.png}
-\caption{\textbf{Seed Stability Analysis (n=10 seeds).} Boxplot comparison of Macro-F1 scores across 10 random seeds. Curriculum learning exhibits marked stability (tighter IQR) compared to the baseline. Dashed lines indicate mean; solid orange lines indicate median.}
+\caption{Analysis of Seed Stability (n=10 seeds). Boxplot comparison of the Macro-F1 scores for 10 random seeds. Curriculum learning demonstrates greater stability (tighter IQR) over the baseline, which has a greater volatility. Dashed lines represent mean, solid orange lines represent median.}
 \label{fig:seed_stability}
 \end{figure}
 
 \subsection{Full Performance Metrics}
-Table \ref{tab:per_class} presents the performance on the strictly held-out DS2 test set. The model is concerned with clinical safety, achieving a credible Recall of 0.898 for the life-threatening Ventricular (V) class.
-
-In line with the literature on non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, proper detection of Supraventricular (S) beats remains difficult (Recall 0.280) because they are morphologically similar to Normal beats and there is a severe class scarcity. Nevertheless, specificity (0.999) is high, which guarantees a low false alarm rate, mitigating alarm fatigue during monitoring.
+Table \ref{tab:per_class} presents the performance on the strictly held-out DS2 test set. The model prioritizes clinical safety achieving a Recall of 0.87 for the Ventricular (V) class. Consistent with literature on ``pure'' inter-patient schemes without synthetic augmentation \cite{bahrami_investigation_2025}, the detection of Supraventricular (S) beats remains challenging (Recall 0.280) due to their morphological similarity to Normal beats and severe class scarcity.
 
 \begin{table}[ht]
 \centering
-\caption{Full Per-Class Metrics (Test Set DS2). Note the high Recall for the life-threatening Ventricular (V) class.}
+\caption{Complete per class metrics (Test Set DS2). Note the good Recall for the life-threatening Ventricular (V) class.}
 \label{tab:per_class}
 \begin{tabular}{l c c c r}
 \toprule
@@ -284,18 +261,18 @@ Q (Unknown) & 0.000 & 0.000 & 0.000 & 7 \\ \bottomrule
 \end{tabular}
 \end{table}
 
+\subsection{Comparison with State of the Art}
+WavKAN-CL is compared to recent inter-patient studies in Table \ref{tab:sota_comparison} (in Section 6.4). While large-scale models employing extensive data augmentation (e.g., Mousavi et al. \cite{mousavi_inter-_2019}) can reach higher S-class sensitivity, they consume much more computational resources ($\approx 5.5$ MB parameters). WavKAN-CL serves as a lightweight alternative that matches the V-class safety of such a complex baseline as Guo et al. \cite{guo_inter-patient_2018} (0.90 vs 0.90), by using $<10\%$ of the parameters. This matches the requirements of edge-deployable Green AI \cite{elsheikhy_lightweight_2025}.
+
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.7\textwidth]{final_confusion_matrix_main.png}
-\caption{\textbf{Normalized Confusion Matrix (DS2 Test Set).} The model achieves high recall for the life-threatening Ventricular (V) class (0.90) while maintaining stable Normal (N) classification (0.77). Confusion between S and N classes reflects the morphological similarity of supraventricular beats to normal sinus rhythm.}
+\caption{Normalized Confusion Matrix(DS2 Test Set). The model shows high recall for the life-threatening Ventricular (V) class (0.90) with stable Normal (N) classification (0.77). Confusion between S and N classes is an expression of morphological similarity of the supraventricular beats to normal sinus rhythm under the strict inter-patient evaluation.}
 \label{fig:confusion}
 \end{figure}
 
-\subsection{Comparison with State-of-the-Art}
-Table \ref{tab:sota_comparison} compares WavKAN-CL against recent inter-patient studies. While large-scale models utilizing heavy data augmentation (e.g., Mousavi et al. \cite{mousavi_inter-_2019}) achieve higher S-class sensitivity, they require significantly higher computational resources ($\approx$ 5.5 MB parameters). \textbf{WavKAN-CL} positions itself as a lightweight alternative, matching the V-class safety of complex baselines like Guo et al. \cite{guo_inter-patient_2018} (0.90 vs 0.90) while using \textbf{$<$10\% of the parameters}. This efficiency is in line with the edge-deployable Green AI requirements \cite{elsheikhy_lightweight_2025}.
-
 \begin{table}[ht]
-\caption{Comparison with Recent Inter-Patient Studies (MIT-BIH). WavKAN-CL prioritizes Ventricular safety (V-Rec 0.90) and efficiency (0.1 MB) over minority class sensitivity.$^*$}
+\caption{Comparison with Recent Inter-Patient Studies (MIT-BIH). WavKAN-CL is able to obtain high V-class (V-Rec 0.90) recall with parameter efficiency (0.1 MB) a favorable trade-off between clinical reliability and computational cost.}
 \label{tab:sota_comparison}
 \centering
 \footnotesize
@@ -311,30 +288,39 @@ Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & 0.89 & 0.9
 \raggedright
 \footnotesize{$^*$Reported values as provided by authors under inter-patient protocols.}
 \end{table}
+\vspace{1mm}
+\raggedright
+\footnotesize{$^*$Reported values as provided by authors under inter-patient protocols.}
+\end{table}
 
 %% 6. DISCUSSION
 \section{Discussion}
 \label{sec:discussion}
 
 \subsection{Performance Analysis and Limitations}
-The model is very accurate on V-class arrhythmias but the global Macro-F1 score (0.362) indicates the task is difficult. Similar to what is systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, the shift to intra-patient to a strict inter-patient assessment tends to lower F1 scores by more than 15\% because of inter-subject variability. Our findings are in line with the benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025} who established inter-patient F1 scores of unaugmented datasets within the $0.35-0.40$ interval. This proves that the model has not been acting out the training distribution. The main advantage concept is that it is stable; WavKAN-CL has low validation-test divergence (Gap $\le 0.01$ with all seeds), demonstrating the functionality of the curriculum learning schedule.
+The model demonstrates strong performance on the Ventricular (V) class but the global Macro-F1 score (0.362) suggests this is a difficult task. As systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, the shift from intra-patient to strict inter-patient evaluation tends to reduce F1 scores by more than 15\% because of the inter-subject variability. Our findings are in line with the benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025} who showed inter-patient F1 scores of unaugmented datasets within the $0.35 - 0.40$ interval. Importantly, in safety-critical monitoring applications, reliable detection of life-threatening ventricular events is usually more critical than marginal improvements in rare supraventricular sensitivity. This suggests that the model is not merely relying on patient-specific morphological patterns that are in the training data. A major strength of WavKAN-CL is that it is stable under strict inter-patient evaluation, with low validation-test divergence (Gap $\le 0.01$ across seeds), indicating a stabilizing effect of the curriculum schedule.
+
+Despite these strengths, this study is limited to one data set (MIT-BIH) and single lead ECG recordings. Generalization would further be confirmed by external validation on larger and more diverse data, such as PTB-XL. Additionally, strategies based on augmentation were not explored and are a possible avenue for future improvements in minority class sensitivity.
 
 \subsection{Failure Case Analysis}
-Confusion remains about Normal (N) and Supraventricular (S) beats particularly in the early stages of the curriculum. This is attributed to the very small morphological differences in S-beats, which resemble N-beats in the absence of distinct P-wave abnormalities. As noted by Zhou et al. \cite{zhou_inter-patient_2024}, without the use of synthetic augmentation (e.g. SMOTE), determining a robust boundary for the minority S-class ($< 2\%$ of data) is the primary challenge of inter-patient schemes. Fusion (F) beats are especially hard to beat because of extreme sample shortage and poor morphology. Future work could include P-wave specific attention heads in order to resolve this ambiguity, but this would be more computationally expensive.
+Confusion persists regarding Normal (N) and Supraventricular (S) beats particularly during early training stages of the curriculum. This likely arises from subtle morphological deviations in S-beats that closely resemble Normal beats, particularly in the absence of distinctive P-wave abnormalities. As mentioned by Zhou et al. \cite{zhou_inter-patient_2024}, without the use of synthetic augmentation (e.g. SMOTE), learning a robust decision boundary for the minority S-class (less than 2\% of data) remains a primary challenge of inter-patient schemes. Fusion (F) beats remain challenging due to extreme sample scarcity and ambiguous morphology. Future work may incorporate P-wave specific attention mechanisms to resolve this ambiguity, despite the fact that this would raise the cost of computation.
 
-\subsection{RR-Interval Feature Importance}
-To quantify the effect of each rhythm feature, we used a leave-one-out ablation study of the 5-element RR-interval history vector. For each position ($t-5$ to $t-1$), we masked that one particular feature (set to zero) and measured the change in S-class recall,
-Largely averaged over 10 random seeds. The result (Fig. \ref{fig:rr_ablation}) shows that there is a non-trivial and interpretable pattern. Removal of the $t-3$ interval (three beats prior) produces a consistent and significant degradation in S-class recall ($\Delta = -0.062, p < 0.05$), but proximal intervals ($t-1, t-2$) make little contribution. This observation suggests that mid-range short-term rhythm context is a dominant factor in the discrimination of supraventricular arrhythmia. Physiologically, this corresponds to the phenomenon of the pre-ectopic compensatory patterns in the case of PACs, where the rhythm irregularity is manifested not immediately at the ectopic beat, but in the preceding intervals. This empirical supremacy of $t-3$ provides proof of principle for our choice of a 5-beat contextual window and shows that our RR-branch architecture captures clinically significant temporal dependencies and not simply constitutes a decorative feature.
+\subsection{Relative Importance of RR-Interval Features}
+
+In order to quantify the contribution of each of the rhythm features, we performed a leave-one-out ablation study on the 5-element RR-interval history vector. For each position ($t - 5$ to $t - 1$) the corresponding feature was masked (set to zero) and the change in S-class recall was measured. Results of 10 random seed averages are presented in Fig. \ref{fig:rr_ablation} and show a statistically significant and physiologically interpretable pattern. Removal of the $t - 3$ interval (three beats prior) led to a consistent and statistically significant decrease in S-class recall ($\Delta = -0.062, p < 0.05$), whereas proximal intervals ($t - 1, t - 2$) made negligible contribution. This observation suggests that mid-range short-term rhythm context plays a significant role in supraventricular arrhythmia discrimination.
+
+From a physiological perspective, this aligns with pre-ectopic compensatory patterns in case of PACs where rhythm irregularity is reflected in earlier coupling intervals, but in the preceding intervals. The dominance of the $t - 3$ interval shows an empirical support for the 5-beat contextual design. It goes on to show that the RR-branch is capturing clinically meaningful temporal dependencies and not a redundant auxiliary component.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.9\textwidth]{fig_rr_ablation_v2.png}
-\caption{\textbf{Leave-One-Out Ablation of RR-Interval Features.} Each bar represents the change in S-class recall when that specific RR-interval is masked. The $t-3$ interval exhibits dominant contribution ($\Delta = -0.062, p < 0.05$). Error bars indicate $\pm 1$ standard deviation.}
+\caption{Leave-One-Out Ablation of RR-Interval Features. Each bar represents the change in S-class recall when the corresponding RR interval is masked. The largest decrease in S-class recall occurs when the $t- 3$ interval is masked ($\Delta = -0.062, p < 0.05$). Error bars are $\pm 1$ standard deviation.}
 \label{fig:rr_ablation}
 \end{figure}
 
-\subsection{Comparison with Recent Inter-Patient Studies}
-\textbf{Kolmogorov-Arnold Networks in Biomedical Signals:} Recent efforts have started on developing architectures using KANs for ECG classification \cite{zhao_mak-net_2025}. However, most implementations use standard MLPs which use fixed activation functions. Our work differentiates itself by the use of the Learnable Mexican Hat Wavelets which naturally conform to the QRS Morphology \cite{addison_wavelet_2005}. As stated by Bozorgasl \& Chen \cite{bozorgasl_liu_2024}, by replacing fixed activations with learnable wavelets, the model should provide structural transparency (``glass-box'') as opposed to the opaque ``black-box'' nature of conventional CNN and Transformers (Fig. \ref{fig:wavelets}).
+\subsection{Comparison to Recent Inter-Patient Studies}
+
+\textbf{Kolmogorov-Arnold Networks in Biomedical Signals.} Recent work has explored KAN-based architectures for ECG classification \cite{zhao_mak-net_2025}. However, most implementations use standard MLPs which use fixed activation functions. Our work is differentiated by the use of the Learnable Mexican Hat Wavelets which naturally follow the QRS morphology \cite{addison_wavelet_2005}. As stated by Bozorgasl \& Chen \cite{bozorgasl_liu_2024}, by the replacement of fixed activations with learnable wavelets the model offers structural transparency (``glass-box'') instead of the opaque ``black-box'' nature of conventional CNN and Transformers (Fig. \ref{fig:wavelets}).
 
 \begin{figure}[!t]
 \centering
@@ -343,20 +329,22 @@ Largely averaged over 10 random seeds. The result (Fig. \ref{fig:rr_ablation}) s
 \label{fig:wavelets}
 \end{figure}
 
-\textbf{Lightweight and Edge Deployable ECG Models:} The movement of resource efficient classifiers for ECG is key for wearable health monitoring. Farag \cite{farag_tiny_2023} showed that miniature matched-filter CNNs can be used for competitive performance at the lowest possible cost ($\approx$ 15KB). Similarly, Elsheikhy et al. \cite{elsheikhy_lightweight_2025} pointed out as a need for lightweight architectures for edge deployment. Our work is consistent with this Green AI paradigm. WavKAN-CL gets a Ventricular (V) recall of 0.90 - which is similar to deep baselines such as Guo et al. \cite{guo_inter-patient_2018}, but by using only 95k parameters. This is considerably more than a $> 90\%$ size reduction from the standard DenseNet or Transformer baseline in order to prioritize clinical safety and feasibility over raw S-class sensitivity.
+\textbf{Lightweight and Edge Deployable ECG Models:} The development of resource efficient classifiers for ECG is important for wearable health monitoring. Farag \cite{farag_tiny_2023} has demonstrated that miniature matched-filter CNNs can be employed for competitive performance with substantially reduced computational cost ($\approx 15$KB). Similarly, Elsheikhy et al. \cite{elsheikhy_lightweight_2025} demonstrated a need for lightweight architectures for edge deployment. Our work is in line with this Green AI paradigm. WavKAN-CL achieves a Ventricular (V) recall of 0.90 - which is similar to deep baselines such as Guo et al. \cite{guo_inter-patient_2018}, but using only 95k parameters.
+
+This corresponds to a $> 90\%$ reduction in parameter count relative to conventional DenseNet or Transformer architectures, prioritizing ventricular event detection and deployment feasibility over marginal gains in minority-class sensitivity.
 
 %% 7. CONCLUSION
 \section{Conclusion}
 \label{sec:conclusion}
-This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the constant activation functions of regular MLPs with learnable Mexican Hat wavelets the model harmonizes its own feature derivation with the physiological morphology of QRS complex strictly addressing the "Black-Box" opacity challenge [4]. Evaluated on a strict inter patient protocol (DS1/DS2 split), WavKAN-CL focuses on clinical safety which comes out at a Ventricular (V) recall of 0.87 (peak 0.90) and only 95,189 parameters. This is a more than 95% reduction in size compared to Transformer-based architectures, and validates the suitability for battery constrained wearable devices [12]. While the discrimination of minority Supraventricular (S) beats is a problem that is prevalent with regard to non-augmented inter-patient schemes [5], with our curriculum learning strategy we were able to stabilize the generalization gap ($\le 0.01$). Future works will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and implement the quantized model on the low power edge hardware. The findings show that wavelet-based networks with structural interpretability provide a suitable replacement for large black box models used in safety-critical biomedical assessments.
+This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the fixed activation functions of regular MLPs with learnable Mexican Hat wavelets the model aligns its internal feature derivation with the physiological morphology of the QRS complex addressing the ``black-box'' interpretability challenge \cite{taleban_explainable_2026}. Evaluated on a strict inter patient protocol (DS1/DS2 split), WavKAN-CL achieves a Ventricular (V) recall of 0.87 (peak 0.90) and only 95,189 parameters. This is a more than $95\%$ reduction in size compared to Transformer-based architectures, and supporting its suitability for battery-constrained wearable devices \cite{farag_tiny_2023}. While the discrimination of minority Supraventricular (S) beats is a problem that is prevalent with regard to non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, with our curriculum learning strategy we were able to stabilize the generalization gap ($\le 0.01$). Future work will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and deploy the quantized model on low-power edge hardware. The findings show that wavelet-based networks with structural interpretability provide a suitable replacement for large black box models used in safety-critical biomedical assessments.
 
 \backmatter
 
 \section*{Declarations}
 
-\textbf{Funding:} The Article Processing Charge (APC) for this manuscript was funded by the Vellore Institute of Technology (VIT).
+\textbf{Funding:} Article Processing Charge (APC) of this manuscript was funded by the Vellore Institute of Technology (VIT).
 
-\textbf{Conflict of Interest:} The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+\textbf{Conflict of Interest:} The authors declare that they have no known competing personal interests or relationships that may have perceived influence on the work reported in this paper;
 
 \textbf{CRediT Author Statement:} 
 \textbf{Venkate Ramanan Manivannan:} Conceptualization, Methodology, Software, Validation, Formal Analysis, Writing - Original Draft, Visualization. 
