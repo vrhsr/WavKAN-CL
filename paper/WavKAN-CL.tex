@@ -4,16 +4,13 @@
 \usepackage{multirow}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{amsthm}
-\usepackage{mathrsfs}
 \usepackage[title]{appendix}
 \usepackage{xcolor}
 \usepackage{textcomp}
-\usepackage{manyfoot}
 \usepackage{booktabs}
 \usepackage{algorithm}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
-\usepackage{listings}
 % \usepackage[none]{hyphenat} % Uncomment this line to disable hyphenation (useful for copy-pasting to AI detectors)
 
 \theoremstyle{thmstyleone}
@@ -134,6 +131,28 @@ Standard curriculum learning progresses from easy to hard samples. However, in s
 
 \noindent This schedule is applied during training only; inference is performed under the natural class distribution.
 
+\begin{algorithm}[!t]
+\caption{Minority-First Curriculum Learning Schedule}
+\label{alg:curriculum}
+\begin{algorithmic}[1]
+\Require Training set $\mathcal{D}$, total epochs $E$, annealing ratio $\alpha = 0.3$
+\Ensure Trained model $f_\theta$
+\State Compute class frequencies $\{n_c\}$ for $c \in \{N, S, V, F, Q\}$
+\For{epoch $e = 1$ to $E$}
+    \If{$e \leq \alpha \cdot E$} \Comment{Phase 1: Discovery}
+        \State $P(c) \propto 1 / n_c$ \Comment{Inverse-frequency sampling}
+        \State $\lambda \gets 1 - e / (\alpha \cdot E)$ \Comment{Linear annealing}
+    \Else \Comment{Phase 2: Natural distribution}
+        \State $P(c) \propto n_c$ \Comment{Standard sampling}
+        \State $\lambda \gets 0$
+    \EndIf
+    \State Sample mini-batches from $\mathcal{D}$ according to $P(c)$
+    \State $\mathcal{L} \gets \lambda \cdot \mathcal{L}_{\text{weighted}} + (1-\lambda) \cdot \mathcal{L}_{\text{CE}}$
+    \State Update $\theta$ via AdamW on $\mathcal{L}$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
 %% 3. DATASET AND EVALUATION PROTOCOL
 \section{Dataset and Evaluation Protocol}
 
@@ -244,7 +263,7 @@ S-Recall & $0.285 \pm 0.088$ & $0.260 \pm 0.077$ & 0.43 (ns) \\
 \end{figure}
 
 \subsection{Full Performance Metrics}
-Table \ref{tab:per_class} presents the performance on the strictly held-out DS2 test set. The model prioritizes clinical safety achieving a Recall of 0.87 for the Ventricular (V) class. Consistent with literature on ``pure'' inter-patient schemes without synthetic augmentation \cite{bahrami_investigation_2025}, the detection of Supraventricular (S) beats remains challenging (Recall 0.280) due to their morphological similarity to Normal beats and severe class scarcity.
+Table \ref{tab:per_class} presents the best-seed performance on the strictly held-out DS2 test set. The model prioritizes clinical safety, achieving a V-class Recall of 0.898 (mean across 10 seeds: 0.87, as reported in Table \ref{tab:stats}). Consistent with literature on non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the detection of Supraventricular (S) beats remains challenging (Recall 0.280) due to their morphological similarity to Normal beats and severe class scarcity. Fusion (F) beats show near-chance performance (Recall 0.051), which is attributable to the extreme sample shortage (only 388 test samples, 15 validation samples) and their inherently ambiguous morphology that overlaps with both N and V classes (Fig. \ref{fig:confusion}).
 
 \begin{table}[ht]
 \centering
@@ -284,10 +303,6 @@ Mousavi \cite{mousavi_inter-_2019} & 2019 & CNN + Seq2Seq & Inter (DS2) & 0.89 &
 Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & 0.89 & 0.93 & $>$1 MB \\
 \textbf{Proposed} & \textbf{2026} & \textbf{Hybrid WavKAN-CL} & \textbf{Inter (DS2)} & \textbf{0.28} & \textbf{0.90} & \textbf{0.1 MB} \\ \bottomrule
 \end{tabular}
-\vspace{1mm}
-\raggedright
-\footnotesize{$^*$Reported values as provided by authors under inter-patient protocols.}
-\end{table}
 \vspace{1mm}
 \raggedright
 \footnotesize{$^*$Reported values as provided by authors under inter-patient protocols.}
@@ -336,7 +351,7 @@ This corresponds to a $> 90\%$ reduction in parameter count relative to conventi
 %% 7. CONCLUSION
 \section{Conclusion}
 \label{sec:conclusion}
-This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the fixed activation functions of regular MLPs with learnable Mexican Hat wavelets the model aligns its internal feature derivation with the physiological morphology of the QRS complex addressing the ``black-box'' interpretability challenge \cite{taleban_explainable_2026}. Evaluated on a strict inter patient protocol (DS1/DS2 split), WavKAN-CL achieves a Ventricular (V) recall of 0.87 (peak 0.90) and only 95,189 parameters. This is a more than $95\%$ reduction in size compared to Transformer-based architectures, and supporting its suitability for battery-constrained wearable devices \cite{farag_tiny_2023}. While the discrimination of minority Supraventricular (S) beats is a problem that is prevalent with regard to non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, with our curriculum learning strategy we were able to stabilize the generalization gap ($\le 0.01$). Future work will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and deploy the quantized model on low-power edge hardware. The findings show that wavelet-based networks with structural interpretability provide a suitable replacement for large black box models used in safety-critical biomedical assessments.
+This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the fixed activation functions of regular MLPs with learnable Mexican Hat wavelets the model aligns its internal feature derivation with the physiological morphology of the QRS complex addressing the ``black-box'' interpretability challenge \cite{taleban_explainable_2026}. Evaluated on a strict inter-patient protocol (DS1/DS2 split), WavKAN-CL achieves a mean Ventricular (V) recall of 0.87 across 10 seeds (peak 0.90) with only 95,189 parameters. This represents a $>$95\% reduction in size compared to Transformer-based architectures, supporting its suitability for battery-constrained wearable devices \cite{farag_tiny_2023}. While the discrimination of minority Supraventricular (S) beats remains challenging under non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the proposed curriculum learning strategy stabilizes the generalization gap ($\le 0.01$). Future work will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and deploying the quantized model on low-power edge hardware. These findings suggest that wavelet-based networks with structural interpretability provide a viable alternative to large black-box models in safety-critical biomedical applications.
 
 \backmatter
 
