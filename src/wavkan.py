@@ -36,6 +36,15 @@ class WavKANLinear(nn.Module):
         # -x * exp(-x^2/2)
         return -x * torch.exp(-0.5 * x**2)
 
+    def b_spline(self, x):
+        # Cubic B-spline basis function (original KAN baseline projection)
+        abs_x = torch.abs(x)
+        mask1 = (abs_x < 1).float()
+        mask2 = ((abs_x >= 1) & (abs_x < 2)).float()
+        val1 = (2.0/3.0) - abs_x**2 + 0.5 * abs_x**3
+        val2 = (1.0/6.0) * (2.0 - abs_x)**3
+        return mask1 * val1 + mask2 * val2
+
     def forward(self, x):
         x_expanded = x.unsqueeze(1)
         x_norm = (x_expanded - self.translation) / (self.scale + 1e-8)
@@ -46,6 +55,8 @@ class WavKANLinear(nn.Module):
             basis_func = self.morlet(x_norm)
         elif self.wavelet_type == 'dog':
             basis_func = self.dog(x_norm)
+        elif self.wavelet_type == 'b_spline':
+            basis_func = self.b_spline(x_norm)
         else:
             # Default to Mexican Hat
             basis_func = self.mexican_hat(x_norm)
