@@ -363,6 +363,7 @@ WavKAN-CL is compared to recent studies on MIT-BIH in Table \ref{tab:sota_compar
 \caption{Comparison with Recent Studies on MIT-BIH Arrhythmia Database. $^\dagger$Evaluated under intra-patient protocol (random beat-level split); not directly comparable to inter-patient DS1/DS2 results. WavKAN-CL is the only structurally interpretable model evaluated under the strict inter-patient protocol.}
 \label{tab:sota_comparison}
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llllccccc@{}}
 \toprule
 \textbf{Study} & \textbf{Year} & \textbf{Method} & \textbf{Protocol} & \textbf{Macro-F1} & \textbf{S-Rec} & \textbf{V-Rec} & \textbf{Size} & \textbf{Interpretable} \\ \midrule
@@ -373,6 +374,7 @@ Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & -- & 0.89 
 Zhao \cite{zhao_mak-net_2025} & 2025 & MAK-Net + BiGRU & Intra$^\dagger$ & 0.989$^\dagger$ & 0.987$^\dagger$ & 0.983$^\dagger$ & 23 MB & No (black-box) \\ \midrule
 \textbf{Proposed} & \textbf{2026} & \textbf{Hybrid WavKAN-CL} & \textbf{Inter (DS2)} & \textbf{0.36} & \textbf{0.29} & \textbf{0.86} & \textbf{0.38 MB} & \textbf{Yes (glass-box)} \\ \bottomrule
 \end{tabular}
+}
 \vspace{1mm}
 \raggedright
 \footnotesize{$^\dagger$Reported under intra-patient evaluation (random beat-level 60/20/20 split). Due to patient-specific memorization, these metrics are not directly comparable to strict inter-patient results \cite{bahrami_investigation_2025}. MAK-Net: 6.1M params, 24 ms/beat (RTX 3090 GPU); WavKAN-CL: 95K params, 0.78 ms/beat (CPU).}
