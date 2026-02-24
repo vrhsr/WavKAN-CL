@@ -264,13 +264,13 @@ To rigorously justify the architectural decisions of WavKAN-CL, we conducted a c
 \textit{Wavelet Ablations} & & & & \\
 Morlet Variant & Morlet & 0.325 & 0.866 & 0.137 \\
 DOG Variant & DOG (Gaussian) & 0.354 & 0.856 & 0.268 \\
-KAN Baseline & B-Spline & 0.344 & 0.880 & 0.220 \\ \midrule
+KAN Baseline & B-Spline & 0.396 & 0.920 & 0.570 \\ \midrule
 \textit{Structural Ablations} & & & & \\
 No Temporal Context & Mexican Hat & 0.315 & 0.820 & 0.150 \\
 Morphology Only & Mexican Hat & 0.332 & 0.845 & 0.185 \\ \midrule
 \textit{Training Strategy Ablations} & & & & \\
 Baseline CE (No Curriculum) & Mexican Hat & 0.371 & 0.871 & 0.285 \\
-Focal Loss ($\gamma=2$) & Mexican Hat & 0.358 & 0.890 & 0.255 \\ \bottomrule
+Focal Loss ($\gamma=2$) & Mexican Hat & 0.336 & 0.907 & 0.384 \\ \bottomrule
 \end{tabular}
 \end{table}
 
