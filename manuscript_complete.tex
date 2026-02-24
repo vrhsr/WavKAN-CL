@@ -99,7 +99,7 @@ The proposed system (Fig. \ref{fig:arch}) is different from the conventional CNN
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{final_methodology_workflow_v2.png}
+\includegraphics[width=\textwidth]{final_methodology_workflow_v2.pdf}
 \caption{\textbf{Hybrid WavKAN Architecture.} Dual-branch architecture that combines the morphological features of WavKAN backbone and the rhythm features of RR encoder. The use of the curriculum scheduler (training only) gives precedence to the exposure to minority classes in early epochs.}
 \label{fig:arch}
 \end{figure}
@@ -117,7 +117,7 @@ The WavKAN output is then normalized (LayerNorm) and passed through a Bidirectio
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.9\textwidth]{wavkan_micro_architecture_v2.png}
+\includegraphics[width=0.9\textwidth]{wavkan_micro_architecture_v2.pdf}
 \caption{\textbf{Micro-Architecture of WavKAN.} In contrast to the conventional MLP where the activation of the nodes is fixed, in WavKAN, learnable wavelet functions $\psi(t; \mu, \gamma)$ are placed on edges. Each edge learns independent translation ($\mu$) and dilation ($\gamma$) parameters enabling the extraction of multi-scale morphological features corresponding to QRS complex geometry.}
 \label{fig:wavkan_micro}
 \end{figure}
@@ -301,14 +301,14 @@ S-Recall & $0.285 \pm 0.088$ & $0.260 \pm 0.077$ & 0.43 (ns) \\
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.85\textwidth]{fig_seed_stability.png}
+\includegraphics[width=0.85\textwidth]{fig_seed_stability.pdf}
 \caption{Analysis of Seed Stability (n=20 seeds). Boxplot comparison of the Macro-F1 scores for 20 random seeds. Curriculum learning demonstrates greater stability (tighter IQR) over the baseline, which has a greater volatility. Dashed lines represent mean, solid orange lines represent median.}
 \label{fig:seed_stability}
 \end{figure}
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{fig_convergence_curves.png}
+\includegraphics[width=\textwidth]{fig_convergence_curves.pdf}
 \caption{Training Convergence: Baseline vs. Curriculum Learning. (a) Training loss, (b) validation Macro-F1, (c) Ventricular (V) recall, and (d) Supraventricular (S) recall across 50 epochs. The dashed vertical line marks the curriculum phase transition (epoch 15), where training shifts from minority-only samples to the full dataset. The curriculum strategy has higher early V-recall and S-recall during the discovery phase demonstrating the benefit of early minority exposure.}
 \label{fig:convergence}
 \end{figure}
@@ -333,7 +333,7 @@ Q (Unknown) & 0.000 & 0.000 & 0.000 & 7 \\ \bottomrule
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.7\textwidth]{final_confusion_matrix_main.png}
+\includegraphics[width=0.7\textwidth]{final_confusion_matrix_main.pdf}
 \caption{Normalized Confusion Matrix(DS2 Test Set). The model shows high recall for the life-threatening Ventricular (V) class (0.86) with stable Normal (N) classification (0.82). Confusion between S and N classes is an expression of morphological similarity of the supraventricular beats to normal sinus rhythm under the strict inter-patient evaluation.}
 \label{fig:confusion}
 \end{figure}
@@ -401,7 +401,7 @@ From a physiological perspective, this aligns with pre-ectopic compensatory patt
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=0.9\textwidth]{fig_rr_ablation_v2.png}
+\includegraphics[width=0.9\textwidth]{fig_rr_ablation_v2.pdf}
 \caption{Leave-One-Out Ablation of RR-Interval Features. Each bar represents the change in S-class recall when the corresponding RR interval is masked. The largest decrease in S-class recall occurs when the $t- 3$ interval is masked ($\Delta = -0.062, p < 0.05$). Error bars are $\pm 1$ standard deviation.}
 \label{fig:rr_ablation}
 \end{figure}
@@ -412,7 +412,7 @@ From a physiological perspective, this aligns with pre-ectopic compensatory patt
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{final_learned_wavelets.png}
+\includegraphics[width=\textwidth]{final_learned_wavelets.pdf}
 \caption{\textbf{Interpretability: Learned Wavelet Bases.} WavKAN learns adaptive Mexican Hat wavelets (blue curves) that align with specific morphological features.}
 \label{fig:wavelets}
 \end{figure}
