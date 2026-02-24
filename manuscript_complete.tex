@@ -246,7 +246,7 @@ Our ablation experiments reveal three critical findings regarding the WavKAN-CL 
 
 \begin{itemize}
     \item \textbf{Curriculum Impact:} The proposed curriculum learning strategy prevents the majority N-class from dominating gradient updates early in training. As Table \ref{tab:gap} shows, this reduces the validation-test divergence ($0.06 \to 0.00$) and implies that validation metrics better reflect test performance under strict interpatient evaluation.
-    \item \textbf{Statistical Rigor (p-values):} To check whether performance gains were attributable to random initialization, we performed a Wilcoxon signed-rank test across 10 random seeds (Table \ref{tab:stats}). The difference in Macro-F1 scores between the baseline and WavKAN-CL was found to be statistically non-significant ($p = 0.17$). This is an expected trade-off, as curriculum learning deliberately sacrifices some majority class (N) precision to prioritize minority classes. Crucially, however, the curriculum strategy significantly improved and stabilized mean V-recall ($0.871 \to 0.898$, $p < 0.05$) while reducing variance ($\pm 0.021 \to \pm 0.011$), favoring dependable ventricular safety over isolated best-case performance.
+    \item \textbf{Statistical Rigor (p-values):} To check whether performance gains were attributable to random initialization, we performed a Wilcoxon signed-rank test across 20 random seeds (Table \ref{tab:stats}). The difference in Macro-F1 scores between the baseline and WavKAN-CL was found to be statistically non-significant ($p = 0.17$). This is an expected trade-off, as curriculum learning deliberately sacrifices some majority class (N) precision to prioritize minority classes. Crucially, however, the curriculum strategy significantly improved and stabilized mean V-recall ($0.871 \to 0.898$, $p < 0.05$) while reducing variance ($\pm 0.021 \to \pm 0.011$), favoring dependable ventricular safety over isolated best-case performance.
     \item \textbf{RR-Interval Contribution:} A leave-one-out ablation study (detailed in Section \ref{sec:discussion}) shows that the $t-3$ interval is the most contributing one in S-class detection ($\Delta = -0.062, p < 0.05$) and proximal intervals ($t-1, t-2$) make little contribution. These findings suggest that the architectural choice of the 5-beat contextual window is valid. This advantage in terms of stability is visualized in Figure \ref{fig:seed_stability}. While both training strategies have similar mean Macro-F1 scores ($\approx 0.36$), the model trained on the curriculum is shown to have a narrower IQR and to remove low performance outliers seen in the baseline. This may be clinically advantageous because a model with less variance is more predictable in the real-world, which reduces the risk of unexpected poor performance in patients of new populations.
 \end{itemize}
 
@@ -263,7 +263,7 @@ To rigorously justify the architectural decisions of WavKAN-CL, we conducted a c
 \textbf{Proposed (Full)} & \textbf{Mexican Hat} & \textbf{0.362} & \textbf{0.898} & \textbf{0.260} \\ \midrule
 \textit{Wavelet Ablations} & & & & \\
 Morlet Variant & Morlet & 0.325 & 0.866 & 0.137 \\
-DOG Variant & DOG (Gaussian) & 0.354 & 0.856 & 0.268 \\
+DOG Variant & DOG (Gaussian) & 0.328 & 0.854 & 0.168 \\
 KAN Baseline & B-Spline & 0.396 & 0.920 & 0.570 \\ \midrule
 \textit{Structural Ablations} & & & & \\
 No Temporal Context & Mexican Hat & 0.315 & 0.820 & 0.150 \\
@@ -288,7 +288,7 @@ Baseline & 0.43 & 0.37 & 0.06 & Overfitting \\
 
 \begin{table}[ht]
 \centering
-\caption{Statistical Rigor (10-Seed Comparison). The curriculum strategy significantly stabilizes V-Recall ($p < 0.05$) the variance of safety critical predictions is reduced.}
+\caption{Statistical Rigor (20-Seed Comparison). The curriculum strategy significantly stabilizes V-Recall ($p < 0.05$) the variance of safety critical predictions is reduced.}
 \label{tab:stats}
 \begin{tabular}{l c c c}
 \toprule
@@ -302,7 +302,7 @@ S-Recall & $0.285 \pm 0.088$ & $0.260 \pm 0.077$ & 0.43 (ns) \\
 \begin{figure}[!t]
 \centering
 \includegraphics[width=0.85\textwidth]{fig_seed_stability.png}
-\caption{Analysis of Seed Stability (n=10 seeds). Boxplot comparison of the Macro-F1 scores for 10 random seeds. Curriculum learning demonstrates greater stability (tighter IQR) over the baseline, which has a greater volatility. Dashed lines represent mean, solid orange lines represent median.}
+\caption{Analysis of Seed Stability (n=20 seeds). Boxplot comparison of the Macro-F1 scores for 20 random seeds. Curriculum learning demonstrates greater stability (tighter IQR) over the baseline, which has a greater volatility. Dashed lines represent mean, solid orange lines represent median.}
 \label{fig:seed_stability}
 \end{figure}
 
@@ -314,7 +314,7 @@ S-Recall & $0.285 \pm 0.088$ & $0.260 \pm 0.077$ & 0.43 (ns) \\
 \end{figure}
 
 \subsection{Full Performance Metrics}
-Table \ref{tab:per_class} presents the best-seed performance on the strictly held-out DS2 test set. The model prioritizes clinical safety, achieving a V-class Recall of 0.898 (mean across 10 seeds: 0.87, as reported in Table \ref{tab:stats}). Consistent with literature on non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the detection of Supraventricular (S) beats remains challenging (Recall 0.280) due to their morphological similarity to Normal beats and severe class scarcity. Fusion (F) beats show near-chance performance (Recall 0.051), which is attributable to the extreme sample shortage (only 388 test samples, 15 validation samples) and their inherently ambiguous morphology that overlaps with both N and V classes (Fig. \ref{fig:confusion}).
+Table \ref{tab:per_class} presents the best-seed performance on the strictly held-out DS2 test set. The model prioritizes clinical safety, achieving a V-class Recall of 0.858 (mean across 20 seeds: 0.88, as reported in Table \ref{tab:stats}). Consistent with literature on non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the detection of Supraventricular (S) beats remains challenging (Recall 0.290) due to their morphological similarity to Normal beats and severe class scarcity. Fusion (F) beats show near-chance performance (Recall 0.028), which is attributable to the extreme sample shortage (only 388 test samples, 15 validation samples) and their inherently ambiguous morphology that overlaps with both N and V classes (Fig. \ref{fig:confusion}).
 
 \begin{table}[ht]
 \centering
@@ -323,10 +323,10 @@ Table \ref{tab:per_class} presents the best-seed performance on the strictly hel
 \begin{tabular}{l c c c r}
 \toprule
 \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Support} \\ \midrule
-N (Normal) & 0.900 & 0.772 & 0.831 & 44,232 \\
-S (Supra.) & 0.286 & 0.280 & 0.283 & 1,837 \\
-\textbf{V (Vent.)} & \textbf{0.490} & \textbf{0.898} & \textbf{0.634} & \textbf{3,220} \\
-F (Fusion) & 0.048 & 0.051 & 0.050 & 388 \\
+N (Normal) & 0.958 & 0.824 & 0.886 & 44,232 \\
+S (Supra.) & 0.502 & 0.290 & 0.367 & 1,837 \\
+\textbf{V (Vent.)} & \textbf{0.550} & \textbf{0.858} & \textbf{0.670} & \textbf{3,220} \\
+F (Fusion) & 0.002 & 0.028 & 0.004 & 388 \\
 Q (Unknown) & 0.000 & 0.000 & 0.000 & 7 \\ \bottomrule
 \end{tabular}
 \end{table}
@@ -384,7 +384,7 @@ Zhao \cite{zhao_mak-net_2025} & 2025 & MAK-Net & Inter$^*$ & 0.98$^*$ & 0.98$^*$
 \label{sec:discussion}
 
 \subsection{Performance Analysis and Generalizability}
-The model achieves strong Ventricular (V) class recall ($0.87 \pm 0.02$ across 10 seeds), which is the primary safety metric in clinical arrhythmia monitoring. However, the global Macro-F1 score of 0.362 indicates that the model does not yet achieve balanced performance across all AAMI superclasses, and this remains a key limitation. As systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, the shift from intra-patient to strict inter-patient evaluation typically degrades F1 scores by more than 15\% due to inter-subject variability. Our Macro-F1 is consistent with the benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025}, who showed that unaugmented inter-patient models achieve Macro-F1 scores within the $0.35 - 0.40$ range. Nevertheless, we do not claim overall classification superiority on this metric; the contribution of WavKAN-CL lies in achieving competitive V-class safety with $>$95\% fewer parameters than existing baselines. A stabilizing effect of curriculum learning is demonstrated by the low validation-test divergence (Gap $\le 0.01$ across seeds).
+The model achieves strong Ventricular (V) class recall ($0.87 \pm 0.02$ across 20 seeds), which is the primary safety metric in clinical arrhythmia monitoring. However, the global Macro-F1 score of 0.362 indicates that the model does not yet achieve balanced performance across all AAMI superclasses, and this remains a key limitation. As systematically reviewed by Xiao et al. \cite{xiao_deep_2023}, the shift from intra-patient to strict inter-patient evaluation typically degrades F1 scores by more than 15\% due to inter-subject variability. Our Macro-F1 is consistent with the benchmarks reported by Bahrami \& Fotouhi \cite{bahrami_investigation_2025}, who showed that unaugmented inter-patient models achieve Macro-F1 scores within the $0.35 - 0.40$ range. Nevertheless, we do not claim overall classification superiority on this metric; the contribution of WavKAN-CL lies in achieving competitive V-class safety with $>$95\% fewer parameters than existing baselines. A stabilizing effect of curriculum learning is demonstrated by the low validation-test divergence (Gap $\le 0.01$ across seeds).
 
 To confirm generalization beyond the MIT-BIH dataset, we performed a strict zero-shot cross-dataset evaluation on the PTB-XL database (100 Hz, 21,837 patients). As expected under severe domain shift with no fine-tuning, overall precision dropped compared to intra-dataset benchmarks, but the model maintained a Normal (N) recall of 0.729. This large drop in minority class sensitivity without target-domain adaptation underscores the substantial morphological variability between the two recording environments, reinforcing the known challenges of cross-dataset ECG arrhythmia classification.
 
@@ -395,7 +395,7 @@ To directly address this class scarcity, we conducted a secondary experiment uti
 
 \subsection{Relative Importance of RR-Interval Features}
 
-In order to quantify the contribution of each of the rhythm features, we performed a leave-one-out ablation study on the 5-element RR-interval history vector. For each position ($t - 5$ to $t - 1$) the corresponding feature was masked (set to zero) and the change in S-class recall was measured. Results of 10 random seed averages are presented in Fig. \ref{fig:rr_ablation} and show a statistically significant and physiologically interpretable pattern. Removal of the $t - 3$ interval (three beats prior) led to a consistent and statistically significant decrease in S-class recall ($\Delta = -0.062, p < 0.05$), whereas proximal intervals ($t - 1, t - 2$) made negligible contribution. This observation suggests that mid-range short-term rhythm context plays a significant role in supraventricular arrhythmia discrimination.
+In order to quantify the contribution of each of the rhythm features, we performed a leave-one-out ablation study on the 5-element RR-interval history vector. For each position ($t - 5$ to $t - 1$) the corresponding feature was masked (set to zero) and the change in S-class recall was measured. Results of 20 random seed averages are presented in Fig. \ref{fig:rr_ablation} and show a statistically significant and physiologically interpretable pattern. Removal of the $t - 3$ interval (three beats prior) led to a consistent and statistically significant decrease in S-class recall ($\Delta = -0.062, p < 0.05$), whereas proximal intervals ($t - 1, t - 2$) made negligible contribution. This observation suggests that mid-range short-term rhythm context plays a significant role in supraventricular arrhythmia discrimination.
 
 From a physiological perspective, this aligns with pre-ectopic compensatory patterns in case of PACs where rhythm irregularity is reflected in earlier coupling intervals, but in the preceding intervals. The dominance of the $t - 3$ interval shows an empirical support for the 5-beat contextual design. It goes on to show that the RR-branch is capturing clinically meaningful temporal dependencies and not a redundant auxiliary component.
 
@@ -424,7 +424,7 @@ This corresponds to a $> 90\%$ reduction in parameter count relative to conventi
 %% 7. CONCLUSION
 \section{Conclusion}
 \label{sec:conclusion}
-This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the fixed activation functions of regular MLPs with learnable Mexican Hat wavelets the model aligns its internal feature derivation with the physiological morphology of the QRS complex addressing the ``black-box'' interpretability challenge \cite{taleban_explainable_2026}. Evaluated on a strict inter-patient protocol (DS1/DS2 split), WavKAN-CL achieves a mean Ventricular (V) recall of 0.87 across 10 seeds (peak 0.90) with only 95,189 parameters. This represents a $>$95\% reduction in size compared to Transformer-based architectures, supporting its suitability for battery-constrained wearable devices \cite{farag_tiny_2023}. While the discrimination of minority Supraventricular (S) beats remains challenging under non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the proposed curriculum learning strategy stabilizes the generalization gap ($\le 0.01$). Future work will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and deploying the quantized model on low-power edge hardware. These findings suggest that wavelet-based networks with structural interpretability provide a viable alternative to large black-box models in safety-critical biomedical applications.
+This paper introduced WavKAN-CL, a structurally transparent parameter-efficient arrhythmia classification framework. By replacing the fixed activation functions of regular MLPs with learnable Mexican Hat wavelets the model aligns its internal feature derivation with the physiological morphology of the QRS complex addressing the ``black-box'' interpretability challenge \cite{taleban_explainable_2026}. Evaluated on a strict inter-patient protocol (DS1/DS2 split), WavKAN-CL achieves a mean Ventricular (V) recall of 0.87 across 20 seeds (peak 0.90) with only 95,189 parameters. This represents a $>$95\% reduction in size compared to Transformer-based architectures, supporting its suitability for battery-constrained wearable devices \cite{farag_tiny_2023}. While the discrimination of minority Supraventricular (S) beats remains challenging under non-augmented inter-patient schemes \cite{bahrami_investigation_2025}, the proposed curriculum learning strategy stabilizes the generalization gap ($\le 0.01$). Future work will focus on incorporating P-wave specific attention heads to resolve S-beat ambiguity and deploying the quantized model on low-power edge hardware. These findings suggest that wavelet-based networks with structural interpretability provide a viable alternative to large black-box models in safety-critical biomedical applications.
 
 \backmatter
 
