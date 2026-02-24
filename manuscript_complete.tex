@@ -359,25 +359,24 @@ F (Fusion) & 0.118 & 0.016 & 0.028 & 9,043 \\ \midrule
 \subsection{Comparison with State of the Art}
 WavKAN-CL is compared to recent studies on MIT-BIH in Table \ref{tab:sota_comparison}. A key methodological distinction must be noted: MAK-Net \cite{zhao_mak-net_2025} and several prior methods employ an intra-patient evaluation protocol (random beat-level train/test splits), which inflates reported metrics through patient-specific memorization \cite{bahrami_investigation_2025}. WavKAN-CL, by contrast, is evaluated under the strict inter-patient DS1/DS2 protocol where all test patients are entirely unseen during training. Critically, while Zhao et al.\ \cite{zhao_mak-net_2025} demonstrated that SMOTE substantially improves performance under intra-patient evaluation (accuracy 0.998), our experiments under strict inter-patient constraints reveal the opposite: SMOTE-based temporal interpolation generates physiologically unrealistic representations, reducing S-Recall from 0.290 to 0.245 --- a finding that underscores the importance of protocol choice for evaluating augmentation strategies. Despite operating under this more stringent protocol and using only 95,189 parameters (0.38 MB), WavKAN-CL achieves a V-Recall of 0.86 at a median inference latency of 0.78 ms per beat --- over 30$\times$ faster than MAK-Net (24 ms per beat, 6.1 M parameters) \cite{zhao_mak-net_2025}, and well within the requirements of edge-deployable Green AI \cite{elsheikhy_lightweight_2025}.
 
-\begin{table}[ht]
-\caption{Comparison with Recent Studies on MIT-BIH Arrhythmia Database. $^\dagger$Evaluated under intra-patient protocol (random beat-level split); these values are not directly comparable to the strict inter-patient DS1/DS2 results reported here. WavKAN-CL achieves competitive V-Recall (0.86) under the more rigorous inter-patient protocol with a 30$\times$ lower inference latency and $>$95\% parameter reduction.}
+\begin{table*}[ht]
+\caption{Comparison with Recent Studies on MIT-BIH Arrhythmia Database. $^\dagger$Evaluated under intra-patient protocol (random beat-level split); not directly comparable to inter-patient DS1/DS2 results. WavKAN-CL is the only structurally interpretable model evaluated under the strict inter-patient protocol.}
 \label{tab:sota_comparison}
 \centering
-\footnotesize
-\begin{tabular}{@{}llp{2.2cm}lcccccc@{}}
+\begin{tabular}{@{}llllccccc@{}}
 \toprule
-\textbf{Study} & \textbf{Year} & \textbf{Method} & \textbf{Protocol} & \textbf{Macro-F1} & \textbf{S-Rec} & \textbf{V-Rec} & \textbf{Size} & \textbf{Interp.} \\ \midrule
-Guo \cite{guo_inter-patient_2019} & 2019 & DenseNet + GRU & Inter & - & 0.62 & 0.90 & $>$1 MB & \texttimes \\
-Mousavi \cite{mousavi_inter-_2019} & 2019 & CNN + Seq2Seq & Inter (DS2) & - & 0.89 & 0.99 & 5.5 MB & \texttimes \\
-Farag \cite{farag_tiny_2023} & 2023 & Tiny CNN & Inter & 0.92 & 0.85 & 0.96 & 0.02 MB & \texttimes \\
-Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & - & 0.89 & 0.93 & $>$1 MB & \texttimes \\
-Zhao \cite{zhao_mak-net_2025} & 2025 & MAK-Net + BiGRU & Intra$^\dagger$ & 0.989$^\dagger$ & 0.987$^\dagger$ & 0.983$^\dagger$ & 23 MB & \texttimes \\
-\textbf{Proposed} & \textbf{2026} & \textbf{Hybrid WavKAN-CL} & \textbf{Inter (DS2)} & \textbf{0.36} & \textbf{0.29} & \textbf{0.86} & \textbf{0.38 MB} & \textbf{\checkmark} \\ \bottomrule
+\textbf{Study} & \textbf{Year} & \textbf{Method} & \textbf{Protocol} & \textbf{Macro-F1} & \textbf{S-Rec} & \textbf{V-Rec} & \textbf{Size} & \textbf{Interpretable} \\ \midrule
+Guo \cite{guo_inter-patient_2019} & 2019 & DenseNet + GRU & Inter & -- & 0.62 & 0.90 & $>$1 MB & No (black-box) \\
+Mousavi \cite{mousavi_inter-_2019} & 2019 & CNN + Seq2Seq & Inter (DS2) & -- & 0.89 & 0.99 & 5.5 MB & No (black-box) \\
+Farag \cite{farag_tiny_2023} & 2023 & Matched-Filter CNN & Inter & 0.92 & 0.85 & 0.96 & 0.02 MB & No (black-box) \\
+Zhou \cite{zhou_inter-patient_2024} & 2024 & Multiscale CNN & Inter & -- & 0.89 & 0.93 & $>$1 MB & No (black-box) \\
+Zhao \cite{zhao_mak-net_2025} & 2025 & MAK-Net + BiGRU & Intra$^\dagger$ & 0.989$^\dagger$ & 0.987$^\dagger$ & 0.983$^\dagger$ & 23 MB & No (black-box) \\ \midrule
+\textbf{Proposed} & \textbf{2026} & \textbf{Hybrid WavKAN-CL} & \textbf{Inter (DS2)} & \textbf{0.36} & \textbf{0.29} & \textbf{0.86} & \textbf{0.38 MB} & \textbf{Yes (glass-box)} \\ \bottomrule
 \end{tabular}
 \vspace{1mm}
 \raggedright
-\footnotesize{$^\dagger$Reported under intra-patient evaluation (random beat-level 60/20/20 split across all patients). Due to patient-specific memorization effects, these metrics are not directly comparable to strict inter-patient results \cite{bahrami_investigation_2025}. MAK-Net latency: 24 ms/beat on NVIDIA RTX 3090; WavKAN-CL latency: 0.78 ms/beat on CPU.}
-\end{table}
+\footnotesize{$^\dagger$Reported under intra-patient evaluation (random beat-level 60/20/20 split). Due to patient-specific memorization, these metrics are not directly comparable to strict inter-patient results \cite{bahrami_investigation_2025}. MAK-Net: 6.1M params, 24 ms/beat (RTX 3090 GPU); WavKAN-CL: 95K params, 0.78 ms/beat (CPU).}
+\end{table*}
 
 %% 6. DISCUSSION
 \section{Discussion}
