@@ -1,30 +1,34 @@
-\documentclass[journal]{IEEEtran}
+\documentclass[journal,twoside,web]{ieeecolor}
 
+\usepackage{generic}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{multirow}
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{amsthm}
-\usepackage{xcolor}
-\usepackage{textcomp}
 \usepackage{booktabs}
-\usepackage{algorithm}
-\usepackage{algorithmicx}
-\usepackage{algpseudocode}
-\usepackage{url}
+\usepackage{algorithm,algorithmic}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\usepackage{textcomp}
 \usepackage{placeins}
-\usepackage[hidelinks]{hyperref}
-\usepackage{cite}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
 \begin{document}
 
-\title{WavKAN-CL: An Interpretable and Parameter-Efficient Curriculum Learning Framework for Inter-Patient Arrhythmia Detection}
+\title{\vspace{15mm}WavKAN-CL: An Interpretable and Parameter-Efficient Curriculum Learning Framework for Inter-Patient Arrhythmia Detection}
 
-\author{Venkateramanan~Manivannan
-        and~Ramanathan~Lakshmanan%
-\thanks{Venkateramanan Manivannan and R. Lakshmanan are with the School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore, Tamil Nadu 632014, India (e-mail: venkate.ramanan2024@vitstudent.ac.in; lramanathan@vit.ac.in).}%
-\thanks{Corresponding author: R. Lakshmanan.}}
+\author{Venkateramanan~Manivannan and Ramanathan~Lakshmanan
+\thanks{Manuscript submitted for review to the IEEE Journal of Biomedical and Health Informatics.}
+\thanks{Venkateramanan Manivannan is with the School of Computer Science
+and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore,
+Tamil Nadu 632014, India (e-mail: venkate.ramanan2024@vitstudent.ac.in).}
+\thanks{Ramanathan Lakshmanan is a Professor with the Department of IoT,
+School of Computer Science and Engineering, Vellore Institute of Technology (VIT), Vellore,
+Tamil Nadu 632014, India (Corresponding author, e-mail: lramanathan@vit.ac.in).}}
 
-\markboth{IEEE Journal}{Venkateramanan Manivannan and Lakshmanan: WavKAN-CL for Inter-Patient Arrhythmia Detection}
+\markboth{\hskip25pc IEEE JOURNAL OF BIOMEDICAL AND HEALTH INFORMATICS}
+{Venkateramanan Manivannan \MakeLowercase{\textit{et al.}}: WavKAN-CL for Inter-Patient Arrhythmia Detection}
 
 \maketitle
 
@@ -35,7 +39,7 @@ WavKAN-CL contains 95,189 parameters, which is a $>$95\% reduction compared to r
 \end{abstract}
 
 \begin{IEEEkeywords}
-Kolmogorov-Arnold Networks , Wavelet , Arrhythmia Classification , Curriculum Learning , Wearable AI , Inter-Patient Generalization
+Kolmogorov-Arnold Networks, Wavelet, Arrhythmia Classification, Curriculum Learning, Wearable AI, Inter-Patient Generalization
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -154,22 +158,22 @@ Standard curriculum learning progresses from easy to hard samples. Schmale et al
 \caption{Minority-First Curriculum Learning Schedule}
 \label{alg:curriculum}
 \begin{algorithmic}[1]
-\Require Training set $\mathcal{D}$, total epochs $E$, transition ratio $\alpha = 0.3$
-\Ensure Trained model $f_\theta$
-\State Compute class frequencies $\{n_c\}$ for $c \in \{N, S, V, F, Q\}$
-\State $\mathcal{D}_{\text{min}} \gets \{(x_i, y_i) \in \mathcal{D} \mid y_i \neq N\}$ \Comment{Minority subset}
-\State $w_c \gets |\mathcal{D}| \;/\; (5 \cdot n_c)$ for each class $c$ \Comment{Inverse-frequency weights}
-\State $w_S \gets 10 \cdot w_S$ \Comment{Additional S-class emphasis}
-\For{epoch $e = 1$ to $E$}
-    \If{$e \leq \alpha \cdot E$} \Comment{Phase 1: Discovery}
-        \State Sample mini-batches from $\mathcal{D}_{\text{min}}$ \Comment{Minority samples only}
-        \State $\mathcal{L} \gets \mathcal{L}_{\text{CE}}$ \Comment{Standard cross-entropy}
-    \Else \Comment{Phase 2: Consolidation}
-        \State Sample mini-batches from $\mathcal{D}$ \Comment{Full dataset}
-        \State $\mathcal{L} \gets \mathcal{L}_{\text{CE}}(w_c)$ \Comment{Class-weighted cross-entropy}
-    \EndIf
-    \State Update $\theta$ via AdamW on $\mathcal{L}$
-\EndFor
+\STATE \textbf{Input:} Training set $\mathcal{D}$, total epochs $E$, transition ratio $\alpha = 0.3$
+\STATE \textbf{Output:} Trained model $f_\theta$
+\STATE Compute class frequencies $\{n_c\}$ for $c \in \{N, S, V, F, Q\}$
+\STATE $\mathcal{D}_{\text{min}} \gets \{(x_i, y_i) \in \mathcal{D} \mid y_i \neq N\}$ \COMMENT{Minority subset}
+\STATE $w_c \gets |\mathcal{D}| \;/\; (5 \cdot n_c)$ for each class $c$ \COMMENT{Inverse-frequency weights}
+\STATE $w_S \gets 10 \cdot w_S$ \COMMENT{Additional S-class emphasis}
+\FOR{epoch $e = 1$ to $E$}
+\IF{$e \leq \alpha \cdot E$}
+\STATE Sample mini-batches from $\mathcal{D}_{\text{min}}$ \COMMENT{Phase~1: Minority only}
+\STATE $\mathcal{L} \gets \mathcal{L}_{\text{CE}}$ \COMMENT{Standard cross-entropy}
+\ELSE
+\STATE Sample mini-batches from $\mathcal{D}$ \COMMENT{Phase~2: Full dataset}
+\STATE $\mathcal{L} \gets \mathcal{L}_{\text{CE}}(w_c)$ \COMMENT{Class-weighted cross-entropy}
+\ENDIF
+\STATE Update $\theta$ via AdamW on $\mathcal{L}$
+\ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
@@ -454,5 +458,17 @@ The authors acknowledge the Vellore Institute of Technology (VIT) for funding th
 \textbf{Code Availability:} Source code and pre-trained weights are available at: \url{https://github.com/vrhsr/WavKAN-CL}.
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{venkateramanan.jpg}}]{Venkateramanan Manivannan}
+received the B.E. degree in Computer Science and Engineering and is currently pursuing the M.Tech degree in Computer Science and Engineering at the School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore, India.
+
+His research interests include machine learning, deep learning, artificial intelligence, neural network architectures, explainable AI, natural language processing, computer vision, biomedical signal processing, and computationally efficient models for edge deployment. His current work focuses on developing interpretable and resource-efficient deep learning frameworks for healthcare and safety-critical applications.
+\end{IEEEbiography}
+
+\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{ramanathan.jpg}}]{Ramanathan Lakshmanan}
+received the B.E. degree in Computer Science and Engineering from Bharathidasan University, Tiruchirappalli, India, the M.E. degree in Computer Science from Sathyabama University, Chennai, India, and the Ph.D. degree in Computer Science and Engineering from VIT University, Vellore, India. He is currently a Professor with the Department of IoT, School of Computer Science and Engineering, VIT, Vellore, India, where he has over 18 years of teaching and research experience.
+
+His research interests include data science, cyber-physical systems, fog and edge computing, cloud computing, big data classification, IoT, artificial intelligence, and machine learning. His ongoing research focuses on predictive analytics, classification, clustering, and optimization. He serves as an Associate Editor for the Journal of Network: Computation in Neural Systems, and is an Editorial Advisory Board Member for the Journal of Integrated Science and Technology. He is an active member of IACSIT, CSI, ACM, IEEE (WIE), and ACEEE.
+\end{IEEEbiography}
 
 \end{document}

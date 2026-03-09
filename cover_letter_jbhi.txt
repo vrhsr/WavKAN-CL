@@ -1,0 +1,45 @@
+Ramanathan Lakshmanan
+Professor, Department of IoT
+School of Computer Science and Engineering
+Vellore Institute of Technology (VIT), Vellore, TN 632014, India
+Email: lramanathan@vit.ac.in
+
+March 4, 2026
+
+To the Editor-in-Chief,
+IEEE Journal of Biomedical and Health Informatics (J-BHI)
+
+Dear Editor,
+
+We are pleased to submit our manuscript entitled "WavKAN-CL: An Interpretable and Parameter-Efficient Curriculum Learning Framework for Inter-Patient Arrhythmia Detection" for consideration as an original research article in the IEEE Journal of Biomedical and Health Informatics.
+
+Despite achieving high accuracy in controlled settings, the clinical adoption of deep learning for ECG arrhythmia classification is severely hindered by three interconnected barriers: the opacity of black-box architectures, poor generalization to unseen patients under strict inter-patient evaluation, and memory footprints unsuitable for battery-powered wearable devices. Our study addresses these challenges simultaneously by introducing WavKAN-CL, a novel framework that integrates Kolmogorov-Arnold Networks (KANs) with learnable Mexican Hat wavelet basis functions and a minority-first curriculum learning strategy.
+
+The key contributions of this work are as follows:
+
+1. To our knowledge, this is the first wavelet-parameterized KAN evaluated under the strict inter-patient DS1/DS2 evaluation protocol, providing intrinsic structural interpretability without relying on post-hoc attribution methods.
+
+2. Our minority-first curriculum learning strategy stabilizes decision boundaries against severe class imbalance, achieving a mean Ventricular (V) recall of 0.88 +/- 0.03 across 20 independent seeds with a near-zero validation-test gap (less than or equal to 0.01).
+
+3. With only 95,189 trainable parameters (0.38 MB), WavKAN-CL achieves a greater than 95% parameter reduction compared to recent baselines such as MAK-Net (6.1M parameters), with a median inference latency of 0.78 ms per beat on standard CPU hardware.
+
+4. Our framework satisfies the stringent E3C clinical evaluation criteria met by only 4.1% of recent ECG classification studies, achieving this compliance without specialized neuromorphic hardware.
+
+We believe this work aligns well with the scope of IEEE JBHI, particularly its focus on biomedical and health informatics, interpretable machine learning for clinical decision support, and the development of resource-efficient AI systems for safety-critical medical applications. The combination of structural interpretability, parameter efficiency, and rigorous inter-patient evaluation directly addresses the journal's interest in bridging the gap between AI research and clinical deployment.
+
+The dataset used in this study (MIT-BIH Arrhythmia Database) is publicly available through the PhysioNet repository, and our complete source code and pre-trained weights are openly available on GitHub (https://github.com/vrhsr/WavKAN-CL) to ensure full reproducibility.
+
+We confirm that this manuscript is original, has not been published previously, and is not currently under consideration for publication elsewhere. All authors have read and approved the final manuscript and agree with its submission to IEEE JBHI. The authors declare no competing financial interests.
+
+Thank you for your time and consideration. We look forward to your response.
+
+Sincerely,
+
+Ramanathan Lakshmanan (Corresponding Author)
+Professor, Department of IoT
+School of Computer Science and Engineering
+Vellore Institute of Technology (VIT), Vellore, TN 632014, India
+
+First Author: Venkateramanan Manivannan
+School of Computer Science and Engineering (SCOPE)
+Vellore Institute of Technology (VIT), Vellore, TN 632014, India
