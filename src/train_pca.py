@@ -45,6 +45,7 @@ import os, sys, json, argparse, math
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -301,7 +302,7 @@ def train_pca(
         # ── Epoch training ─────────────────────────────────────────────────
         epoch_loss = 0.0
         n_batches  = 0
-        for X, Xrr, y in loader:
+        for X, Xrr, y in tqdm(loader, desc=f"Epoch {epoch:3d}/{epochs} [{phase_tag:20s}]", leave=False):
             X, Xrr, y = X.to(DEVICE), Xrr.to(DEVICE), y.to(DEVICE)
 
             if use_augment:
@@ -348,7 +349,7 @@ def train_pca(
                   f"loss={epoch_loss/n_batches:.4f}  "
                   f"val_F1={val_f1:.4f}  V-rec={val_v_recall:.3f}  "
                   f"S-rec={val_s_recall:.3f}"
-                  + (" ✓" if improved else ""))
+                  + (" ✓" if improved else ""), flush=True)
 
         if no_improve >= patience:
             print(f"\n⏹  Early stop at epoch {epoch} (patience={patience})")
