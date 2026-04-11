@@ -253,10 +253,15 @@ def generate_calibration_table(results: dict) -> str:
         bold = model_name == "WavKAN-v2"
         fmt  = (lambda s: f"\\textbf{{{s}}}") if bold else (lambda s: s)
 
+        ece_b_str = f"{ece_b:.4f}"
+        ece_a_str = f"{ece_a:.4f}"
+        t_val_str = f"{t_val:.3f}"
+        imp_str   = f"{improvement:.1f}\\%"
+
         rows.append(
-            f"  {fmt(model_name)} & {fmt(f'{ece_b:.4f}')} & "
-            f"{fmt(f'{ece_a:.4f}')} & {fmt(f'{t_val:.3f}')} & "
-            f"{fmt(f'{improvement:.1f}\\%')} \\\\"
+            f"  {fmt(model_name)} & {fmt(ece_b_str)} & "
+            f"{fmt(ece_a_str)} & {fmt(t_val_str)} & "
+            f"{fmt(imp_str)} \\\\"
         )
 
     return "\n".join([
