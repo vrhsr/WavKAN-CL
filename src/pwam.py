@@ -31,6 +31,9 @@ This is < 6 K additional parameters (well within the "compact" argument).
 Reference: Zhou et al. (2024), De Chazal et al. (2004)
 """
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
