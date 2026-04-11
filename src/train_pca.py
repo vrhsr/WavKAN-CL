@@ -119,7 +119,7 @@ def augment_minority_batch(X: torch.Tensor, y: torch.Tensor, snr_db: float = 25.
         noise = torch.randn_like(sig) * noise_power.sqrt()
         sig = sig + noise
         # Baseline wander: low-freq sinusoid
-        t      = torch.linspace(0, 2 * math.pi, sig.size(0))
+        t      = torch.linspace(0, 2 * math.pi, sig.size(0), device=sig.device)
         freq   = torch.FloatTensor(1).uniform_(0.5, 2.5).item()  # 0.5–2.5 Hz
         amp    = torch.FloatTensor(1).uniform_(0.01, 0.05).item()
         wander = amp * torch.sin(freq * t)
@@ -209,7 +209,7 @@ def train_pca(
     s_weight: float = 8.0,
     lr: float       = 1e-3,
     weight_decay: float = 1e-4,
-    batch_size: int = 64,
+    batch_size: int = 512,
     data_dir: str   = "data/processed_rr_history",
     output_dir: str = "results/pca_model",
     use_pcwi: bool  = True,
