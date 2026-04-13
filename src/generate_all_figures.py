@@ -74,7 +74,7 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
     Includes statistical significance (Mann-Whitney U), mean±std labels,
     and context annotations. Addresses all reviewer concerns.
     """
-    from scipy.stats import wilcoxon
+    from scipy.stats import wilcoxon, levene
 
     base = Path(results_base)
     out  = Path(out_dir)
@@ -192,10 +192,24 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
                         fontsize=6.5, color="#888", style="italic",
                         arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8))
 
-    # ── Reference line and context annotation ────────────────────────────────
+    # ── Reference line ─────────────────────────────────────────────────────────
     if ref:
         ax.axhline(np.mean(ref), color=plot_clrs[0], lw=1.2, ls="--", alpha=0.55,
-                   label=f"WavKAN-v2 mean ({np.mean(ref):.3f})")
+                   label="Mean performance (WavKAN-v2)")
+
+    # ── Levene's test: WavKAN-v2 variance vs all others combined ─────────────
+    others = [v for d in plot_data[1:] for v in d if d]
+    levene_txt = ""
+    if ref and others:
+        try:
+            _, lp = levene(ref, others)
+            levene_txt = f"Levene's test (variance): p={lp:.3f}" if lp >= 0.001 else "Levene's test (variance): p<0.001"
+            ax.text(0.02, 0.97, levene_txt, transform=ax.transAxes,
+                    fontsize=7, va="top", ha="left", color="#555",
+                    style="italic",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7, ec="#ccc"))
+        except Exception:
+            pass
 
     # Collapse zone: subtle shade only (no text — explanation moved to caption)
     ax.axhspan(0.0, 0.025, alpha=0.05, color="#999999")
