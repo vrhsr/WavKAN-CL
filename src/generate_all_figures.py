@@ -181,13 +181,7 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
         ax.text(i, label_y, f"{μ:.3f}\n±{σ:.3f}", ha="center", va="bottom",
                 fontsize=6.5, color="#333", fontweight="bold", linespacing=1.3)
 
-    # Transformer instability annotation
-    t_vals = plot_data[2] if len(plot_data) > 2 else []
-    if t_vals and max(t_vals) > 0.08:
-        ax.annotate("instability\nevent", xy=(3, max(t_vals)),
-                    xytext=(3.45, max(t_vals) + 0.018),
-                    fontsize=6.5, color="#888", style="italic",
-                    arrowprops=dict(arrowstyle="->", color="#bbb", lw=0.8))
+
 
     # Reference line (champion model mean)
     if ref:
