@@ -74,7 +74,7 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
     Includes statistical significance (Mann-Whitney U), mean±std labels,
     and context annotations. Addresses all reviewer concerns.
     """
-    from scipy.stats import mannwhitneyu
+    from scipy.stats import wilcoxon
 
     base = Path(results_base)
     out  = Path(out_dir)
@@ -140,7 +140,7 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
             ax.scatter(np.ones(len(vals)) * i + jit, vals,
                        color="black", s=30, alpha=0.7, zorder=5)
 
-    # ── Mean ± Std text labels + per-box significance stars ─────────────────
+    # ── Mean ± Std + Wilcoxon significance + Cohen's d ────────────────────
     ref = plot_data[0]
     np.random.seed(42)
     for i, vals in enumerate(plot_data, 1):
@@ -150,24 +150,36 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
             σ = np.std(clean, ddof=1) if len(clean) > 1 else 0.0
             top = max(clean)
 
-            # Significance star vs WavKAN-v2 (shown above non-WavKAN boxes)
             sig_text = ""
-            if i > 1 and ref and len(ref) >= 3 and len(clean) >= 3:
+            d_text   = ""
+            if i > 1 and ref and len(ref) == len(clean) and len(clean) >= 3:
                 try:
-                    _, p = mannwhitneyu(ref, clean, alternative="greater")
-                    sig_text = "**" if p < 0.01 else ("*" if p < 0.05 else "ns")
-                except Exception:
-                    sig_text = ""
+                    # Paired Wilcoxon signed-rank (same seeds across models)
+                    _, pval = wilcoxon(ref, clean, alternative="greater",
+                                      zero_method="wilcox")
+                    sig_text = "**" if pval < 0.01 else ("*" if pval < 0.05 else "ns")
 
-            # Stack: star on top, then mean±std below it
+                    # Cohen's d effect size
+                    diffs = np.array(ref) - np.array(clean)
+                    d = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-9)
+                    d_text = f"d={d:.1f}"
+                except Exception:
+                    pass
+
             label_y = top + 0.010
             if sig_text:
-                ax.text(i, label_y + 0.018, sig_text,
+                star_color = "#2ca02c" if sig_text != "ns" else "gray"
+                # significance star
+                ax.text(i, label_y + 0.020, sig_text,
                         ha="center", va="bottom", fontsize=11,
-                        color="#2ca02c" if sig_text != "ns" else "gray",
-                        fontweight="bold")
+                        color=star_color, fontweight="bold")
+                # Cohen's d (effect size) — one line below the star
+                if d_text:
+                    ax.text(i, label_y + 0.006, d_text,
+                            ha="center", va="bottom", fontsize=6.5,
+                            color=star_color, style="italic")
             ax.text(i, label_y, f"{μ:.3f}\n±{σ:.3f}",
-                    ha="center", va="bottom", fontsize=7, color="#333333",
+                    ha="center", va="bottom", fontsize=6.5, color="#333333",
                     fontweight="bold", linespacing=1.2)
 
     # ── Annotate Transformer instability outlier ──────────────────────────────
@@ -185,20 +197,18 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
         ax.axhline(np.mean(ref), color=plot_clrs[0], lw=1.2, ls="--", alpha=0.55,
                    label=f"WavKAN-v2 mean ({np.mean(ref):.3f})")
 
-    # Mark the "collapse zone" for the weak baselines
-    ax.axhspan(0.0, 0.025, alpha=0.07, color="red")
-    ax.text(2.5, 0.008, "Majority-class collapse  (standard CE, no class reweighting)",
-            ha="center", fontsize=6.5, color="#cc0000", style="italic")
+    # Collapse zone: subtle shade only (no text — explanation moved to caption)
+    ax.axhspan(0.0, 0.025, alpha=0.05, color="#999999")
 
     # ── Formatting ────────────────────────────────────────────────────────────
     ax.set_xticks(positions)
     ax.set_xticklabels(plot_labels, fontsize=9)
     ax.set_ylabel("Macro-F1 (DS2 Test Set)", fontsize=11)
-    ax.set_ylim(0.0, 0.48)
+    ax.set_ylim(0.0, 0.44)
     ax.set_title(
         f"Seed Stability Analysis (n={len(seeds)} seeds) — All Comparison Models\n"
-        "WavKAN-v2 achieves highest Macro-F1 with lowest cross-seed variance  "
-        "(*p<0.05, **p<0.01, Mann-Whitney U)",
+        "WavKAN-v2 achieves highest Macro-F1 with consistently low cross-seed variance  "
+        "(*p<0.05, **p<0.01, Wilcoxon signed-rank test)",
         fontweight="bold", fontsize=10)
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(axis="y", alpha=0.3)
