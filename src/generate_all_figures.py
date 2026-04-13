@@ -70,16 +70,19 @@ MODEL_CLR = {"WavKAN-v2": "#e15759", "B-Spline KAN": "#4e79a7",
 
 def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
     """
-    Comprehensive seed stability comparison across ALL 5 models.
-    Includes statistical significance (Mann-Whitney U), mean±std labels,
-    and context annotations. Addresses all reviewer concerns.
+    Publication-ready seed stability figure.
+    Main panel: all 5 models, full range (shows dramatic gap).
+    Inset panel: baselines only, zoomed 0-0.18 (makes distributions readable).
+    Colors: WavKAN-v2 = champion deep blue; baselines = muted neutrals.
+    Stats: Wilcoxon signed-rank + Cohen's d + Levene's variance test.
     """
     from scipy.stats import wilcoxon, levene
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
     base = Path(results_base)
     out  = Path(out_dir)
 
-    # ── Load WavKAN-v2 data per-seed ──────────────────────────────────────────
+    # ── Load WavKAN-v2 per-seed ────────────────────────────────────────────────
     f1s_wavkan = []
     for seed in seeds:
         p = base / "wavkan_v2" / f"seed_{seed}" / "test_metrics.json"
@@ -88,28 +91,25 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
                 m = json.load(f)
             f1s_wavkan.append(m.get("macro_f1", 0))
 
-    # ── Load all baselines from baselines_summary.json ────────────────────────
+    # ── Load baselines ─────────────────────────────────────────────────────────
     bsum = {}
     summary_path = base / "baselines_summary.json"
     if summary_path.exists():
         with open(summary_path) as f:
             bsum = json.load(f)
 
-    # Ordered model registry: (display_label, key_in_bsum, color)
+    # Champion color for WavKAN-v2; muted neutrals for baselines
     registry = [
-        ("WavKAN-v2\n(Ours)",       None,          "#e15759"),
-        ("ResNet1D",                  "resnet1d",    "#59a14f"),
-        ("Transformer",               "transformer", "#f28e2b"),
-        ("CNN +\nFocal Loss",         "cnn_focal",   "#76b7b2"),
-        ("B-Spline\nKAN",             "bspline_kan", "#4e79a7"),
+        ("WavKAN-v2\n(Ours)",   None,          "#1f4e79"),   # deep blue = winner
+        ("ResNet1D",             "resnet1d",    "#adb5bd"),   # gray
+        ("Transformer",          "transformer", "#c9a84c"),   # amber
+        ("CNN +\nFocal Loss",    "cnn_focal",   "#8fbcad"),   # muted teal
+        ("B-Spline\nKAN",        "bspline_kan", "#6d8bb0"),   # steel blue
     ]
 
     plot_data, plot_labels, plot_clrs = [], [], []
     for label, key, color in registry:
-        if key is None:
-            vals = f1s_wavkan
-        else:
-            vals = bsum.get(key, {}).get("_raw_f1", [])
+        vals = f1s_wavkan if key is None else bsum.get(key, {}).get("_raw_f1", [])
         plot_data.append(vals if vals else [])
         plot_labels.append(label)
         plot_clrs.append(color)
@@ -118,103 +118,98 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
         print("  [Fig 3] No data found. Skipping.")
         return
 
-    # ── Figure layout ─────────────────────────────────────────────────────────
-    fig, ax = plt.subplots(figsize=(9, 5.5))
+    # ── Main figure + inset ────────────────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=(10, 5.8))
     positions = list(range(1, len(registry) + 1))
 
-    # Fill missing data with dummy [0] so boxplot renders all positions
-    bp_data = [d if d else [np.nan] for d in plot_data]
-    bp = ax.boxplot(bp_data, positions=positions, patch_artist=True, notch=False,
-                    medianprops={"lw": 2.5, "color": "white"},
-                    whiskerprops={"lw": 1.5}, capprops={"lw": 1.8},
-                    flierprops={"marker": "o", "markersize": 4, "alpha": 0.5})
-    for patch, color, d in zip(bp["boxes"], plot_clrs, plot_data):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.85 if d else 0.1)
+    def _draw_boxes(target_ax, data, clrs, positions, show_fliers=True):
+        bp_data = [d if d else [np.nan] for d in data]
+        fp = {"marker": "D", "markersize": 3, "alpha": 0.4} if show_fliers else {"marker": ""}
+        bp = target_ax.boxplot(bp_data, positions=positions, patch_artist=True,
+                               notch=False,
+                               medianprops={"lw": 2.0, "color": "white"},
+                               whiskerprops={"lw": 1.4, "color": "#555"},
+                               capprops={"lw": 1.6, "color": "#555"},
+                               flierprops=fp)
+        for patch, color, d in zip(bp["boxes"], clrs, data):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.88 if d else 0.1)
+        return bp
 
-    # Scatter jitter points
+    _draw_boxes(ax, plot_data, plot_clrs, positions)
+
+    # Beeswarm-style jitter (wider spread, no overlap)
     np.random.seed(42)
     for i, (vals, color) in enumerate(zip(plot_data, plot_clrs), 1):
         if vals:
-            jit = np.random.uniform(-0.08, 0.08, len(vals))
-            ax.scatter(np.ones(len(vals)) * i + jit, vals,
-                       color="black", s=30, alpha=0.7, zorder=5)
+            n = len(vals)
+            jit = np.linspace(-0.10, 0.10, n) + np.random.uniform(-0.02, 0.02, n)
+            ax.scatter(np.ones(n) * i + jit, vals,
+                       color="#222", s=28, alpha=0.75, zorder=5, edgecolors="white",
+                       linewidths=0.4)
 
-    # ── Mean ± Std + Wilcoxon significance + Cohen's d ────────────────────
+    # ── Annotations: mean±std, Wilcoxon star, Cohen's d ───────────────────────
     ref = plot_data[0]
-    np.random.seed(42)
     for i, vals in enumerate(plot_data, 1):
-        if vals and not all(np.isnan(v) for v in vals):
-            clean = [v for v in vals if not np.isnan(v)]
-            μ = np.mean(clean)
-            σ = np.std(clean, ddof=1) if len(clean) > 1 else 0.0
-            top = max(clean)
+        if not vals:
+            continue
+        clean = [v for v in vals if not np.isnan(v)]
+        if not clean:
+            continue
+        μ, σ = np.mean(clean), (np.std(clean, ddof=1) if len(clean) > 1 else 0.0)
+        top   = max(clean)
 
-            sig_text = ""
-            d_text   = ""
-            if i > 1 and ref and len(ref) == len(clean) and len(clean) >= 3:
-                try:
-                    # Paired Wilcoxon signed-rank (same seeds across models)
-                    _, pval = wilcoxon(ref, clean, alternative="greater",
-                                      zero_method="wilcox")
-                    sig_text = "**" if pval < 0.01 else ("*" if pval < 0.05 else "ns")
+        sig_txt, d_txt = "", ""
+        if i > 1 and ref and len(ref) == len(clean) and len(clean) >= 3:
+            try:
+                _, pval = wilcoxon(ref, clean, alternative="greater", zero_method="wilcox")
+                sig_txt = "**" if pval < 0.01 else ("*" if pval < 0.05 else "ns")
+                diffs   = np.array(ref) - np.array(clean)
+                d_val   = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-9)
+                d_txt   = f"d={d_val:.1f}"
+            except Exception:
+                pass
 
-                    # Cohen's d effect size
-                    diffs = np.array(ref) - np.array(clean)
-                    d = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-9)
-                    d_text = f"d={d:.1f}"
-                except Exception:
-                    pass
+        label_y = top + 0.010
+        sc = "#1a7a1a" if sig_txt not in ("", "ns") else "#888"
+        if sig_txt:
+            ax.text(i, label_y + 0.022, sig_txt, ha="center", va="bottom",
+                    fontsize=12, color=sc, fontweight="bold")
+        if d_txt:
+            ax.text(i, label_y + 0.008, d_txt, ha="center", va="bottom",
+                    fontsize=6.5, color=sc, style="italic")
+        ax.text(i, label_y, f"{μ:.3f}\n±{σ:.3f}", ha="center", va="bottom",
+                fontsize=6.5, color="#333", fontweight="bold", linespacing=1.3)
 
-            label_y = top + 0.010
-            if sig_text:
-                star_color = "#2ca02c" if sig_text != "ns" else "gray"
-                # significance star
-                ax.text(i, label_y + 0.020, sig_text,
-                        ha="center", va="bottom", fontsize=11,
-                        color=star_color, fontweight="bold")
-                # Cohen's d (effect size) — one line below the star
-                if d_text:
-                    ax.text(i, label_y + 0.006, d_text,
-                            ha="center", va="bottom", fontsize=6.5,
-                            color=star_color, style="italic")
-            ax.text(i, label_y, f"{μ:.3f}\n±{σ:.3f}",
-                    ha="center", va="bottom", fontsize=6.5, color="#333333",
-                    fontweight="bold", linespacing=1.2)
+    # Transformer instability annotation
+    t_vals = plot_data[2] if len(plot_data) > 2 else []
+    if t_vals and max(t_vals) > 0.08:
+        ax.annotate("instability\nevent", xy=(3, max(t_vals)),
+                    xytext=(3.45, max(t_vals) + 0.018),
+                    fontsize=6.5, color="#888", style="italic",
+                    arrowprops=dict(arrowstyle="->", color="#bbb", lw=0.8))
 
-    # ── Annotate Transformer instability outlier ──────────────────────────────
-    transformer_vals = plot_data[2] if len(plot_data) > 2 else []
-    if transformer_vals:
-        max_t = max(transformer_vals)
-        if max_t > 0.08:   # only if there's a notable outlier
-            ax.annotate("instability\nevent",
-                        xy=(3, max_t), xytext=(3.4, max_t + 0.02),
-                        fontsize=6.5, color="#888", style="italic",
-                        arrowprops=dict(arrowstyle="->", color="#aaa", lw=0.8))
-
-    # ── Reference line ─────────────────────────────────────────────────────────
+    # Reference line (champion model mean)
     if ref:
-        ax.axhline(np.mean(ref), color=plot_clrs[0], lw=1.2, ls="--", alpha=0.55,
-                   label="Mean performance (WavKAN-v2)")
+        ax.axhline(np.mean(ref), color=plot_clrs[0], lw=1.3, ls="--", alpha=0.6,
+                   label=f"Mean performance (WavKAN-v2)")
 
-    # ── Levene's test: WavKAN-v2 variance vs all others combined ─────────────
+    # Levene's test inset text
     others = [v for d in plot_data[1:] for v in d if d]
-    levene_txt = ""
     if ref and others:
         try:
             _, lp = levene(ref, others)
-            levene_txt = f"Levene's test (variance): p={lp:.3f}" if lp >= 0.001 else "Levene's test (variance): p<0.001"
-            ax.text(0.02, 0.97, levene_txt, transform=ax.transAxes,
-                    fontsize=7, va="top", ha="left", color="#555",
-                    style="italic",
-                    bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7, ec="#ccc"))
+            ltxt = f"Levene's test (variance): p<0.001" if lp < 0.001 else f"Levene's test (variance): p={lp:.3f}"
+            ax.text(0.015, 0.975, ltxt, transform=ax.transAxes, fontsize=7,
+                    va="top", ha="left", color="#444", style="italic",
+                    bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.75, ec="#bbb"))
         except Exception:
             pass
 
-    # Collapse zone: subtle shade only (no text — explanation moved to caption)
-    ax.axhspan(0.0, 0.025, alpha=0.05, color="#999999")
+    # Collapse zone shading (neutral, no text)
+    ax.axhspan(0.0, 0.026, alpha=0.06, color="#888")
 
-    # ── Formatting ────────────────────────────────────────────────────────────
+    # Main axis formatting
     ax.set_xticks(positions)
     ax.set_xticklabels(plot_labels, fontsize=9)
     ax.set_ylabel("Macro-F1 (DS2 Test Set)", fontsize=11)
@@ -222,15 +217,42 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
     ax.set_title(
         f"Seed Stability Analysis (n={len(seeds)} seeds) — All Comparison Models\n"
         "WavKAN-v2 achieves highest Macro-F1 with consistently low cross-seed variance  "
-        "(*p<0.05, **p<0.01, Wilcoxon signed-rank test)",
+        "(*p<0.05, **p<0.01, Wilcoxon signed-rank; vs WavKAN-v2)",
         fontweight="bold", fontsize=10)
     ax.legend(fontsize=8, loc="upper right")
-    ax.grid(axis="y", alpha=0.3)
+    ax.grid(axis="y", alpha=0.25, linestyle=":")
+
+    # ── Zoomed inset: baseline distributions 0–0.18 ───────────────────────────
+    axins = ax.inset_axes([0.24, 0.40, 0.44, 0.52])   # [x0, y0, width, height]
+    baseline_pos  = [2, 3, 4, 5]
+    baseline_data = plot_data[1:]
+    baseline_clrs = plot_clrs[1:]
+    _draw_boxes(axins, baseline_data, baseline_clrs, baseline_pos, show_fliers=False)
+
+    np.random.seed(42)
+    for pos, vals, color in zip(baseline_pos, baseline_data, baseline_clrs):
+        if vals:
+            n = len(vals)
+            jit = np.linspace(-0.12, 0.12, n) + np.random.uniform(-0.02, 0.02, n)
+            axins.scatter(np.ones(n) * pos + jit, vals,
+                          color="#222", s=20, alpha=0.8, zorder=5,
+                          edgecolors="white", linewidths=0.3)
+
+    axins.set_xlim(1.4, 5.6)
+    axins.set_ylim(0.0, 0.18)
+    axins.set_xticks(baseline_pos)
+    axins.set_xticklabels(["ResNet1D", "Transf.", "CNN+FL", "B-Spline"], fontsize=6.5)
+    axins.set_ylabel("Macro-F1", fontsize=7)
+    axins.set_title("Baseline zoom (0–0.18)", fontsize=7.5, fontweight="bold")
+    axins.tick_params(axis="y", labelsize=6.5)
+    axins.grid(axis="y", alpha=0.3, linestyle=":")
+    axins.set_facecolor("#fafafa")
+    for spine in axins.spines.values():
+        spine.set_edgecolor("#999")
+        spine.set_linewidth(0.8)
+
     plt.tight_layout()
     _save(fig, out / "fig3_seed_stability.pdf")
-
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Fig 4 — Training Convergence
 # ─────────────────────────────────────────────────────────────────────────────
