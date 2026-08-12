@@ -294,8 +294,54 @@ def train_pca(
     best_val_vrecall = 0.0
     no_improve      = 0
     history         = []
+    start_epoch     = 1
 
-    for epoch in range(1, epochs + 1):
+    # ── Resume support ────────────────────────────────────────────────────────
+    # Added 2026-08-13: earlier this run had no way to survive an interruption
+    # mid-training (crash, transient GPU OOM from a co-tenant process, SSH drop
+    # despite nohup) except restarting the whole seed from epoch 1 -- wasteful for
+    # a 100-epoch run and a real risk once run_gpu_pipeline.sh started running 40
+    # of these unattended for days. resume_checkpoint.pth is saved after every
+    # epoch (see below) and loaded here if present. Written via a temp-file +
+    # atomic rename so a crash mid-save can never leave a half-written, corrupt
+    # checkpoint sitting at the real path -- and if a load ever does fail (e.g.
+    # torch version mismatch, disk corruption), that's caught and logged rather
+    # than propagated, falling back to a fresh start for just this seed instead
+    # of crashing the whole process again.
+    #
+    # Honesty note: a resumed run is NOT guaranteed bit-identical to what an
+    # uninterrupted run of the same seed would have produced -- re-entering the
+    # epoch loop after a resume does not replay the exact same RNG trajectory an
+    # unbroken run would have had at that point (the sampler/augmentation draws
+    # differ). It is still a real, honestly-trained model on real data; it's just
+    # not promised to be bitwise-reproducible across an interruption. Don't
+    # over-claim precision this code doesn't actually provide.
+    resume_path = OUT_DIR / "resume_checkpoint.pth"
+    if resume_path.exists():
+        try:
+            ckpt = torch.load(resume_path, map_location=DEVICE)
+            model.load_state_dict(ckpt["model_state"])
+            optimizer.load_state_dict(ckpt["optimizer_state"])
+            scheduler.load_state_dict(ckpt["scheduler_state"])
+            start_epoch      = ckpt["epoch"] + 1
+            best_val_f1      = ckpt["best_val_f1"]
+            best_val_vrecall = ckpt["best_val_vrecall"]
+            no_improve       = ckpt["no_improve"]
+            history          = ckpt["history"]
+            print(f"↻ Resumed from {resume_path}: continuing at epoch {start_epoch}/{epochs} "
+                  f"(best_val_f1 so far: {best_val_f1:.4f})")
+        except Exception as e:
+            print(f"⚠️  Could not load {resume_path} ({e!r}) -- starting this seed fresh from epoch 1.")
+            start_epoch, best_val_f1, best_val_vrecall, no_improve, history = 1, 0.0, 0.0, 0, []
+
+    epoch = start_epoch - 1  # so `epoch` is still defined below if the loop body never runs
+                             # (resume checkpoint already reached the epoch cap before a crash
+                             # that happened between the loop finishing and final eval/save)
+    if start_epoch > epochs:
+        print(f"↻ Resume checkpoint already reached epoch {start_epoch - 1}/{epochs} -- "
+              f"skipping straight to final test evaluation.")
+
+    for epoch in range(start_epoch, epochs + 1):
         model.train()
 
         # ── Select sampler & loss for this epoch ──────────────────────────
@@ -365,6 +411,23 @@ def train_pca(
         else:
             no_improve += 1
 
+        # Save a resume checkpoint every epoch. Write to a temp path first and
+        # rename atomically (os.replace) so a crash mid-write can never leave a
+        # half-written, corrupt file at resume_path -- the resumer above would
+        # otherwise try to load exactly that on the next attempt and crash again.
+        tmp_resume_path = resume_path.with_suffix(".pth.tmp")
+        torch.save({
+            "model_state":     model.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict(),
+            "epoch":           epoch,
+            "best_val_f1":     best_val_f1,
+            "best_val_vrecall": best_val_vrecall,
+            "no_improve":      no_improve,
+            "history":         history,
+        }, tmp_resume_path)
+        os.replace(tmp_resume_path, resume_path)
+
         if (epoch % 10 == 0) or epoch == 1:
             print(f"Epoch {epoch:3d}/{epochs} [{phase_tag:20s}] "
                   f"loss={epoch_loss/n_batches:.4f}  "
@@ -423,6 +486,12 @@ def train_pca(
     np.save(OUT_DIR / "test_true.npy",        y_true)
     np.save(OUT_DIR / "test_probs.npy",       y_probs)
     np.save(OUT_DIR / "confusion_matrix.npy", cm)
+
+    # This seed is genuinely done (test_metrics.json above is what run_gpu_pipeline.sh's
+    # skip-if-complete check looks for) -- the resume checkpoint no longer means anything,
+    # remove it so a completed seed's directory doesn't look "interrupted".
+    if resume_path.exists():
+        resume_path.unlink()
 
     print(f"\n✅ Outputs saved to {OUT_DIR}/")
     return metrics

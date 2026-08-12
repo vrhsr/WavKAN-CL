@@ -27,11 +27,28 @@ pip install neurokit2 pytest     # both missing from requirements.txt (real gaps
 #    20-seed x 2-arm training -> aggregation. See run_gpu_pipeline.sh for exactly
 #    what each step does and why; it pauses 10s after the smoke test so you can
 #    Ctrl+C before committing to the full run.
-chmod +x run_gpu_pipeline.sh
-nohup bash run_gpu_pipeline.sh 2>&1 | tee pipeline_log.txt &
+#
+#    Launched via the supervisor (recommended), not run_gpu_pipeline.sh directly --
+#    the supervisor bounded-retries the whole pipeline (up to 5x) if the orchestrator
+#    itself dies unexpectedly. This is safe/cheap because of two resume layers added
+#    2026-08-13: train_pca.py checkpoints every epoch and auto-resumes mid-seed, and
+#    run_gpu_pipeline.sh skips seeds that are already complete -- a retry re-does only
+#    the fast setup steps, not all 40 runs. See run_gpu_pipeline_supervisor.sh.
+chmod +x run_gpu_pipeline.sh run_gpu_pipeline_supervisor.sh pipeline_status.sh
+nohup bash run_gpu_pipeline_supervisor.sh 2>&1 | tee supervisor_log.txt &
+
+# 4. Monitor from a separate pane/session anytime -- read-only, doesn't touch the run
+bash pipeline_status.sh
 ```
 
 That single script (`run_gpu_pipeline.sh`, repo root) is the executable version of everything in Sections 1-3 below. Sections 1-3 are the narrative explanation of what it does and why; Sections 4-5 cover what it does **not** yet do (PTB-XL/INCART/SVDB, Fig. 3/4/6 regeneration) — those still need to be run/scripted separately, see below.
+
+**Resilience (added 2026-08-13, after two real crashes during this session):** three independent layers, each covering a different failure scope --
+1. **Per-epoch** (`train_pca.py`): checkpoints after every epoch, auto-resumes on restart. A crash at epoch 60/100 costs at most 1 epoch, not the whole seed. See `tests/test_train_pca_resume.py` for the actual verified behavior (resume-from-injected-checkpoint, corrupted-checkpoint fallback, at-cap edge case).
+2. **Per-seed** (`run_gpu_pipeline.sh`): a seed that fails no longer kills the other 39 -- it's logged, recorded, and the sweep continues. Failures are summarized at the end.
+3. **Per-script** (`run_gpu_pipeline_supervisor.sh`): if the orchestrator itself dies (not an individual seed), bounded-retries up to 5 times with a 60s backoff, then gives up loudly rather than looping forever on a real, persistent bug.
+
+None of this changes what gets reported -- a resumed/retried seed is still a real, honestly-trained result on real data, just not guaranteed bit-identical to what an uninterrupted run of the same seed would have produced (the RNG trajectory across an interruption differs). Don't read more precision into a resumed seed than that.
 
 ---
 

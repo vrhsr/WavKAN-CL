@@ -24,9 +24,15 @@ fi
 
 echo ""
 echo "Background job:"
-if pgrep -f "run_gpu_pipeline\.sh" >/dev/null 2>&1; then
-    PID=$(pgrep -f "run_gpu_pipeline\.sh" | head -1)
-    echo "  Running (pid $PID)"
+# Tightened 2026-08-13: plain "run_gpu_pipeline\.sh" false-positived on an unrelated
+# process from a different project during this Phase 5 session. Requiring "bash" (or
+# "sh") immediately before the script name is still not foolproof (pgrep -f matches
+# substrings of the whole command line, so this can't be made airtight without also
+# checking cwd/ppid), but it's meaningfully narrower than before.
+PATTERN="(bash|sh)[^|]*run_gpu_pipeline(_supervisor)?\.sh"
+if pgrep -f "$PATTERN" >/dev/null 2>&1; then
+    PID=$(pgrep -f "$PATTERN" | head -1)
+    echo "  Running (pid $PID) -- if this still looks wrong, cross-check with: ps -p $PID -f"
 else
     echo "  NOT currently running -- check pipeline_log.txt for how/why it stopped"
 fi
@@ -51,7 +57,17 @@ for arm in curriculum baseline; do
     dir="results/wavkan_v2_${arm}"
     if [ -d "$dir" ]; then
         n_done=$(find "$dir" -mindepth 2 -maxdepth 2 -name "test_metrics.json" 2>/dev/null | wc -l | tr -d ' ')
-        echo "  $arm: $n_done / 20 complete"
+        # A resume_checkpoint.pth with no test_metrics.json alongside it means that
+        # seed is either currently training or previously failed mid-run (added
+        # 2026-08-13 alongside train_pca.py's real epoch-level resume support) --
+        # worth distinguishing from "never touched at all".
+        n_resumable=0
+        for d in "$dir"/seed_*/; do
+            if [ -f "${d}resume_checkpoint.pth" ] && [ ! -f "${d}test_metrics.json" ]; then
+                n_resumable=$((n_resumable + 1))
+            fi
+        done
+        echo "  $arm: $n_done / 20 complete" $([ "$n_resumable" -gt 0 ] && echo "  (+$n_resumable in-progress/retryable via resume checkpoint)")
     else
         echo "  $arm: not started yet"
     fi

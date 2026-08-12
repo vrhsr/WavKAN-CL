@@ -42,6 +42,12 @@ tests/              Real pytest regression coverage, added starting Phase 4 (pre
                     test_split_integrity.py, test_e3c_compliance.py, test_aggregate_seed_results.py.
 src/aggregate_seed_results.py   New (2026-08-12): honest seed-paired-by-identity aggregation for the
                     Phase 5 re-run, written to avoid the seed-pairing bugs (H8) found elsewhere.
+run_gpu_pipeline.sh, run_gpu_pipeline_supervisor.sh, pipeline_status.sh   Repo-root orchestration for the
+                    actual Phase 5 GPU run (data regen -> smoke test -> 20-seed x 2-arm training ->
+                    aggregation), a bounded-retry wrapper around it, and a read-only monitor script.
+                    Three independent resilience layers (per-epoch resume in train_pca.py, per-seed
+                    failure isolation, per-script bounded retry) added 2026-08-13 after two real crashes
+                    during the actual GPU run -- see CHANGELOG.md.
 landmine_scripts_do_not_use/   Quarantined scripts (find_best_seed.py, check_seed_42.py, apply_fixes.py,
                     apply_all_fixes.py, verify_win.py) whose entire purpose was an integrity violation —
                     see that folder's README.md. Moved here 2026-08-12 by project-owner decision.

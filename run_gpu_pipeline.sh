@@ -23,16 +23,25 @@
 # run *output*, not checked-in scripts), so anything placed there would silently
 # never be committed and would be missing after a fresh clone.
 #
-# Resumability: coarser than a per-epoch-checkpoint pipeline -- train_pca.py does
-# not currently support resuming a single run mid-training after a crash, it only
-# writes a final best_model.pth + test_metrics.json at the end of a complete run.
-# This script's resume granularity is therefore per SEED, not per epoch: any
-# seed/arm whose test_metrics.json already exists is skipped entirely, but a run
-# that dies at epoch 60/100 restarts from epoch 0, not epoch 60. If you're running
-# this somewhere flaky enough that mid-run crashes are a real risk, say so and
-# real checkpoint-resume can be added to train_pca.py -- not done here since
-# nothing so far indicated it was needed, and adding it without a concrete reason
-# would be unverified speculative infrastructure.
+# Resumability (updated 2026-08-13 after two real crashes during this Phase 5 session):
+#   - Per-EPOCH: train_pca.py now saves resume_checkpoint.pth after every epoch and
+#     auto-resumes from it (model/optimizer/scheduler/history/best-so-far), so a crash
+#     at epoch 60/100 costs at most one epoch of progress, not the whole seed. Written
+#     via temp-file + atomic rename, and a corrupt checkpoint is caught and logged
+#     rather than crashing the seed again. See train_pca.py's own comments and
+#     tests/test_train_pca_resume.py.
+#   - Per-SEED (this script): a seed whose test_metrics.json already exists is skipped
+#     entirely (unchanged). NEW: a seed that FAILS (nonzero exit, or exits 0 but never
+#     produces test_metrics.json) no longer kills the rest of the 40-run sweep -- it's
+#     logged, recorded, and the script moves on to the next seed. A failed seed's
+#     resume_checkpoint.pth (if any) is left in place, so simply re-running this whole
+#     script later picks that seed back up from wherever it got to, not from scratch.
+#   - Per-SCRIPT: if run_gpu_pipeline.sh itself dies (not an individual seed, the whole
+#     process), that's what run_gpu_pipeline_supervisor.sh is for -- a bounded-retry
+#     wrapper. See that file.
+# Honesty note (also in train_pca.py): a resumed seed is not guaranteed bit-identical
+# to an uninterrupted run of the same seed value -- it's still a real, honestly-trained
+# result, just not promised to be bitwise-reproducible across an interruption.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -e          # Exit on any error
@@ -73,6 +82,7 @@ SEEDS=(42 101 777 2026 9999 1234 2024 31415 27182 7 11 13 888 555 333 99 1001 50
 # nothing special about these specific 20 values, and no seed here was chosen by
 # looking at any result (that's the exact thing AUDIT_FINDINGS.md's quarantined
 # find_best_seed.py/check_seed_42.py did wrong).
+FAILED_RUNS=()  # populated by run_arm() below; reported at the end, not hidden
 
 echo "================================================================"
 echo "WavKAN-CL: Unified GPU Pipeline"
@@ -139,20 +149,37 @@ run_arm () {
             echo "  [$arm_name] seed=$seed already complete. Skipping. ✓"
             continue
         fi
-        echo "  [$arm_name] Training seed=$seed, epochs=$epochs..."
-        python3 src/train_pca.py \
+        if [ -f "${out_dir}/resume_checkpoint.pth" ]; then
+            echo "  [$arm_name] seed=$seed has a resume checkpoint -- continuing from where it left off..."
+        else
+            echo "  [$arm_name] Training seed=$seed, epochs=$epochs (fresh start)..."
+        fi
+
+        # `if ! cmd; then ...` is deliberate: a command's failure inside an `if`
+        # condition does NOT trigger `set -e`, even though `set -e` is on for the
+        # rest of the script -- this is what lets ONE seed fail without taking down
+        # the other 39. `tee -a` (append, not overwrite) so a later retry of this
+        # same seed adds to its log instead of erasing what happened last time.
+        if ! python3 src/train_pca.py \
             --seed "$seed" \
             --epochs "$epochs" \
             $extra_flag \
             --data-dir "$DATA_DIR" \
             --output-dir "$out_dir" \
-            2>&1 | tee "$LOG_DIR/${arm_name}_seed${seed}.log"
+            2>&1 | tee -a "$LOG_DIR/${arm_name}_seed${seed}.log"
+        then
+            echo "  ✗ [$arm_name] seed=$seed FAILED (nonzero exit) -- its resume_checkpoint.pth" >&2
+            echo "    (if any) is preserved; re-running this script later will continue it," >&2
+            echo "    not restart from epoch 1. Continuing to the next seed now." >&2
+            FAILED_RUNS+=("${arm_name}/seed_${seed} (nonzero exit)")
+            continue
+        fi
 
         if [ -f "${out_dir}/test_metrics.json" ]; then
             echo "  ✓ [$arm_name] seed=$seed complete"
         else
-            echo "  ✗ ERROR: [$arm_name] seed=$seed did not produce test_metrics.json!" >&2
-            exit 1
+            echo "  ✗ [$arm_name] seed=$seed exited 0 but produced no test_metrics.json -- treating as failed." >&2
+            FAILED_RUNS+=("${arm_name}/seed_${seed} (exited 0, no test_metrics.json)")
         fi
     done
 }
@@ -243,7 +270,16 @@ python3 src/aggregate_seed_results.py \
 # ═══════════════════════════════════════════════════════════════════════════════
 echo ""
 echo "================================================================"
-echo "WavKAN-CL: PIPELINE COMPLETE!"
+if [ ${#FAILED_RUNS[@]} -eq 0 ]; then
+    echo "WavKAN-CL: PIPELINE COMPLETE -- all 40 runs succeeded."
+else
+    echo "WavKAN-CL: PIPELINE FINISHED WITH ${#FAILED_RUNS[@]} FAILED RUN(S):"
+    for r in "${FAILED_RUNS[@]}"; do echo "    - $r"; done
+    echo "  Their resume_checkpoint.pth (if any) is preserved. Re-running this script"
+    echo "  will pick each of them back up from where it left off, not from scratch --"
+    echo "  it will also re-run Phase 3 aggregation with whatever seeds ARE complete"
+    echo "  in the meantime, which is what you're about to see below (partial, not final)."
+fi
 echo "Finished at: $(date)"
 echo "================================================================"
 echo ""
