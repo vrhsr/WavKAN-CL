@@ -35,7 +35,30 @@
 # would be unverified speculative infrastructure.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-set -e  # Exit on any error
+set -e          # Exit on any error
+set -o pipefail # Fixed 2026-08-12, found live on the real GPU box: without this,
+                # `cmd | tee file` masks cmd's exit status with tee's (which is
+                # almost always 0) -- `set -e` alone never sees cmd fail. This is
+                # exactly what happened on the first pytest run below: it failed
+                # with "No module named pytest", but because it was piped into
+                # tee, the script printed "Test suite passed" anyway and kept
+                # going. With pipefail, any command's failure anywhere in a pipe
+                # now actually stops the script, for every `| tee` used below.
+
+# ─── Preflight: dependencies this script assumes are installed ──────────────
+echo "[Preflight] Checking required Python packages..."
+MISSING_PKGS=""
+for pkg in pytest wfdb neurokit2 torch numpy sklearn scipy; do
+    python3 -c "import ${pkg}" 2>/dev/null || MISSING_PKGS="${MISSING_PKGS} ${pkg}"
+done
+if [ -n "$MISSING_PKGS" ]; then
+    echo "  ✗ Missing packages:${MISSING_PKGS}" >&2
+    echo "  Run: pip install -r requirements.txt pytest neurokit2" >&2
+    echo "  (both pytest and neurokit2 are real gaps in requirements.txt -- see" >&2
+    echo "  CHANGELOG.md / PHASE5_SCOPE_PLAN.md -- install them explicitly for now)" >&2
+    exit 1
+fi
+echo "  ✓ All required packages importable"
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 export PYTHONPATH="$PWD"

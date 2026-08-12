@@ -95,3 +95,12 @@ Corrected in-place in both `paper/references.bib` and `paper/IEEE PAPER/referenc
 - **Model identity (AUDIT_FINDINGS.md C3/C11) — DECIDED 2026-08-12 by project owner: WavKAN_v2 (154,325 params, PCWI+PWAM+RR-self-attention) is the canonical submission model going forward.** This does not retroactively change anything already reported (Phase 6 will reconcile the manuscript text once Phase 5 produces real numbers) — it resolves which architecture Phase 5's training runs should target.
 
 See `PHASE5_SCOPE_PLAN.md` for the concrete data-regeneration and training commands this unblocks.
+
+---
+
+## 2026-08-12 — `run_gpu_pipeline.sh` bug found live on the real GPU box, fixed same session
+
+- **`run_gpu_pipeline.sh`: `set -o pipefail` added; the script's own sanity check silently reported success after actually failing.** On the first real run (RTX A4000, remote GPU box), `python3 -m pytest ...` failed with `No module named pytest` (pytest was never listed as a dependency anywhere — see below), but because the command was piped into `tee` for logging, `set -e` alone couldn't see the failure (a pipeline's exit status is its *last* command's, i.e. `tee`'s, which is essentially always 0) — the script printed "✓ Test suite passed/skipped cleanly" and moved on. The *next* pytest call happened to not be piped, genuinely failed, and correctly killed the job via `set -e` — which is the only reason this was noticed at all rather than silently sailing through every subsequent `| tee` in the script the same way. Fixed: added `set -o pipefail` immediately after `set -e`, so any command's failure anywhere in a pipe now actually stops the script.
+- **Added a preflight dependency check** (`pytest`, `wfdb`, `neurokit2`, `torch`, `numpy`, `sklearn`, `scipy`) at the top of the script, so a missing package fails immediately with a clear message instead of surfacing confusingly mid-log (or, per the bug above, not surfacing at all).
+- **`pytest` added to the install instructions** in `PHASE5_SCOPE_PLAN.md` (both the Quick Start and the detailed Section 0) — same class of gap as the `neurokit2` miss (Phase 5 scoping session): a real dependency the pipeline needs that was never listed anywhere.
+- **Does not change any reported number** — this is a fix to the orchestration script's own error-handling, not to any training/eval logic.

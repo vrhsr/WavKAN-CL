@@ -19,7 +19,9 @@ cd WavKAN-CL
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pip install neurokit2            # required by the data pipeline, missing from requirements.txt (real gap found during Phase 5 scoping)
+pip install neurokit2 pytest     # both missing from requirements.txt (real gaps found during Phase 5 scoping --
+                                  # neurokit2 is a runtime dependency of the data pipeline, pytest is needed
+                                  # for run_gpu_pipeline.sh's own preflight/sanity checks)
 
 # 3. Run everything: GPU check -> sanity tests -> data regen -> smoke test -> full
 #    20-seed x 2-arm training -> aggregation. See run_gpu_pipeline.sh for exactly
@@ -37,8 +39,11 @@ That single script (`run_gpu_pipeline.sh`, repo root) is the executable version 
 
 ```bash
 pip install -r requirements.txt
-pip install neurokit2   # used by process_data.py / process_extended_rr.py / process_sequence.py
-                         # but missing from requirements.txt (a real gap found while scoping this)
+pip install neurokit2   # used by process_data.py / process_extended_rr.py / process_sequence.py,
+pip install pytest      # used by run_gpu_pipeline.sh's own sanity checks --
+                         # both missing from requirements.txt (real gaps found while scoping this;
+                         # the pytest gap caused a real, confusingly-masked failure on the first live
+                         # GPU run -- see CHANGELOG.md)
 ```
 
 Confirm GPU is visible before starting anything long-running:
