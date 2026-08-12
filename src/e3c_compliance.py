@@ -75,6 +75,7 @@ def check_criterion_1(
     model:       str,
     ds1_records: Optional[list] = None,
     ds2_records: Optional[list] = None,
+    data_dir:    str = "data/processed_rr_history",
 ) -> E3CCriterion:
     """
     E3C-1: Strict inter-patient evaluation
@@ -120,8 +121,8 @@ def check_criterion_1(
     # (process_data.py:154,164 saves ids_{split}.npy) never overlap between train and test.
     # This is the check that can actually fail against real generated artifacts, unlike the
     # hardcoded-literal comparison above.
-    ids_train_path = Path("data/processed_rr_history") / "ids_train.npy"
-    ids_test_path = Path("data/processed_rr_history") / "ids_test.npy"
+    ids_train_path = Path(data_dir) / "ids_train.npy"
+    ids_test_path = Path(data_dir) / "ids_test.npy"
     real_ids_verified = False
     if ids_train_path.exists() and ids_test_path.exists():
         import numpy as np
@@ -216,6 +217,7 @@ def check_criterion_3(
     results_dir: str,
     model:       str,
     aami_classes: list = None,
+    data_dir:    str = "data/processed_rr_history",
 ) -> E3CCriterion:
     """
     E3C-3: AAMI EC57 clinical protocol adherence
@@ -247,7 +249,7 @@ def check_criterion_3(
     c.evidence.append("PASS: Class Q → {Q, /, f} (Unknown/paced)")
 
     # Verify data file exists
-    data_path = Path("data/processed_rr_history/y_test.npy")
+    data_path = Path(data_dir) / "y_test.npy"
     real_labels_verified = False
     if data_path.exists():
         y = __import__("numpy").load(str(data_path))
