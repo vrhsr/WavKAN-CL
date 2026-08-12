@@ -1,4 +1,5 @@
 import os
+import sys
 import wfdb
 import numpy as np
 import neurokit2 as nk
@@ -30,22 +31,13 @@ POST_SAMPLES = int(0.75 * FS) # 270
 
 # --- SPLIT DEFINITIONS (De Chazal Protocol) ---
 # DS1: Training (Split into Train and Val)
-DS1_RECORDS = [
-    '101','106','108','109','112','114','115','116','118','119',
-    '122','124','201','203','205','207','208','209','215','220',
-    '223','230'
-]
-
-# We carve out the last 4 records of DS1 for Validation (Inter-Patient Safe)
-VAL_RECORDS = ['215', '220', '223', '230']
-TRAIN_RECORDS = [r for r in DS1_RECORDS if r not in VAL_RECORDS]
-
-# DS2: Testing (Strictly held out)
-TEST_RECORDS = [
-    '100','103','105','111','113','117','121','123','200','202',
-    '210','212','213','214','219','221','222','228','231','232',
-    '233','234'
-]
+# Fixed 2026-08-12 (AUDIT_FINDINGS.md H16): this used to independently hardcode its own
+# VAL_RECORDS (215/220/223/230), diverging from src/split.py's canonical list
+# (208/209/223/230) -- the list the manuscript's own Table 1 (tab:split_protocol)
+# actually describes. Importing from split.py instead of re-hardcoding makes this
+# pipeline produce the split the paper claims, and keeps both in sync by construction.
+sys.path.insert(0, os.path.dirname(__file__))
+from split import DS1_RECORDS, VAL_RECORDS, TRAIN_RECORDS, TEST_RECORDS
 
 # AAMI MAPPING
 AAMI_MAP = {

@@ -25,7 +25,7 @@ PTB-XL Setup
 Usage:
     python src/eval_fewshot_ptbxl.py \\
         --checkpoint results/pca_model/best_model.pth \\
-        --ptbxl-data data/ptbxl_processed/ \\
+        --ptbxl-data data/processed_ptbxl/ \\
         --shots 5 10 25 50 \\
         --output-dir results/fewshot_ptbxl/
 """
@@ -303,7 +303,7 @@ def _synthetic_fewshot_demo(k_shots, output_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint",  type=str, required=True)
-    parser.add_argument("--ptbxl-data",  type=str, default="data/ptbxl_processed")
+    parser.add_argument("--ptbxl-data",  type=str, default="data/processed_ptbxl")
     parser.add_argument("--shots",       type=int, nargs="+", default=[5, 10, 25, 50])
     parser.add_argument("--n-seeds",     type=int, default=5)
     parser.add_argument("--ft-epochs",   type=int, default=30)

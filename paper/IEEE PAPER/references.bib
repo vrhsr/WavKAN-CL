@@ -25,15 +25,30 @@
 }
 
 @article{akan_ecgformer_2024,
-  title     = {{ECGformer}: {Transformer}-based {ECG} classification with attention mechanisms},
-  author    = {Akan, Taha and Alp, Sidre},
-  journal   = {Engineering Applications of Artificial Intelligence},
-  volume    = {133},
-  pages     = {108548},
+  title     = {{ECGformer}: {A} Transformer-based Ensemble Technique for Cardiac Arrhythmia Classification},
+  author    = {Akan, Taymaz and Alp, Sait and Bhuiyan, Mohammad Alfrad Nobel},
+  journal   = {arXiv preprint arXiv:2401.05434},
   year      = {2024},
-  publisher = {Elsevier},
-  doi       = {10.1016/j.engappai.2024.108548}
+  note      = {Also presented at IEEE CSCI 2023, pp.\ 1412--1417. AUDIT_FINDINGS.md C14: the
+    previous entry (authors "Akan, Taha and Alp, Sidre", journal Engineering Applications of
+    Artificial Intelligence, DOI 10.1016/j.engappai.2024.108548) was fabricated -- that DOI
+    resolves to an unrelated real paper on bibliographic reference parsing, and this work was
+    never published in that journal. Fixed 2026-08-12.}
 }
+
+@article{guo_inter-patient_2019,
+  title     = {Inter-patient {ECG} classification with convolutional and recurrent neural networks},
+  author    = {Guo, Lili and Sim, Gavin and Matuszewski, Bogdan},
+  journal   = {Biocybernetics and Biomedical Engineering},
+  volume    = {39},
+  number    = {3},
+  pages     = {868--879},
+  year      = {2019},
+  publisher = {Elsevier},
+  doi       = {10.1016/j.bbe.2019.06.001}
+}
+% NOTE (AUDIT_FINDINGS.md C14): added 2026-08-12 -- this file previously had no Guo entry
+% at all, even though the manuscript cites `guo_inter-patient_2019`.
 
 @article{xiao_deep_2023,
   title     = {Deep learning for {ECG} arrhythmia detection: {A} survey},
@@ -43,7 +58,13 @@
   pages     = {107236},
   year      = {2023},
   publisher = {Elsevier},
-  doi       = {10.1016/j.compbiomed.2023.107236}
+  doi       = {10.1016/j.compbiomed.2023.107236},
+  note      = {UNRESOLVED -- AUDIT_FINDINGS.md C14: this entry's DOI resolves to a completely
+    unrelated real paper ("Three-dimensional spinal shape changes during daily activities",
+    Rockenfeller et al., same journal/volume by coincidence). No real paper matching this
+    title/author/topic was found by an active web search as of 2026-08-12. DO NOT cite this
+    entry as-is -- either a different real citation is needed for the claim it supports, or
+    the claim should be removed. Flagged for project-owner decision, not fixed.}
 }
 
 @article{liu_kan_2024,
@@ -54,13 +75,23 @@
 }
 
 @article{zhao_mak-net_2025,
-  title     = {{MAK}-{Net}: {M}ixed attention {Kolmogorov}--{Arnold} network for {ECG} heartbeat classification},
-  author    = {Zhao, Yuheng and others},
-  journal   = {Biomedical Signal Processing and Control},
-  volume    = {101},
-  pages     = {106891},
+  title     = {{MAK}-{Net}: A Multi-Scale Attentive {Kolmogorov}--{Arnold} Network with {BiGRU} for Imbalanced {ECG} Arrhythmia Classification},
+  author    = {Zhao, Cong and Lai, Bingwei and Xu, Yongzheng and Wang, Yiping and Dong, Haorong},
+  journal   = {Sensors},
+  volume    = {25},
+  number    = {13},
+  pages     = {3928},
   year      = {2025},
-  publisher = {Elsevier}
+  publisher = {MDPI},
+  doi       = {10.3390/s25133928},
+  note      = {AUDIT_FINDINGS.md C14: this is the manuscript's primary competing baseline,
+    cited throughout with specific numbers (6.1M params, 24 ms/beat, per-class accuracy
+    figures). The previous entry (author "Zhao, Yuheng and others", journal Biomedical Signal
+    Processing and Control, vol 101, p.106891) was a real paper misattributed to the wrong
+    journal/title/first-author -- fixed 2026-08-12. The specific per-class numbers the
+    manuscript attributes to this paper (0.989/0.987/0.983) have NOT yet been re-checked
+    against this paper's actual reported figures (it reports "0.9980 accuracy," a possibly
+    different metric framing) -- flagged for Phase 5, not resolved here.}
 }
 
 @article{farag_tiny_2023,
@@ -75,15 +106,22 @@
   doi       = {10.3390/s23031365}
 }
 
-@article{mousavi_inter-_2019,
-  title     = {Inter- and intra-patient {ECG} heartbeat classification for arrhythmia detection: {A} sequence to sequence deep learning approach},
-  author    = {Mousavi, Sajad and Afghah, Fatemeh and Razi, Abolfazl and Acharya, U. Rajendra},
-  journal   = {Information Sciences},
-  volume    = {526},
-  pages     = {100--110},
-  year      = {2020},
-  publisher = {Elsevier},
-  doi       = {10.1016/j.ins.2020.03.021}
+@inproceedings{mousavi_inter-_2019,
+  title        = {Inter- and intra-patient {ECG} heartbeat classification for arrhythmia detection: {A} sequence to sequence deep learning approach},
+  author       = {Mousavi, Sajad and Afghah, Fatemeh},
+  booktitle    = {2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages        = {1308--1312},
+  year         = {2019},
+  organization = {IEEE},
+  doi          = {10.1109/ICASSP.2019.8683140},
+  note         = {AUDIT_FINDINGS.md C14: this paper only exists as this ICASSP 2019 conference
+    paper (also on arXiv:1812.07421) -- the previous entry invented a journal identity for it
+    ("Information Sciences", vol 526, pp.100-110, year 2020) with a DOI
+    (10.1016/j.ins.2020.03.021) that resolves to a completely unrelated real paper ("PUMAD: PU
+    Metric learning for anomaly detection", Ju et al.). Fixed 2026-08-12. The manuscript's
+    specific numeric claims attributed to this citation (S-recall >0.60, 5.5MB memory
+    footprint, V-Rec 0.99 in the SOTA table) should be re-checked against this real conference
+    paper's actual reported figures -- flagged for Phase 5, not resolved here.}
 }
 
 @article{chazal_automatic_2004,
@@ -145,11 +183,15 @@
 
 @article{silva_systematic_2025,
   title     = {A Systematic Review of {ECG} Arrhythmia Classification: Adherence to Standards, Fair Evaluation, and Embedded Feasibility},
-  author    = {Silva, Lucas R. and others},
-  journal   = {Expert Systems with Applications},
+  author    = {Silva, Guilherme A. L. and others},
+  journal   = {arXiv preprint arXiv:2503.07276},
   year      = {2025},
-  publisher = {Elsevier},
-  note      = {Systematic review proposing E3C criteria for ECG classification evaluation}
+  note      = {AUDIT_FINDINGS.md C7/C14: confirmed real (arXiv:2503.07276, submitted March
+    2025) -- 122 studies reviewed, 5 (4.1%) E3C-compliant, 37 (30.3%) inter-patient, matching
+    the manuscript's "4.1%" claim exactly. Title here was already correct; author first name
+    was wrong ("Lucas R." -- real first author is Guilherme A. L. Silva) and the claimed
+    "Expert Systems with Applications" journal/publisher fields were unconfirmed (this paper
+    is currently only confirmed as an arXiv preprint) -- fixed 2026-08-12.}
 }
 
 @article{bahrami_investigation_2025,

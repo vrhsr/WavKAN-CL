@@ -219,7 +219,19 @@ def train_pca(
     use_augment: bool = True,
     wavelet_type: str = "mexican_hat",
     patience: int   = 15,
+    use_curriculum: bool = True,
 ) -> dict:
+    """
+    use_curriculum=False produces the FAIR baseline arm for the 20-seed comparison
+    (AUDIT_FINDINGS.md H6/H20/H23-C13): identical architecture, optimizer, LR schedule,
+    batch size, epoch budget, early-stopping patience, and augmentation as the
+    curriculum arm -- the ONLY thing that changes is the per-epoch sampler/loss, which
+    becomes natural-distribution sampling + standard class-weighted cross-entropy for
+    every epoch (matching Table 3's own stated baseline description, "Standard CE
+    Loss"), instead of the warm-up-then-anneal PCA schedule. This is what makes the
+    resulting comparison a genuine single-variable ablation of "curriculum vs. no
+    curriculum" rather than a comparison confounded by different training recipes.
+    """
 
     # ── Reproducibility ───────────────────────────────────────────────────────
     torch.manual_seed(seed)
@@ -231,9 +243,9 @@ def train_pca(
     OUT_DIR = Path(output_dir)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"\n{'='*60}")
-    print(f"Progressive Curriculum Anchoring | seed={seed} | {DEVICE}")
+    print(f"{'Progressive Curriculum Anchoring' if use_curriculum else 'Fair Baseline (no curriculum)'} | seed={seed} | {DEVICE}")
     print(f"  PCWI={use_pcwi}  PWAM={use_pwam}  RR-Attn={use_rr_attn}")
-    print(f"  Wavelet={wavelet_type}  Epochs={epochs}  Warmup={warmup:.0%}")
+    print(f"  Wavelet={wavelet_type}  Epochs={epochs}" + (f"  Warmup={warmup:.0%}" if use_curriculum else "  (natural sampling, weighted CE, all epochs)"))
     print(f"{'='*60}\n")
 
     # ── Data ──────────────────────────────────────────────────────────────────
@@ -257,6 +269,9 @@ def train_pca(
     criterion_warmup = nn.CrossEntropyLoss()
     # Annealing: Focal Loss with class weights — focus on hard minority beats
     criterion_focal  = FocalLoss(gamma=focal_gamma, weight=class_weights)
+    # Fair-baseline arm (use_curriculum=False): standard class-weighted CE for every
+    # epoch, matching Table 3's stated baseline training strategy exactly.
+    criterion_baseline = nn.CrossEntropyLoss(weight=class_weights)
 
     # ── Model ─────────────────────────────────────────────────────────────────
     model = WavKAN_v2(
@@ -284,7 +299,13 @@ def train_pca(
         model.train()
 
         # ── Select sampler & loss for this epoch ──────────────────────────
-        if epoch <= warmup_epochs:
+        if not use_curriculum:
+            # Fair baseline: natural class distribution, standard weighted CE,
+            # identical for every epoch -- no warm-up/anneal distinction at all.
+            loader    = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+            criterion = criterion_baseline
+            phase_tag = "BASELINE"
+        elif epoch <= warmup_epochs:
             # Warm-up: balanced sampling, plain CE
             sampler  = make_balanced_sampler(train_labels)
             loader   = DataLoader(train_ds, batch_size=batch_size, sampler=sampler)
@@ -427,26 +448,33 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir",  type=str,   default="results/pca_model")
     parser.add_argument("--wavelet",     type=str,   default="mexican_hat",
                         choices=["mexican_hat", "morlet", "dog", "b_spline"])
-    parser.add_argument("--no-pcwi",     action="store_true")
-    parser.add_argument("--no-pwam",     action="store_true")
-    parser.add_argument("--no-rr-attn",  action="store_true")
-    parser.add_argument("--no-augment",  action="store_true")
+    parser.add_argument("--no-pcwi",       action="store_true")
+    parser.add_argument("--no-pwam",       action="store_true")
+    parser.add_argument("--no-rr-attn",    action="store_true")
+    parser.add_argument("--no-augment",    action="store_true")
+    parser.add_argument("--no-curriculum", action="store_true",
+                        help="Fair-baseline mode: natural sampling + standard weighted "
+                             "CE for every epoch instead of the warmup->anneal PCA "
+                             "schedule. Same architecture/optimizer/schedule/epochs as "
+                             "the curriculum run -- use this to generate the 'Baseline' "
+                             "arm of the 20-seed comparison (AUDIT_FINDINGS.md H6).")
     args = parser.parse_args()
 
     train_pca(
-        seed         = args.seed,
-        epochs       = args.epochs,
-        warmup       = args.warmup,
-        focal_gamma  = args.focal_gamma,
-        s_weight     = args.s_weight,
-        lr           = args.lr,
-        batch_size   = args.batch_size,
-        patience     = args.patience,
-        data_dir     = args.data_dir,
-        output_dir   = args.output_dir,
-        wavelet_type = args.wavelet,
-        use_pcwi     = not args.no_pcwi,
-        use_pwam     = not args.no_pwam,
-        use_rr_attn  = not args.no_rr_attn,
-        use_augment  = not args.no_augment,
+        seed           = args.seed,
+        epochs         = args.epochs,
+        warmup         = args.warmup,
+        focal_gamma    = args.focal_gamma,
+        s_weight       = args.s_weight,
+        lr             = args.lr,
+        batch_size     = args.batch_size,
+        patience       = args.patience,
+        data_dir       = args.data_dir,
+        output_dir     = args.output_dir,
+        wavelet_type   = args.wavelet,
+        use_pcwi       = not args.no_pcwi,
+        use_pwam       = not args.no_pwam,
+        use_rr_attn    = not args.no_rr_attn,
+        use_augment    = not args.no_augment,
+        use_curriculum = not args.no_curriculum,
     )

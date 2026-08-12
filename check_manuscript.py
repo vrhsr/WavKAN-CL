@@ -1,9 +1,28 @@
 
 import re
 import os
+import sys
 
-tex_file = 'manuscript_complete.tex'
-bib_file = 'references.bib'
+# Fixed 2026-08-12 (surfaced by the H3 path fix -- this bug was latent since the script
+# always crashed on a missing file before reaching any print statement): the ✅/❌ emoji
+# below crash with UnicodeEncodeError on Windows consoles using the default cp1252
+# encoding. Force UTF-8 stdout so the script can actually finish running.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+# Fixed per AUDIT_FINDINGS.md H3 (2026-08-12): this used to hardcode
+# 'manuscript_complete.tex' (a stale draft, 11 days older than and materially different
+# from the actual submission) and 'references.bib' at repo root, which doesn't exist
+# anywhere -- running this script as originally written either checked the wrong
+# document or crashed with FileNotFoundError before any check ran.
+#
+# `Submission_JBHI/ieee_manuscript.tex` is the confirmed-canonical live manuscript
+# (CLAUDE.md section 5). It has no references.bib of its own (AUDIT_FINDINGS.md C7 --
+# still open); `paper/IEEE PAPER/references.bib` is the more corrected of the two
+# candidate bib files as of the C14 citation-integrity fixes, though it still has one
+# unresolved entry (xiao_deep_2023 -- see the note in that file).
+tex_file = os.path.join('Submission_JBHI', 'ieee_manuscript.tex')
+bib_file = os.path.join('paper', 'IEEE PAPER', 'references.bib')
 
 def check_consistency():
     with open(tex_file, 'r', encoding='utf-8') as f:

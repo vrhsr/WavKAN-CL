@@ -11,9 +11,13 @@ found that only 4.1% (5 out of 122) satisfied all four E3C criteria:
   E3C Criterion 3: Adherence to AAMI EC57 clinical protocol
   E3C Criterion 4: Consideration of computational complexity
 
-The original WavKAN-CL paper CLAIMS compliance but never auto-verifies it.
-This script reads the experimental results and PROVES it programmatically —
-generating a compliance certificate suitable for the paper.
+This script checks the experimental results against each criterion and reports a
+PASS/PARTIAL/FAIL per criterion, generating a compliance summary. Where a real
+generated artifact exists (e.g. the actual train/test record-ID arrays, or a real
+per-class label file) it verifies against that; where none exists it reports PARTIAL
+rather than assuming compliance. See AUDIT_FINDINGS.md C6 for the history of why this
+distinction matters -- earlier versions of this script hardcoded PASS for 3 of these 4
+criteria regardless of input.
 
 Output:
   results/e3c_compliance/
@@ -40,7 +44,7 @@ PARTIAL   = "⚠️"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# E3C Criterion Definitions (from Silva et al. 2022)
+# E3C Criterion Definitions (from Silva et al. 2025, arXiv:2503.07276)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -98,14 +102,48 @@ def check_criterion_1(
         c.score   = 0.0
         return c
 
-    c.evidence.append("PASS: No patient overlap between DS1 (train) and DS2 (test)")
+    c.evidence.append("PASS: No overlap between the hardcoded reference DS1/DS2 record lists")
     c.evidence.append(f"PASS: DS1 = {len(DS1)} records (train+val), DS2 = {len(DS2)} records (test)")
+    c.evidence.append(
+        "NOTE: the check above only verifies two hand-typed literals are disjoint from "
+        "each other -- it says nothing about which records a real training run actually "
+        "used. See AUDIT_FINDINGS.md C6/M17."
+    )
 
     # Check that records 201+202 (same patient) are split
     if "201" in DS1 and "202" in DS2:
         c.evidence.append("PASS: Records 201 & 202 (same patient) correctly split across DS1/DS2")
     else:
         c.evidence.append("⚠️  Records 201 & 202 same-patient check: verify manually")
+
+    # Real leakage check: verify the ACTUAL record-ID arrays a training run produced
+    # (process_data.py:154,164 saves ids_{split}.npy) never overlap between train and test.
+    # This is the check that can actually fail against real generated artifacts, unlike the
+    # hardcoded-literal comparison above.
+    ids_train_path = Path("data/processed_rr_history") / "ids_train.npy"
+    ids_test_path = Path("data/processed_rr_history") / "ids_test.npy"
+    real_ids_verified = False
+    if ids_train_path.exists() and ids_test_path.exists():
+        import numpy as np
+        ids_train = set(np.load(ids_train_path, allow_pickle=True).tolist())
+        ids_test = set(np.load(ids_test_path, allow_pickle=True).tolist())
+        real_overlap = ids_train & ids_test
+        if real_overlap:
+            c.status = "FAIL"
+            c.evidence.append(f"FAIL: Real generated ids_train/ids_test overlap: {real_overlap}")
+            c.score = 0.0
+            return c
+        c.evidence.append(
+            f"PASS: Real generated record-ID arrays verified disjoint "
+            f"({len(ids_train)} train records, {len(ids_test)} test records)"
+        )
+        real_ids_verified = True
+    else:
+        c.evidence.append(
+            f"PARTIAL: {ids_train_path} / {ids_test_path} not found -- cannot verify the "
+            "actual generated split, only the hardcoded reference lists above. Run "
+            "process_data.py first to enable the real check."
+        )
 
     # Check test results file exists
     test_path = Path(results_dir) / model / "seed_42" / "test_metrics.json"
@@ -114,8 +152,12 @@ def check_criterion_1(
             m = json.load(f)
         c.evidence.append(f"PASS: Test results found (Macro-F1={m.get('macro_f1', 'N/A'):.4f})")
 
-    c.status = "PASS"
-    c.score  = 1.0
+    if real_ids_verified:
+        c.status = "PASS"
+        c.score = 1.0
+    else:
+        c.status = "PARTIAL"
+        c.score = 0.5
     return c
 
 
@@ -206,16 +248,33 @@ def check_criterion_3(
 
     # Verify data file exists
     data_path = Path("data/processed_rr_history/y_test.npy")
+    real_labels_verified = False
     if data_path.exists():
         y = __import__("numpy").load(str(data_path))
         unique = set(y.tolist())
-        c.evidence.append(f"PASS: Test labels verified: classes present = {sorted(unique)}")
+        expected = {0, 1, 2, 3, 4}
+        if unique.issubset(expected) and len(unique) > 0:
+            c.evidence.append(f"PASS: Test labels verified: classes present = {sorted(unique)}")
+            real_labels_verified = True
+        else:
+            c.evidence.append(
+                f"FAIL: Test labels contain values outside the AAMI 0-4 mapping: {sorted(unique)}"
+            )
+            c.status = "FAIL"
+            c.score = 0.0
+            return c
     else:
-        c.evidence.append("⚠️  y_test.npy not found — run process_data.py first")
+        c.evidence.append("⚠️  y_test.npy not found — run process_data.py first, cannot verify real labels")
 
     c.evidence.append("PASS: Q class retained in reporting (completeness, weight=0 in loss)")
-    c.status = "PASS"
-    c.score  = 1.0
+
+    if real_labels_verified:
+        c.status = "PASS"
+        c.score = 1.0
+    else:
+        # AAMI_MAP is a hardcoded literal, real annotations were never checked against it.
+        c.status = "PARTIAL"
+        c.score = 0.5
     return c
 
 
@@ -246,38 +305,50 @@ def check_criterion_4(
         c.evidence.append(f"PASS: Deployment benchmark directory found: {deploy_path}")
 
     # Parameter count
-    if n_params <= max_params:
+    params_ok = n_params <= max_params
+    if params_ok:
         c.evidence.append(
             f"PASS: {n_params:,} parameters ≤ {max_params:,} (edge-feasible)"
         )
         c.evidence.append(
-            f"PASS: Memory footprint ≈ {n_params * 4 / 1024:.1f} KB (well under 1 MB)"
+            f"PASS: Memory footprint ≈ {n_params * 4 / 1024:.1f} KB"
         )
-        c.evidence.append(f"PASS: >95% parameter reduction vs MAK-Net (6.1M)")
     else:
-        c.evidence.append(f"⚠️  {n_params:,} parameters exceeds threshold of {max_params:,}")
+        c.evidence.append(f"FAIL: {n_params:,} parameters exceeds threshold of {max_params:,}")
 
     # Inference latency
-    if latency_ms <= max_latency:
+    latency_ok = latency_ms <= max_latency
+    latency_path = Path(results_dir) / "latency_report.json"
+    if not latency_path.exists():
         c.evidence.append(
-            f"PASS: Inference latency = {latency_ms} ms/beat (CPU, ≤{max_latency} ms)"
+            f"⚠️  {latency_path} not found -- latency_ms={latency_ms} is an unverified "
+            "CLI-supplied value, not measured from this run. See AUDIT_FINDINGS.md H9."
         )
-        c.evidence.append("PASS: Sub-millisecond inference feasible for real-time Holter monitoring")
+    if latency_ok:
+        c.evidence.append(
+            f"PASS: Inference latency = {latency_ms} ms/beat (≤{max_latency} ms threshold)"
+        )
     else:
-        c.evidence.append(f"⚠️  Latency {latency_ms} ms exceeds target {max_latency} ms")
+        c.evidence.append(f"FAIL: Latency {latency_ms} ms exceeds target {max_latency} ms")
 
     # INT8 quantization
     quant_path = Path(results_dir) / "deployment" / "quantized_model.pt"
     if quant_path.exists():
         c.evidence.append("PASS: INT8 quantized model available for edge deployment")
     else:
-        c.evidence.append("INFO: INT8 quantization result not found (run Stage 8)")
+        c.evidence.append("INFO: INT8 quantization result not found (run Stage 8) -- not required for this criterion, informational only")
 
-    c.evidence.append("PASS: Green AI analysis included (CodeCarbon CO₂ tracking)")
-    c.evidence.append("PASS: E3C-4 required by Silva et al. [4] — only 4.1% of papers comply")
+    c.evidence.append("INFO: Green AI / CO2 tracking is a separate benchmark (Stage 8), not verified by this criterion")
 
-    c.status = "PASS"
-    c.score  = 1.0
+    if params_ok and latency_ok:
+        c.status = "PASS"
+        c.score = 1.0
+    elif params_ok or latency_ok:
+        c.status = "PARTIAL"
+        c.score = 0.5
+    else:
+        c.status = "FAIL"
+        c.score = 0.0
     return c
 
 
@@ -294,7 +365,7 @@ def generate_full_report(
     print(f"\n{'='*65}")
     print(f"E3C CLINICAL EVALUATION COMPLIANCE CHECK — {model_name}")
     print(f"{'='*65}")
-    print(f"Reference: Silva et al. (2022) — 122 papers reviewed, 4.1% compliant")
+    print(f"Reference: Silva et al. (2025), arXiv:2503.07276 — 122 papers reviewed, 4.1% compliant")
     print(f"{'='*65}\n")
 
     c1 = check_criterion_1(results_dir, "wavkan_v2")
@@ -320,7 +391,7 @@ def generate_full_report(
     print(f"{bang}  VERDICT: {overall}  (score={total_score:.2f}/1.00)")
     if all_pass:
         print(f"   {model_name} satisfies ALL four E3C criteria.")
-        print(f"   Estimated: top 4.1% of ECG classification papers [Silva et al. 2022]")
+        print(f"   Estimated: top 4.1% of ECG classification papers [Silva et al. 2025, arXiv:2503.07276]")
     elif total_score >= 0.75:
         failed = [c.id for c in criteria if c.status != "PASS"]
         print(f"   Partially compliant. Failed: {failed}. Run pipeline to fix.")
@@ -343,12 +414,22 @@ def generate_latex_certificate(report: E3CReport) -> str:
         rows.append(f"  {c['id']} & {c['name']} & {status} \\\\")
 
     compliant_str = "\\textbf{YES}" if report.compliant else "\\textbf{NO}"
+    if report.compliant:
+        claim = (
+            rf"{report.model_name} satisfies all four criteria, placing it among the "
+            rf"4.1\% of ECG classification studies (per \citeauthor{{silva_systematic_2025}}) "
+            rf"that meet rigorous clinical evaluation standards."
+        )
+    else:
+        failed = [c["id"] for c in report.criteria if c["status"] != "PASS"]
+        claim = (
+            rf"{report.model_name} does not yet satisfy all four E3C criteria "
+            rf"(per \citeauthor{{silva_systematic_2025}}) -- failing or partial on: {', '.join(failed)}."
+        )
     return "\n".join([
         r"\begin{table}[!htbp]",
         r"\centering",
-        rf"\caption{{E3C Clinical Evaluation Compliance [\citeauthor{{silva2022}}]. "
-        rf"{report.model_name} satisfies all four criteria, placing it among the "
-        rf"4.1\% of ECG classification studies that meet rigorous clinical evaluation standards.}}",
+        rf"\caption{{E3C Clinical Evaluation Compliance. {claim}}}",
         r"\label{tab:e3c}",
         r"\begin{tabular}{@{}llc@{}}",
         r"\toprule",

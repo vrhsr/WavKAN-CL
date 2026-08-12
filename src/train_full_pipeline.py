@@ -58,7 +58,6 @@ from src.eval_fewshot_ptbxl     import run_fewshot
 from src.export_quantize        import export_and_benchmark
 from src.eval_multidataset      import evaluate_checkpoints, discover_checkpoints
 from src.clinical_story         import run_clinical_analysis
-from src.verify_win             import evaluate_win_condition, print_verdict, load_multidataset
 from src.rr_ablation            import run_multiseed_ablation as run_rr_ablation, plot_rr_ablation, generate_latex_table as rr_latex
 from src.per_patient_analysis   import aggregate_seeds as agg_patient, run_per_patient_inference, compute_consistency_stats, plot_per_patient_heatmap, plot_consistency_boxplot
 from src.temperature_scaling    import calibrate_model
@@ -73,7 +72,13 @@ from src.generate_all_figures   import fig3_seed_stability, fig4_convergence, fi
 DEFAULT_SEEDS   = [42, 101, 777]
 DEFAULT_EPOCHS  = 100
 DATA_DIR        = "data/processed_rr_history"
-PTBXL_DATA_DIR  = "data/ptbxl_processed"
+# Fixed 2026-08-12 (AUDIT_FINDINGS.md H11): was "data/ptbxl_processed" (reversed word
+# order), diverging from process_ptbxl.py (the producer) and eval_ptbxl.py (the
+# already-verified-correct consumer), both of which use "data/processed_ptbxl".
+# Following the documented default pipeline used to silently miss the data and fall
+# through to eval_fewshot_ptbxl.py's synthetic-fabrication fallback (C8) instead of
+# erroring -- fixed by matching the producer's convention, not the other way around.
+PTBXL_DATA_DIR  = "data/processed_ptbxl"
 INCARTDATA_DIR  = "data/incart_processed"
 SVDB_DATA_DIR   = "data/svdb_processed"
 BASE_OUT_DIR    = "results/full_pipeline"
@@ -410,14 +415,18 @@ def stage11_clinical_story(seeds, out_base):
 
 def stage12_verify_win(out_base):
     _header(12, "Win Condition Verification (run BEFORE writing paper)")
-    mds_path = Path(out_base) / "multidataset_table" / "multidataset_raw.json"
-    mds      = load_multidataset(str(mds_path))
-    verdict  = evaluate_win_condition(out_base, mds)
-    print_verdict(verdict)
-    import json
-    with open(Path(out_base) / "win_condition.json", "w") as f:
-        json.dump(verdict, f, indent=2)
-    print(f"  ✅ Verdict saved: {Path(out_base) / 'win_condition.json'}")
+    # QUARANTINED 2026-08-12 (AUDIT_FINDINGS.md C4): this stage used to call
+    # src/verify_win.py, which computed an "abstract framing" and "contributions" list
+    # from the current experiment results -- deciding the scientific claim after seeing
+    # the data, with an explicit instruction to keep re-running experiments until a "win"
+    # condition appeared. That script has been moved to
+    # landmine_scripts_do_not_use/verify_win.py and is not called from here anymore.
+    # This stage is intentionally a no-op pending a project-owner decision on what (if
+    # anything) should replace it -- reporting the full, honest seed distribution
+    # (mean +/- std) rather than a post-hoc "framing" is the audit's recommended
+    # replacement, not implemented here since it's a methodological choice, not a fix.
+    print("  Stage 12 skipped: verify_win.py has been quarantined, see AUDIT_FINDINGS.md C4")
+    print("  and landmine_scripts_do_not_use/README.md. No win-condition verdict generated.")
 
 
 

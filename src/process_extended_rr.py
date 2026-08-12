@@ -8,6 +8,7 @@ Output: data/processed_rr_extended/
 """
 
 import os
+import sys
 import wfdb
 import numpy as np
 import neurokit2 as nk
@@ -15,7 +16,7 @@ from tqdm import tqdm
 from collections import Counter
 
 # --- CONFIGURATION ---
-DATA_DIR = "data/raw" 
+DATA_DIR = "data/raw"
 OUT_DIR = "data/processed_rr_extended"  # New directory
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -23,19 +24,11 @@ FS = 360
 PRE_SAMPLES = int(0.25 * FS)
 POST_SAMPLES = int(0.75 * FS)
 
-DS1_RECORDS = [
-    '101','106','108','109','112','114','115','116','118','119',
-    '122','124','201','203','205','207','208','209','215','220',
-    '223','230'
-]
-VAL_RECORDS = ['215', '220', '223', '230']
-TRAIN_RECORDS = [r for r in DS1_RECORDS if r not in VAL_RECORDS]
-
-TEST_RECORDS = [
-    '100','103','105','111','113','117','121','123','200','202',
-    '210','212','213','214','219','221','222','228','231','232',
-    '233','234'
-]
+# Fixed 2026-08-12 (AUDIT_FINDINGS.md H16): see src/process_data.py for the same fix and
+# rationale -- this used to independently hardcode a VAL_RECORDS that diverged from
+# src/split.py's canonical list. Now imported, so both pipelines stay in sync.
+sys.path.insert(0, os.path.dirname(__file__))
+from split import DS1_RECORDS, VAL_RECORDS, TRAIN_RECORDS, TEST_RECORDS
 
 AAMI_MAP = {
     'N': 0, 'L': 0, 'R': 0, 'e': 0, 'j': 0,

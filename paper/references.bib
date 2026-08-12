@@ -12,7 +12,7 @@
   doi       = {10.1109/DSD.2018.00078}
 }
 
-@article{guo_inter-patient_2018,
+@article{guo_inter-patient_2019,
   title     = {Inter-patient {ECG} classification with convolutional and recurrent neural networks},
   author    = {Guo, Lili and Sim, Gavin and Matuszewski, Bogdan},
   journal   = {Biocybernetics and Biomedical Engineering},
@@ -23,37 +23,48 @@
   publisher = {Elsevier},
   doi       = {10.1016/j.bbe.2019.06.001}
 }
+% NOTE (AUDIT_FINDINGS.md C14): key fixed 2026-08-12, was mis-keyed
+% `guo_inter-patient_2018` (content year was always 2019) -- the manuscript cites
+% `guo_inter-patient_2019`, so the old key would not have resolved.
 
 @article{akan_ecgformer_2024,
-  title     = {{ECGformer}: {Transformer}-based {ECG} classification with attention mechanisms},
-  author    = {Akan, Taha and Alp, Sidre},
-  journal   = {Engineering Applications of Artificial Intelligence},
-  volume    = {133},
-  pages     = {108548},
+  title     = {{ECGformer}: {A} Transformer-based Ensemble Technique for Cardiac Arrhythmia Classification},
+  author    = {Akan, Taymaz and Alp, Sait and Bhuiyan, Mohammad Alfrad Nobel},
+  journal   = {arXiv preprint arXiv:2401.05434},
   year      = {2024},
-  publisher = {Elsevier},
-  doi       = {10.1016/j.engappai.2024.108548}
+  note      = {Also presented at IEEE CSCI 2023, pp.\ 1412--1417. AUDIT_FINDINGS.md C14: the
+    previous entry (authors "Akan, Taha and Alp, Sidre", journal Engineering Applications of
+    Artificial Intelligence, DOI 10.1016/j.engappai.2024.108548) was fabricated -- that DOI
+    resolves to an unrelated real paper on bibliographic reference parsing, and this work was
+    never published in that journal. Fixed 2026-08-12.}
 }
 
 @article{taleban_explainable_2026,
-  title     = {Explainable {AI} in healthcare: {A} systematic review of interpretability methods for clinical decision support},
-  author    = {Taleban, Fatemeh and others},
-  journal   = {Artificial Intelligence in Medicine},
-  volume    = {148},
-  pages     = {102765},
+  title     = {Explainable artificial intelligence in electrocardiography: {A} systematic review},
+  author    = {Taleban, Amirsajjad and Sparapani, Rodney and Noffke, Patrick and Zlochiver, Sharone and Lu, Qiang and Widlansky, Michael E. and Luo, Jake},
+  journal   = {Biomedical Signal Processing and Control},
+  volume    = {114},
+  pages     = {109325},
   year      = {2026},
-  publisher = {Elsevier}
+  publisher = {Elsevier},
+  doi       = {10.1016/j.bspc.2025.109325},
+  note      = {AUDIT_FINDINGS.md C14: previous entry (author "Taleban, Fatemeh and others",
+    journal Artificial Intelligence in Medicine, no DOI) was fabricated/unconfirmed --
+    replaced 2026-08-12 with the verified-real entry.}
 }
 
 @article{bahrami_investigation_2025,
-  title     = {An investigation of evaluation protocols for {ECG} arrhythmia classification: {Intra-patient} vs.\ inter-patient},
-  author    = {Bahrami, Mohsen and Fotouhi, Morteza},
-  journal   = {Biomedical Signal Processing and Control},
-  volume    = {98},
-  pages     = {106738},
+  title     = {Investigation of Inter-Patient, Intra-Patient, and Patient-Specific Based Training in Deep Learning for Classification of Heartbeat Arrhythmia},
+  author    = {Bahrami, Reza and Fotouhi, Ali Mohammad},
+  journal   = {Cardiovascular Engineering and Technology},
+  volume    = {16},
+  pages     = {333--342},
   year      = {2025},
-  publisher = {Elsevier},
-  doi       = {10.1016/j.bspc.2024.106738}
+  publisher = {Springer},
+  doi       = {10.1007/s13239-025-00777-y},
+  note      = {AUDIT_FINDINGS.md C14: previous entry (authors "Bahrami, Mohsen and Fotouhi,
+    Morteza", journal Biomedical Signal Processing and Control) was fabricated/unconfirmed --
+    replaced 2026-08-12 with the verified-real entry.}
 }
 
 @article{xiao_deep_2023,
@@ -64,47 +75,71 @@
   pages     = {107236},
   year      = {2023},
   publisher = {Elsevier},
-  doi       = {10.1016/j.compbiomed.2023.107236}
+  doi       = {10.1016/j.compbiomed.2023.107236},
+  note      = {UNRESOLVED -- AUDIT_FINDINGS.md C14: this entry's DOI resolves to a completely
+    unrelated real paper ("Three-dimensional spinal shape changes during daily activities",
+    Rockenfeller et al., same journal/volume by coincidence). No real paper matching this
+    title/author/topic was found by an active web search as of 2026-08-12. DO NOT cite this
+    entry as-is -- either a different real citation is needed for the claim it supports, or
+    the claim should be removed. Flagged for project-owner decision, not fixed.}
 }
 
 @article{silva_systematic_2025,
-  title     = {A systematic review on deep learning approaches for inter-patient {ECG} classification},
-  author    = {Silva, Igor and others},
-  journal   = {Expert Systems with Applications},
-  volume    = {255},
-  pages     = {124578},
+  title     = {A Systematic Review of {ECG} Arrhythmia Classification: Adherence to Standards, Fair Evaluation, and Embedded Feasibility},
+  author    = {Silva, Guilherme A. L. and others},
+  journal   = {arXiv preprint arXiv:2503.07276},
   year      = {2025},
-  publisher = {Elsevier}
+  note      = {AUDIT_FINDINGS.md C7/C14: confirmed real (arXiv:2503.07276, submitted March
+    2025) -- 122 studies reviewed, 5 (4.1%) E3C-compliant, 37 (30.3%) inter-patient, matching
+    the manuscript's "4.1%" claim exactly. Previous entry here had a fabricated-looking title,
+    wrong author first name ("Igor"), and fake volume/page numbers. The sibling entry in
+    `paper/IEEE PAPER/references.bib` had the correct title but still the wrong author first
+    name ("Lucas R."). Real first author is Guilherme A. L. Silva. Fixed 2026-08-12.}
 }
 
 @article{elsheikhy_lightweight_2025,
-  title     = {Lightweight deep learning architectures for {ECG} classification on edge devices},
-  author    = {Elsheikhy, Ahmed and others},
-  journal   = {IEEE Internet of Things Journal},
-  volume    = {12},
-  number    = {5},
-  pages     = {4231--4242},
+  title     = {Lightweight Deep Learning Architecture for Multi-Lead {ECG} Arrhythmia Detection},
+  author    = {Elsheikhy, Donia H. and Hassan, Abdelwahab S. and Yhiea, Nashwa M. and Fareed, Ahmed M. and Rashed, Essam A.},
+  journal   = {Sensors},
+  volume    = {25},
+  number    = {17},
+  pages     = {5542},
   year      = {2025},
-  publisher = {IEEE},
-  doi       = {10.1109/JIOT.2024.3478921}
+  publisher = {MDPI},
+  doi       = {10.3390/s25175542},
+  note      = {AUDIT_FINDINGS.md C14: previous entry (author "Elsheikhy, Ahmed and others",
+    journal IEEE Internet of Things Journal, DOI 10.1109/JIOT.2024.3478921) was
+    fabricated/unconfirmed -- that DOI returns nothing matching. Replaced 2026-08-12 with the
+    verified-real entry.}
 }
 
-@article{liu_kan_2025,
+@article{liu_kan_2024,
   title     = {{KAN}: {Kolmogorov}--{Arnold} Networks},
   author    = {Liu, Ziming and Wang, Yixuan and Vaidya, Sachin and Ruehle, Fabian and Halverson, James and Solja\v{c}i\'{c}, Marin and Hou, Thomas Y. and Tegmark, Max},
   journal   = {arXiv preprint arXiv:2404.19756},
-  year      = {2024},
-  note      = {Published 2025}
+  year      = {2024}
 }
+% NOTE (AUDIT_FINDINGS.md C14): key fixed 2026-08-12, was mis-keyed `liu_kan_2025`
+% (content year was always 2024) -- the manuscript cites `liu_kan_2024`.
 
 @article{zhao_mak-net_2025,
-  title     = {{MAK}-{Net}: {M}ixed attention {Kolmogorov}--{Arnold} network for {ECG} heartbeat classification},
-  author    = {Zhao, Yuheng and others},
-  journal   = {Biomedical Signal Processing and Control},
-  volume    = {101},
-  pages     = {106891},
+  title     = {{MAK}-{Net}: A Multi-Scale Attentive {Kolmogorov}--{Arnold} Network with {BiGRU} for Imbalanced {ECG} Arrhythmia Classification},
+  author    = {Zhao, Cong and Lai, Bingwei and Xu, Yongzheng and Wang, Yiping and Dong, Haorong},
+  journal   = {Sensors},
+  volume    = {25},
+  number    = {13},
+  pages     = {3928},
   year      = {2025},
-  publisher = {Elsevier}
+  publisher = {MDPI},
+  doi       = {10.3390/s25133928},
+  note      = {AUDIT_FINDINGS.md C14: this is the manuscript's primary competing baseline,
+    cited throughout with specific numbers (6.1M params, 24 ms/beat, per-class accuracy
+    figures). The previous entry (author "Zhao, Yuheng and others", journal Biomedical Signal
+    Processing and Control, vol 101, p.106891) was a real paper misattributed to the wrong
+    journal/title/first-author -- fixed 2026-08-12. The specific per-class numbers the
+    manuscript attributes to this paper (0.989/0.987/0.983) have NOT yet been re-checked
+    against this paper's actual reported figures (it reports "0.9980 accuracy," a possibly
+    different metric framing) -- flagged for Phase 5, not resolved here.}
 }
 
 @article{bozorgasl_liu_2024,
@@ -138,35 +173,51 @@
   doi       = {10.1088/0967-3334/26/5/R01}
 }
 
-@article{bae_handling_2025,
-  title     = {Handling class imbalance in {ECG} heartbeat classification: {A} comparative study},
-  author    = {Bae, Sunghoon and others},
-  journal   = {Biomedical Engineering Letters},
-  volume    = {15},
-  pages     = {45--58},
-  year      = {2025},
-  publisher = {Springer}
+@inproceedings{bae_handling_2025,
+  title        = {Handling Imbalanced Medical Dataset with Continuous Class Features using Improved Contrastive Learning},
+  author       = {Bae, Jungwoo and Shin, Jitae},
+  booktitle    = {Proceedings of the International Conference on Artificial Intelligence in Information and Communication (ICAIIC)},
+  year         = {2025},
+  organization = {IEEE},
+  note         = {AUDIT_FINDINGS.md C14: previous entry (author "Bae, Sunghoon and others",
+    journal Biomedical Engineering Letters) was fabricated/unconfirmed -- no matching paper
+    found. This replacement entry is real (confirmed via IEEE Xplore doc 10920651) but its
+    venue was independently corrected from the manuscript's stated "ICCE 2025" to the actual
+    "ICAIIC 2025" -- fixed 2026-08-12. The manuscript's specific percentage claims attributed
+    to this paper (74.66% / 80.93% / 85.01%) have NOT been independently confirmed against the
+    paper's text -- flagged for Phase 5, not resolved here.}
 }
 
-@article{schmale_curriculum_2025,
-  title     = {Curriculum learning for imbalanced medical data: {A} survey and benchmark},
-  author    = {Schmale, Henrik and others},
-  journal   = {Medical Image Analysis},
-  volume    = {95},
-  pages     = {103162},
-  year      = {2025},
-  publisher = {Elsevier}
+@inproceedings{schmale_curriculum_2025,
+  title        = {Curriculum Learning using Real and Simulated Data in Deep Learning Models for Electrocardiography Classification},
+  author       = {Schmale, Sebastian and Hempel, Philip and Spicher, Nicolai},
+  booktitle    = {Proceedings of the 47th Annual International Conference of the IEEE Engineering in Medicine and Biology Society (EMBC)},
+  year         = {2025},
+  organization = {IEEE},
+  doi          = {10.1109/EMBC58623.2025.11252863},
+  note         = {AUDIT_FINDINGS.md C14: previous entry (author "Schmale, Henrik and others",
+    journal Medical Image Analysis) was fabricated/unconfirmed -- no matching paper found.
+    Replaced 2026-08-12 with the verified-real entry (confirmed via CrossRef DOI resolution to
+    a live IEEE Xplore document). The manuscript's specific LBBB/RBBB-misclassification claim
+    attributed to this paper has NOT been independently confirmed against its text.}
 }
 
-@article{mousavi_inter-_2019,
-  title     = {Inter- and intra-patient {ECG} heartbeat classification for arrhythmia detection: {A} sequence to sequence deep learning approach},
-  author    = {Mousavi, Sajad and Afghah, Fatemeh and Razi, Abolfazl and Acharya, U. Rajendra},
-  journal   = {Information Sciences},
-  volume    = {526},
-  pages     = {100--110},
-  year      = {2020},
-  publisher = {Elsevier},
-  doi       = {10.1016/j.ins.2020.03.021}
+@inproceedings{mousavi_inter-_2019,
+  title        = {Inter- and intra-patient {ECG} heartbeat classification for arrhythmia detection: {A} sequence to sequence deep learning approach},
+  author       = {Mousavi, Sajad and Afghah, Fatemeh},
+  booktitle    = {2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+  pages        = {1308--1312},
+  year         = {2019},
+  organization = {IEEE},
+  doi          = {10.1109/ICASSP.2019.8683140},
+  note         = {AUDIT_FINDINGS.md C14: this paper only exists as this ICASSP 2019 conference
+    paper (also on arXiv:1812.07421) -- the previous entry invented a journal identity for it
+    ("Information Sciences", vol 526, pp.100-110, year 2020) with a DOI
+    (10.1016/j.ins.2020.03.021) that resolves to a completely unrelated real paper ("PUMAD: PU
+    Metric learning for anomaly detection", Ju et al.). Fixed 2026-08-12. The manuscript's
+    specific numeric claims attributed to this citation (S-recall >0.60, 5.5MB memory
+    footprint, V-Rec 0.99 in the SOTA table) should be re-checked against this real conference
+    paper's actual reported figures -- flagged for Phase 5, not resolved here.}
 }
 
 @article{chazal_automatic_2004,
@@ -193,13 +244,33 @@
 }
 
 @article{zhou_inter-patient_2024,
-  title     = {Inter-patient {ECG} classification with multiscale convolutional neural networks},
-  author    = {Zhou, Lu and others},
+  title     = {Inter-patient {ECG} arrhythmia heartbeat classification network based on multiscale convolution and {FCBA}},
+  author    = {Zhou, Fei-yan and Sun, Yu-hao and Wang, Ya-wen},
   journal   = {Biomedical Signal Processing and Control},
-  volume    = {88},
-  pages     = {105624},
+  volume    = {90},
+  pages     = {105789},
   year      = {2024},
-  publisher = {Elsevier}
+  publisher = {Elsevier},
+  doi       = {10.1016/j.bspc.2023.105789},
+  note      = {AUDIT_FINDINGS.md C14: previous entry (author "Zhou, Lu and others", vol 88,
+    art. 105624, no DOI) was fabricated/unconfirmed -- no matching article found in BSPC vol
+    88. Replaced 2026-08-12 with the verified-real entry (confirmed via ScienceDirect). This
+    citation is used substantively (RR-interval feature claims, F-class exclusion precedent,
+    calibration discussion) -- re-check those specific attributions against the real paper.}
+}
+
+@inproceedings{bengio_curriculum_2009,
+  title        = {Curriculum Learning},
+  author       = {Bengio, Yoshua and Louradour, J{\'e}r{\^o}me and Collobert, Ronan and Weston, Jason},
+  booktitle    = {Proceedings of the 26th International Conference on Machine Learning (ICML)},
+  pages        = {41--48},
+  year         = {2009},
+  publisher    = {ACM},
+  address      = {Montreal, Canada},
+  doi          = {10.1145/1553374.1553380},
+  note         = {AUDIT_FINDINGS.md C14: this entry was entirely absent from this file (only
+    existed in `paper/IEEE PAPER/references.bib`) even though the manuscript cites it --
+    added 2026-08-12. Confirmed real via ACM DL / dblp.}
 }
 
 @article{moody_mit-bih_1992,
