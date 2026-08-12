@@ -4,9 +4,36 @@
 
 **Decided (project owner, 2026-08-12):** the canonical model is **WavKAN_v2** (154,325 params, PCWI+PWAM+RR-self-attention). Everything below targets that architecture.
 
+**All of this is already committed and pushed to `origin/main`** (verified 2026-08-12: 0 uncommitted changes, 0 commits ahead/behind `origin/main`). You do not need to manually carry anything over from this checkout — a fresh `git clone` on your GPU machine gets everything below. `data/` and any prior local `results/...` subfolders from earlier experimentation are either gitignored or predate this audit's fixes — nothing there needs to be preserved; Sections 1-2 below regenerate/produce it all under new, non-colliding directory names.
+
 ---
 
-## 0. Environment setup
+## Quick start (fresh machine, one command to a full 20-seed run)
+
+```bash
+# 1. Fresh clone -- do this instead of reusing an old checkout, it's zero-risk
+git clone git@github-vrhsr:vrhsr/WavKAN-CL.git
+cd WavKAN-CL
+
+# 2. Python environment
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+pip install neurokit2            # required by the data pipeline, missing from requirements.txt (real gap found during Phase 5 scoping)
+
+# 3. Run everything: GPU check -> sanity tests -> data regen -> smoke test -> full
+#    20-seed x 2-arm training -> aggregation. See run_gpu_pipeline.sh for exactly
+#    what each step does and why; it pauses 10s after the smoke test so you can
+#    Ctrl+C before committing to the full run.
+chmod +x run_gpu_pipeline.sh
+nohup bash run_gpu_pipeline.sh 2>&1 | tee pipeline_log.txt &
+```
+
+That single script (`run_gpu_pipeline.sh`, repo root) is the executable version of everything in Sections 1-3 below. Sections 1-3 are the narrative explanation of what it does and why; Sections 4-5 cover what it does **not** yet do (PTB-XL/INCART/SVDB, Fig. 3/4/6 regeneration) — those still need to be run/scripted separately, see below.
+
+---
+
+## 0. Environment setup (detail)
 
 ```bash
 pip install -r requirements.txt
@@ -22,6 +49,8 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 ---
 
 ## 1. Regenerate MIT-BIH data
+
+*(This and Section 2 are what `run_gpu_pipeline.sh` runs automatically — read on if you want to run steps individually, debug one seed, or understand what the script is doing.)*
 
 ```bash
 python -c "import wfdb; wfdb.dl_database('mitdb', 'data/raw')"
