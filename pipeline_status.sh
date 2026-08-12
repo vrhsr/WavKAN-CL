@@ -32,7 +32,21 @@ else
 fi
 
 echo ""
-echo "Seed completion (each arm needs 20):"
+echo "Smoke test (Phase 1 -- these dirs are deleted right after the smoke test finishes,"
+echo "so seeing nothing here just means Phase 1 already completed or hasn't started):"
+for arm in curriculum baseline; do
+    dir="results/smoke_${arm}"
+    if [ -f "${dir}/test_metrics.json" ]; then
+        echo "  smoke_$arm: complete"
+    elif [ -d "$dir" ]; then
+        echo "  smoke_$arm: in progress (dir exists, no test_metrics.json yet)"
+    else
+        echo "  smoke_$arm: not present (either not started, or already finished+cleaned up)"
+    fi
+done
+
+echo ""
+echo "Seed completion, Phase 2 (each arm needs 20):"
 for arm in curriculum baseline; do
     dir="results/wavkan_v2_${arm}"
     if [ -d "$dir" ]; then
@@ -55,7 +69,12 @@ echo ""
 echo "Most recently modified log (tail):"
 latest_log=$(ls -t logs/*/*.log 2>/dev/null | head -1)
 if [ -n "$latest_log" ]; then
-    echo "  $latest_log"
+    log_age_sec=$(( $(date +%s) - $(stat -c %Y "$latest_log" 2>/dev/null || stat -f %m "$latest_log" 2>/dev/null || echo 0) ))
+    echo "  $latest_log  (last modified ${log_age_sec}s ago)"
+    if [ "$log_age_sec" -gt 120 ]; then
+        echo "  *** STALE: no update in >2 min. If a job is 'Running' above but this log is old,"
+        echo "  *** the current run likely isn't writing here -- check how it was launched."
+    fi
     echo "  --------------------------------------------------------------"
     tail -n 12 "$latest_log" | sed 's/^/  /'
     echo "  --------------------------------------------------------------"
@@ -66,6 +85,16 @@ fi
 echo ""
 echo "Overall pipeline_log.txt (last 8 lines, if it exists in the current directory):"
 if [ -f "pipeline_log.txt" ]; then
+    plog_age_sec=$(( $(date +%s) - $(stat -c %Y "pipeline_log.txt" 2>/dev/null || stat -f %m "pipeline_log.txt" 2>/dev/null || echo 0) ))
+    echo "  (last modified ${plog_age_sec}s ago)"
+    if [ "$plog_age_sec" -gt 120 ]; then
+        echo "  *** STALE -- this is very likely leftover from a PREVIOUS run, not the current one."
+        echo "  *** Only trust this if you launched the current run with:"
+        echo "  ***   nohup bash run_gpu_pipeline.sh 2>&1 | tee pipeline_log.txt &"
+        echo "  *** If you instead ran 'bash run_gpu_pipeline.sh' directly (e.g. inside tmux without"
+        echo "  *** the tee wrapper), this file is simply not being updated -- check the tmux pane"
+        echo "  *** itself, or the per-step logs above, instead."
+    fi
     tail -n 8 pipeline_log.txt | sed 's/^/  /'
 else
     echo "  pipeline_log.txt not found in $(pwd) -- run this from the same directory you launched the pipeline from"
