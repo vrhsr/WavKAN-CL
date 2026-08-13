@@ -142,21 +142,26 @@ This is a new script (`src/aggregate_seed_results.py`, written and regression-te
 
 ---
 
-## 4. Fig. 3 / Fig. 4 / Fig. 6 — what they need
+## 4. Fig. 3 / Fig. 4 / Fig. 6 — status as of 2026-08-13
 
-These three are the ones C1/H17 found to be currently broken or untraceable in the live manuscript. Given the compute is now happening for real, they can be regenerated honestly:
+Section 2's real run completed (20/20 seeds, both arms — `results/wavkan_v2_20seed_comparison.json`). Since then:
 
-- **Fig. 3 (seed stability)**: needs all 5 comparator models (WavKAN-v2, ResNet1D, Transformer, CNN+Focal Loss, B-Spline KAN) trained with a matched protocol, not just WavKAN-v2. `src/baselines_extended.py` has ResNet1D/Transformer/B-Spline KAN training code — **not yet audited for whether its protocol now matches `train_pca.py`'s** (same epochs/optimizer/schedule). Flag this back to me before trusting a re-generated Fig. 3 — this needs a fairness check I haven't done yet, separate from the H6 fix already applied to the baseline/curriculum pair above.
-- **Fig. 4 (convergence)**: `training_history.json` is already saved by `train_pca.py` for every seed/arm (Section 2 above) — plotting baseline-vs-curriculum training loss/Macro-F1/V-recall/S-recall across epochs from any one matched seed pair (e.g. seed 42 of each arm) directly gives the real two-curve comparison the caption describes. No new training needed once Section 2 is done — just a plotting script, which I can write once real `training_history.json` files exist to test against.
-- **Fig. 6 (RR-ablation)**: needs a real leave-one-out run (`src/rr_ablation.py` — confirmed in Phase 2 as "the methodologically cleanest script in this cluster," consumes pretrained checkpoints only, no retraining confound) against the new WavKAN_v2 checkpoints from Section 2, across at least 5 seeds. I can prepare the exact command once Section 2's checkpoints exist.
+- **Fig. 4 (convergence): DONE.** `src/generate_fig4_convergence.py` reads the real per-seed `training_history.json` and produces a genuine two-curve comparison — tested against real seed-42 data, output verified by direct rendering. Re-run anytime with `python src/generate_fig4_convergence.py`.
+- **Fig. 3 (seed stability): script ready, data not yet generated.** `baselines_extended.py`'s protocol now reasonably matches `train_pca.py`'s real hyperparameters (H6/H20 — see `AUDIT_FINDINGS.md`), so the fairness blocker is resolved. `src/generate_fig3_seed_stability.py` (new) reads real per-seed data with correct seed-identity pairing (regression-tested). Needs the 4 baseline models actually trained first — see `run_gpu_pipeline_phase5b.sh` below.
+- **Fig. 6 (RR-ablation): script confirmed ready, not yet run.** `src/rr_ablation.py` was already correctly built (real `WavKAN_v2`, real checkpoints, proper stats) — just needs to actually run against the new checkpoints. One command, in `run_gpu_pipeline_phase5b.sh`.
 
-I've deliberately not scripted these three yet — they depend on Section 2's checkpoints existing first, and Fig. 3 specifically needs a fairness audit of `baselines_extended.py` I haven't done. Flag back to me once Section 2 is done and I'll scope these three concretely.
+**Run everything left in one pass:**
+```bash
+chmod +x run_gpu_pipeline_phase5b.sh
+nohup bash run_gpu_pipeline_phase5b.sh 2>&1 | tee phase5b_log.txt &
+```
+This covers Fig. 3's 4 baseline models (5 seeds each), Table 4's ablation matrix (6 configs × 5 seeds, via `train_pca.py`'s own flags — not the old C9-flagged ablation pipeline), Fig. 6, and PTB-XL zero-shot (if `data/processed_ptbxl` already exists). Same resilience pattern as the main run: skip-if-complete per job, log-and-continue on a single job's failure, summary at the end. See the script's own header comment for exact detail.
 
 ---
 
-## 5. Cross-dataset data (PTB-XL / INCART / SVDB) — lower priority, do after Section 2-3
+## 5. Cross-dataset data (PTB-XL / INCART / SVDB)
 
-Only needed for Table 9 (multi-dataset) and the PTB-XL zero-shot table (already confirmed honest and working — see `AUDIT_FINDINGS.md` C8 positive finding — it just needs real data and the retrained checkpoint to run against):
+`src/eval_ptbxl.py` was fixed 2026-08-13 (H25) — it hardcoded the old 95K architecture, which would have failed loading a real `WavKAN_v2` checkpoint. Now fixed and verified against a real downloaded checkpoint locally.
 
 ```bash
 python -c "import wfdb; wfdb.dl_database('ptb-xl', 'data/ptbxl')"   # large: ~1.7GB
@@ -164,7 +169,7 @@ python src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl
 python src/eval_ptbxl.py --data-dir data/processed_ptbxl --model-path results/wavkan_v2_curriculum/seed_42/best_model.pth
 ```
 
-INCART/SVDB are smaller and lower-priority; commands available on request once the above is working.
+`run_gpu_pipeline_phase5b.sh` will pick up PTB-XL eval automatically if `data/processed_ptbxl` already exists by the time it runs. INCART/SVDB (`eval_multidataset.py`, already correctly using `WavKAN_v2`) — commands available on request once PTB-XL is working.
 
 ---
 

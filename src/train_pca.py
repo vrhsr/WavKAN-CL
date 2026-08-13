@@ -210,7 +210,14 @@ def train_pca(
     s_weight: float = 8.0,
     lr: float       = 1e-3,
     weight_decay: float = 1e-4,
-    batch_size: int = 512,
+    batch_size: int = 64,
+    # Fixed 2026-08-13: this default used to say 512, but the CLI parser below
+    # (--batch-size default=64) is what every real invocation through
+    # run_gpu_pipeline.sh actually goes through (it never passes --batch-size) --
+    # so the real completed 20-seed run used 64, not 512. Corrected here to match
+    # what was actually run, so the function's own signature isn't a false record
+    # of the real hyperparameters. Also matters for the Fig. 3 fairness comparison
+    # against baselines_extended.py, whose own default is 64 (AUDIT_FINDINGS.md H6/H20).
     data_dir: str   = "data/processed_rr_history",
     output_dir: str = "results/pca_model",
     use_pcwi: bool  = True,

@@ -1,13 +1,21 @@
 """
 PTB-XL Zero-Shot Evaluation
 ============================
-Loads the best trained WavKAN-CL checkpoint (trained on MIT-BIH) and
+Loads the best trained WavKAN-v2 checkpoint (trained on MIT-BIH) and
 evaluates it zero-shot on the PTB-XL test set (Lead-II, AAMI superclasses).
 
 Usage:
-    python src/eval_ptbxl.py [--model-path results/hybrid_rr_history_20_seeds/seed_42/best_hybrid_rr.pth]
+    python src/eval_ptbxl.py [--model-path results/wavkan_v2_curriculum/seed_42/best_model.pth]
                               [--data-dir data/processed_ptbxl]
                               [--out results/ptbxl_zero_shot_metrics.json]
+
+Fixed 2026-08-13 (AUDIT_FINDINGS.md, blocking the cross-dataset Phase 5 re-run): this
+script used to hardcode the old HybridWavKAN_RR (95K, "WavKAN-CL") architecture, copy-
+pasted from fusion_engine.py/train_curriculum.py. Since the model identity decision
+(C3) settled on WavKAN_v2 (154K) as canonical, loading the new real checkpoints into
+the old class here would have failed outright (mismatched state dict keys/shapes) --
+now imports the real model class, matching the pattern already correct in
+eval_multidataset.py.
 """
 
 import os
@@ -21,38 +29,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import classification_report, f1_score, confusion_matrix
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.wavkan import WavKANLinear
-
-
-# ---------------------------------------------------------------------------
-# Model definition — must match fusion_engine.py / train_curriculum.py exactly
-# ---------------------------------------------------------------------------
-class HybridWavKAN_RR(nn.Module):
-    def __init__(self, input_size=360, num_classes=5):
-        super().__init__()
-        self.kan    = WavKANLinear(input_size, 64, wavelet_type='mexican_hat')
-        self.ln     = nn.LayerNorm(64)
-        self.dropout = nn.Dropout(0.2)
-        self.bigru  = nn.GRU(64, 32, 1, batch_first=True, bidirectional=True)
-        self.rr_mlp = nn.Sequential(
-            nn.Linear(5, 64), nn.ReLU(),
-            nn.Linear(64, 32), nn.ReLU(),
-            nn.Linear(32, 16), nn.ReLU()
-        )
-        self.fc1 = nn.Linear(80, 48)
-        self.fc2 = nn.Linear(48, num_classes)
-
-    def forward(self, x, xr):
-        x  = self.kan(x)
-        x  = self.ln(x)
-        x  = self.dropout(x)
-        x  = x.unsqueeze(1)
-        x, _ = self.bigru(x)
-        x  = x.squeeze(1)
-        xr = self.rr_mlp(xr)
-        x  = torch.cat((x, xr), dim=1)
-        x  = torch.relu(self.fc1(x))
-        return self.fc2(x)
+from models.wavkan_v2 import WavKAN_v2
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +56,7 @@ def evaluate(model_path: str, data_dir: str, out_path: str):
     print(f"Device: {device}")
 
     # Load model
-    model = HybridWavKAN_RR().to(device)
+    model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
     if not os.path.exists(model_path):
         raise FileNotFoundError(
             f"Checkpoint not found: {model_path}\n"
@@ -166,7 +143,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Zero-shot PTB-XL evaluation")
     parser.add_argument(
         "--model-path", type=str,
-        default="results/hybrid_rr_history_20_seeds/seed_42/best_hybrid_rr.pth"
+        default="results/wavkan_v2_curriculum/seed_42/best_model.pth"
     )
     parser.add_argument("--data-dir", type=str, default="data/processed_ptbxl")
     parser.add_argument("--out",  type=str, default="results/ptbxl_zero_shot_metrics.json")

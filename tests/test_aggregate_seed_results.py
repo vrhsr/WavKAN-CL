@@ -104,3 +104,42 @@ def test_aggregate_handles_entirely_missing_directory_gracefully(tmp_path):
     report = aggregate(str(tmp_path / "does_not_exist"), str(tmp_path / "also_missing"))
     assert report["n_paired_seeds"] == 0
     assert report["metrics"] == {}
+
+
+def test_aggregate_reports_cohens_d_effect_size(tmp_path):
+    """Added 2026-08-13 for top-tier rigor: the manuscript's own captions already claim
+    Cohen's d is reported -- this makes that actually true for the real 20-seed table."""
+    baseline_dir = tmp_path / "baseline"
+    curriculum_dir = tmp_path / "curriculum"
+    for seed in range(20):
+        _write_seed_result(baseline_dir, seed, macro_f1=0.30, v_recall=0.87)
+        _write_seed_result(curriculum_dir, seed, macro_f1=0.29, v_recall=0.95)  # large, consistent gap
+
+    report = aggregate(str(baseline_dir), str(curriculum_dir))
+
+    v_entry = report["metrics"]["v_recall"]
+    assert "cohens_d" in v_entry
+    assert v_entry["effect_size"] in ("negligible", "small", "medium", "large")
+    # A large, consistent 0.87 vs 0.95 gap across all 20 seeds should register as a
+    # large effect, not get lost by only reporting significance.
+    assert abs(v_entry["cohens_d"]) >= 0.8
+    assert v_entry["effect_size"] == "large"
+
+
+def test_aggregate_applies_holm_correction_across_metrics(tmp_path):
+    """Added 2026-08-13: testing 5 metrics from one comparison without correcting for
+    multiple comparisons inflates the family-wise error rate -- verify the correction is
+    actually applied and the Holm-adjusted p is never smaller than the raw p."""
+    baseline_dir = tmp_path / "baseline"
+    curriculum_dir = tmp_path / "curriculum"
+    for seed in range(20):
+        _write_seed_result(baseline_dir, seed, macro_f1=0.30, v_recall=0.87, s_recall=0.10)
+        _write_seed_result(curriculum_dir, seed, macro_f1=0.29, v_recall=0.95, s_recall=0.30)
+
+    report = aggregate(str(baseline_dir), str(curriculum_dir))
+
+    for metric, entry in report["metrics"].items():
+        if entry["wilcoxon_p_two_sided"] is not None:
+            assert "holm_adjusted_p" in entry
+            assert entry["holm_adjusted_p"] >= entry["wilcoxon_p_two_sided"] - 1e-12
+            assert "significant_after_holm_correction" in entry

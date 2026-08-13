@@ -18,6 +18,15 @@ directional assumption about which arm should win). No test-set peeking anywhere
 only ever reads each seed's already-computed test_metrics.json -- it does not select,
 rank, or filter seeds by any metric. Every seed that has a result gets averaged in.
 
+Updated 2026-08-13 for a top-tier-journal rigor bar: now reports Cohen's d effect size
+alongside each p-value (via src/metrics_full.statistical_comparison, whose
+Holm-Bonferroni implementation and Wilcoxon-guard logic were manually re-verified
+before reuse rather than trusted on the codebase's general track record), and applies
+Holm-Bonferroni correction ACROSS the 5 metrics tested here -- testing 5 metrics from
+the same 20-seed comparison without correction inflates the family-wise Type I error
+rate, exactly the kind of thing a strong reviewer checks for. Both the raw and the
+Holm-corrected p-value are reported; neither is hidden.
+
 Usage:
     python src/aggregate_seed_results.py \\
         --baseline-dir results/wavkan_v2_baseline \\
@@ -26,10 +35,14 @@ Usage:
 """
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import wilcoxon
+
+sys.path.insert(0, os.path.dirname(__file__))
+from metrics_full import statistical_comparison, holm_bonferroni_correction
 
 METRICS = ["macro_f1", "v_recall", "s_recall", "n_recall", "f_recall"]
 
@@ -87,6 +100,8 @@ def aggregate(baseline_dir: str, curriculum_dir: str) -> dict:
             f"seeds before treating this as the final 20-seed comparison."
         )
 
+    metrics_with_p = []  # (metric_name, raw_p) pairs, in a fixed order, for Holm correction
+
     for metric in METRICS:
         if not paired_seeds:
             continue  # no seeds present in both arms at all -- nothing to aggregate
@@ -95,29 +110,38 @@ def aggregate(baseline_dir: str, curriculum_dir: str) -> dict:
         if len(b_vals) != len(paired_seeds) or len(c_vals) != len(paired_seeds):
             continue  # metric missing for some paired seed; skip rather than misreport
 
+        # metrics_full.statistical_comparison already guards n>=6 and non-zero-variance
+        # before running Wilcoxon (verified during Phase 2, re-verified by hand here),
+        # and additionally reports Cohen's d (paired, SD-of-differences convention).
+        cmp = statistical_comparison(b_vals, c_vals, metric_name=metric)
         entry = {
-            "baseline_mean": float(np.mean(b_vals)),
-            "baseline_std": float(np.std(b_vals, ddof=1)) if len(b_vals) > 1 else 0.0,
-            "curriculum_mean": float(np.mean(c_vals)),
-            "curriculum_std": float(np.std(c_vals, ddof=1)) if len(c_vals) > 1 else 0.0,
+            "baseline_mean": cmp["mean_a"],
+            "baseline_std": cmp["std_a"],
+            "curriculum_mean": cmp["mean_b"],
+            "curriculum_std": cmp["std_b"],
             "n": len(paired_seeds),
+            "wilcoxon_p_two_sided": None if np.isnan(cmp["p_value"]) else cmp["p_value"],
+            "cohens_d": cmp["cohens_d"],
+            "effect_size": cmp["effect_size"],
         }
-
-        # Two-sided paired Wilcoxon signed-rank test, seed-aligned by construction
-        # (b_vals[i] and c_vals[i] both come from paired_seeds[i]). Requires n>=6 for a
-        # meaningful exact test at alpha=0.05 (matching the one clean positive-finding
-        # pattern found in metrics_full.statistical_comparison during Phase 2).
-        if len(paired_seeds) >= 6 and not np.allclose(b_vals, c_vals):
-            stat, p = wilcoxon(b_vals, c_vals, alternative="two-sided")
-            entry["wilcoxon_p_two_sided"] = float(p)
-        else:
-            entry["wilcoxon_p_two_sided"] = None
+        if entry["wilcoxon_p_two_sided"] is None:
             entry["wilcoxon_skipped_reason"] = (
-                "fewer than 6 paired seeds, or values identical" if len(paired_seeds) < 6
-                else "baseline and curriculum values identical for every paired seed"
+                "fewer than 6 paired seeds, or baseline/curriculum values identical for every seed"
             )
+        else:
+            metrics_with_p.append((metric, entry["wilcoxon_p_two_sided"]))
 
         report["metrics"][metric] = entry
+
+    # Holm-Bonferroni correction ACROSS the metrics actually tested here -- testing 5
+    # metrics from one 20-seed comparison without correcting for multiple comparisons
+    # inflates the family-wise Type I error rate. Both raw and corrected p are kept.
+    if metrics_with_p:
+        names, raw_ps = zip(*metrics_with_p)
+        adjusted = holm_bonferroni_correction(list(raw_ps))
+        for name, adj_p in zip(names, adjusted):
+            report["metrics"][name]["holm_adjusted_p"] = float(adj_p)
+            report["metrics"][name]["significant_after_holm_correction"] = bool(adj_p < 0.05)
 
     return report
 
@@ -142,9 +166,11 @@ if __name__ == "__main__":
     print(f"{'='*60}")
     for metric, entry in report["metrics"].items():
         p_str = f"{entry['wilcoxon_p_two_sided']:.4f}" if entry["wilcoxon_p_two_sided"] is not None else "N/A"
+        holm_str = (f"{entry['holm_adjusted_p']:.4f}" if "holm_adjusted_p" in entry else "N/A")
+        d_str = f"{entry['cohens_d']:+.2f} ({entry['effect_size']})"
         print(f"  {metric:10s}  baseline={entry['baseline_mean']:.4f}±{entry['baseline_std']:.4f}  "
               f"curriculum={entry['curriculum_mean']:.4f}±{entry['curriculum_std']:.4f}  "
-              f"p={p_str}  (n={entry['n']})")
+              f"p={p_str}  holm_p={holm_str}  d={d_str}  (n={entry['n']})")
     print(f"{'='*60}\n")
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
