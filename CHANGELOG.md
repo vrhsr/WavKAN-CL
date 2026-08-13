@@ -178,3 +178,12 @@ Motivated by the project owner's explicit instruction not to hold back on rigor 
   - **Does not change any reported number yet** — Fig. 3's 4 baseline models haven't been trained in this checkout (needs `run_gpu_pipeline_phase5b.sh` step [1] run on the GPU box first); this only affects the script that will process that data once it exists.
 
 Verified: `python -m pytest tests/ test_ablation.py -q` → 34 passed, 2 skipped.
+
+---
+
+## 2026-08-13 — Main 20-seed run confirmed complete on the GPU box; supervisor generalized for Phase 5b
+
+- **Confirmed via the real supervisor log**: `run_gpu_pipeline_supervisor.sh` reported `run_gpu_pipeline.sh exited 0` after all 40 runs succeeded. The per-metric p-values in that log (v_recall p=0.2024, s_recall p=0.0003, n_recall p=0.0215, f_recall p=0.1538) match `results/wavkan_v2_20seed_comparison.json` exactly — no new data, just confirmation the run that produced the already-analyzed Holm-corrected result finished cleanly under supervision.
+- **`run_gpu_pipeline_supervisor.sh` generalized to wrap any pipeline script, not just `run_gpu_pipeline.sh`.** Was hardcoded to `bash run_gpu_pipeline.sh`; the same orchestrator-process-dying failure mode applies equally to `run_gpu_pipeline_phase5b.sh` (same shared GPU box, same multi-hour unattended run), so hardcoding meant Phase 5b would run unsupervised unless duplicated into a second script. Fixed: takes the target script as `$1`, defaulting to `run_gpu_pipeline.sh` for backward compatibility; errors clearly if the given path doesn't exist rather than silently doing nothing. All log messages updated to reference `$TARGET_SCRIPT` instead of the hardcoded name.
+  - Verified: `bash -n run_gpu_pipeline_supervisor.sh` → syntax OK.
+  - **Does not change any reported number** — this only affects how the *next* pipeline run is supervised.
