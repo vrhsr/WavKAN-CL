@@ -27,6 +27,18 @@
 #   chmod +x run_gpu_pipeline_supervisor.sh
 #   nohup bash run_gpu_pipeline_supervisor.sh 2>&1 | tee supervisor_log.txt &
 #   nohup bash run_gpu_pipeline_supervisor.sh run_gpu_pipeline_phase5b.sh 2>&1 | tee supervisor_phase5b_log.txt &
+#
+# Single-instance lock (added 2026-08-14): a real incident on the actual GPU box --
+# run_gpu_pipeline_phase5b.sh got launched 3 separate times across different tmux
+# reattaches (nobody checked whether an instance was already running first), and
+# because the wrapped pipeline's own resilience is skip-if-complete/resume-based,
+# nothing in the pipeline itself detects "another copy of me is already working on
+# this exact seed" -- all 3 copies just trained the same seeds redundantly at 3x
+# GPU cost until manually found and killed. This lock makes a second launch for the
+# SAME target script refuse to start instead of silently duplicating work. Locking
+# is per-target (via flock on a file named after the target script), so running
+# run_gpu_pipeline.sh and run_gpu_pipeline_phase5b.sh at the same time is still
+# fine -- those are genuinely different pipelines.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MAX_ATTEMPTS=5
@@ -37,6 +49,29 @@ if [ ! -f "$TARGET_SCRIPT" ]; then
     echo "# Supervisor: target script '${TARGET_SCRIPT}' not found in $(pwd)." >&2
     exit 1
 fi
+
+if ! command -v flock >/dev/null 2>&1; then
+    echo "# Supervisor: 'flock' not found -- cannot safely guarantee single-instance" >&2
+    echo "# execution. Install util-linux (flock) or manually confirm via 'ps -ef |" >&2
+    echo "# grep ${TARGET_SCRIPT}' that no other instance is running before retrying." >&2
+    exit 1
+fi
+
+LOCK_DIR="$(dirname "$0")/.pipeline_locks"
+mkdir -p "$LOCK_DIR"
+LOCK_FILE="${LOCK_DIR}/$(basename "$TARGET_SCRIPT").lock"
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "# Supervisor: another instance is already running '${TARGET_SCRIPT}'" >&2
+    echo "# (lock held: ${LOCK_FILE}). Refusing to start a duplicate -- this is" >&2
+    echo "# exactly the failure mode that wasted ~13-14 hours of GPU compute on" >&2
+    echo "# 2026-08-13 (3 copies of run_gpu_pipeline_phase5b.sh trained the same" >&2
+    echo "# seeds redundantly). Check 'ps -ef | grep ${TARGET_SCRIPT}' to find the" >&2
+    echo "# running instance instead of launching another." >&2
+    exit 1
+fi
+echo "# Supervisor: acquired single-instance lock for '${TARGET_SCRIPT}' (${LOCK_FILE})."
 
 attempt=1
 while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
