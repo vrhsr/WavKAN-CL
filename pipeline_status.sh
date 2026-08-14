@@ -1,7 +1,9 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# pipeline_status.sh -- read-only snapshot of run_gpu_pipeline.sh's progress.
-# Safe to run anytime, from a separate terminal/tmux pane, while the pipeline runs.
+# pipeline_status.sh -- read-only snapshot of run_gpu_pipeline.sh AND/OR
+# run_gpu_pipeline_phase5b.sh progress (both sections always print -- whichever
+# one hasn't been launched yet just shows all-zero/not-started, same as before).
+# Safe to run anytime, from a separate terminal/tmux pane, while a pipeline runs.
 # Does not touch or interfere with the running pipeline in any way.
 #
 # Usage:
@@ -28,13 +30,18 @@ echo "Background job:"
 # process from a different project during this Phase 5 session. Requiring "bash" (or
 # "sh") immediately before the script name is still not foolproof (pgrep -f matches
 # substrings of the whole command line, so this can't be made airtight without also
-# checking cwd/ppid), but it's meaningfully narrower than before.
-PATTERN="(bash|sh)[^|]*run_gpu_pipeline(_supervisor)?\.sh"
+# checking cwd/ppid), but it's meaningfully narrower than before. Extended same day
+# to also recognize run_gpu_pipeline_phase5b.sh (previously only matched the main
+# pipeline / its supervisor).
+PATTERN="(bash|sh)[^|]*run_gpu_pipeline(_supervisor|_phase5b)?\.sh"
 if pgrep -f "$PATTERN" >/dev/null 2>&1; then
-    PID=$(pgrep -f "$PATTERN" | head -1)
-    echo "  Running (pid $PID) -- if this still looks wrong, cross-check with: ps -p $PID -f"
+    for PID in $(pgrep -f "$PATTERN"); do
+        CMD=$(ps -p "$PID" -o args= 2>/dev/null | sed 's/^ *//')
+        echo "  Running (pid $PID): $CMD"
+    done
+    echo "  If any of the above still looks wrong, cross-check with: ps -p <pid> -f"
 else
-    echo "  NOT currently running -- check pipeline_log.txt for how/why it stopped"
+    echo "  NOT currently running -- check pipeline_log.txt / supervisor_*_log.txt for how/why it stopped"
 fi
 
 echo ""
@@ -82,6 +89,54 @@ else
 fi
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Phase 5b (run_gpu_pipeline_phase5b.sh) -- Fig.3 baselines, Table 4 ablations,"
+echo "Fig.6 RR-ablation, cross-dataset:"
+echo "----------------------------------------------------------------"
+
+echo ""
+echo "[1] Fig. 3 baselines (each needs 20 seeds):"
+for model in resnet1d transformer cnn_focal bspline_kan; do
+    dir="results/baseline_${model}"
+    if [ -d "$dir" ]; then
+        n_done=$(find "$dir" -mindepth 2 -maxdepth 2 -name "test_metrics.json" 2>/dev/null | wc -l | tr -d ' ')
+        echo "  $model: $n_done / 20 complete"
+    else
+        echo "  $model: not started yet"
+    fi
+done
+
+echo ""
+echo "[2] Table 4 ablation matrix (each config needs 20 seeds):"
+for name in wavelet_morlet wavelet_dog wavelet_bspline no_pcwi no_pwam no_rr_attn; do
+    dir="results/ablation_${name}"
+    if [ -d "$dir" ]; then
+        n_done=$(find "$dir" -mindepth 2 -maxdepth 2 -name "test_metrics.json" 2>/dev/null | wc -l | tr -d ' ')
+        echo "  $name: $n_done / 20 complete"
+    else
+        echo "  $name: not started yet"
+    fi
+done
+
+echo ""
+echo "[3] Fig. 6 RR-ablation:"
+if [ -f "results/rr_ablation_real/rr_ablation_report.json" ] && [ -f "results/rr_ablation_real/rr_ablation_figure.pdf" ]; then
+    echo "  complete (results/rr_ablation_real/rr_ablation_{report.json,figure.pdf})"
+else
+    echo "  not complete yet"
+fi
+
+echo ""
+echo "[4] PTB-XL zero-shot cross-dataset eval:"
+if [ -f "results/ptbxl_zero_shot_metrics_real.json" ]; then
+    echo "  complete (results/ptbxl_zero_shot_metrics_real.json)"
+elif [ -f "data/processed_ptbxl/X_test.npy" ]; then
+    echo "  data present, eval not yet complete (or still running)"
+else
+    echo "  skipped by the pipeline -- data/processed_ptbxl not regenerated yet"
+fi
+
+echo ""
 echo "Most recently modified log (tail):"
 latest_log=$(ls -t logs/*/*.log 2>/dev/null | head -1)
 if [ -n "$latest_log" ]; then
@@ -99,21 +154,26 @@ else
 fi
 
 echo ""
-echo "Overall pipeline_log.txt (last 8 lines, if it exists in the current directory):"
-if [ -f "pipeline_log.txt" ]; then
-    plog_age_sec=$(( $(date +%s) - $(stat -c %Y "pipeline_log.txt" 2>/dev/null || stat -f %m "pipeline_log.txt" 2>/dev/null || echo 0) ))
-    echo "  (last modified ${plog_age_sec}s ago)"
-    if [ "$plog_age_sec" -gt 120 ]; then
-        echo "  *** STALE -- this is very likely leftover from a PREVIOUS run, not the current one."
-        echo "  *** Only trust this if you launched the current run with:"
-        echo "  ***   nohup bash run_gpu_pipeline.sh 2>&1 | tee pipeline_log.txt &"
-        echo "  *** If you instead ran 'bash run_gpu_pipeline.sh' directly (e.g. inside tmux without"
-        echo "  *** the tee wrapper), this file is simply not being updated -- check the tmux pane"
-        echo "  *** itself, or the per-step logs above, instead."
+echo "Overall log file (last 8 lines, checking common names in the current directory):"
+FOUND_OVERALL_LOG=0
+for candidate in supervisor_phase5b_log.txt supervisor_log.txt pipeline_log.txt; do
+    if [ -f "$candidate" ]; then
+        FOUND_OVERALL_LOG=1
+        log_age_sec=$(( $(date +%s) - $(stat -c %Y "$candidate" 2>/dev/null || stat -f %m "$candidate" 2>/dev/null || echo 0) ))
+        echo "  $candidate (last modified ${log_age_sec}s ago)"
+        if [ "$log_age_sec" -gt 120 ]; then
+            echo "  *** STALE -- this may be leftover from a PREVIOUS run rather than one currently active."
+            echo "  *** If you ran a pipeline script directly (e.g. inside tmux without the 'tee' wrapper),"
+            echo "  *** this file simply isn't being updated -- check the tmux pane itself, or the"
+            echo "  *** per-step logs above, instead."
+        fi
+        tail -n 8 "$candidate" | sed 's/^/  /'
+        echo ""
     fi
-    tail -n 8 pipeline_log.txt | sed 's/^/  /'
-else
-    echo "  pipeline_log.txt not found in $(pwd) -- run this from the same directory you launched the pipeline from"
+done
+if [ "$FOUND_OVERALL_LOG" -eq 0 ]; then
+    echo "  None of supervisor_phase5b_log.txt / supervisor_log.txt / pipeline_log.txt found in $(pwd)"
+    echo "  -- run this from the same directory you launched the pipeline from, or check the tmux pane directly."
 fi
 
 echo ""
