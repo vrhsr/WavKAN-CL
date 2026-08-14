@@ -21,6 +21,10 @@ results/
 experiments/
 logs/
 wandb/
+pipeline_log.txt
+supervisor_log.txt
+supervisor_phase5b_log.txt
+*_log.txt
 
 # IDE
 .vscode/
