@@ -163,9 +163,11 @@ This covers Fig. 3's 4 baseline models (5 seeds each), Table 4's ablation matrix
 
 `src/eval_ptbxl.py` was fixed 2026-08-13 (H25) — it hardcoded the old 95K architecture, which would have failed loading a real `WavKAN_v2` checkpoint. Now fixed and verified against a real downloaded checkpoint locally.
 
+**`--sampling-rate 100` is required, not optional** (added 2026-08-16): the manuscript's own text describes this evaluation as "the PTB-XL database (100 Hz...)", but `process_ptbxl.py --sampling-rate` defaults to `500` (both variants get resampled to the same 360-sample MIT-BIH-matching window internally, so this isn't a correctness bug either way — but running with the default would silently create a mismatch between what the manuscript claims was done and what was actually run, the exact class of gap this whole audit exists to catch).
+
 ```bash
 python -c "import wfdb; wfdb.dl_database('ptb-xl', 'data/ptbxl')"   # large: ~1.7GB
-python src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl
+python src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl --sampling-rate 100
 python src/eval_ptbxl.py --data-dir data/processed_ptbxl --model-path results/wavkan_v2_curriculum/seed_42/best_model.pth
 ```
 

@@ -156,7 +156,7 @@ echo "[4/4] Cross-dataset evaluation..."
 echo "  NOTE: needs PTB-XL/INCART/SVDB raw data downloaded first -- see PHASE5_SCOPE_PLAN.md"
 echo "  section 5. Not auto-downloaded here (PTB-XL alone is ~1.7GB) -- run manually first:"
 echo "    python3 -c \"import wfdb; wfdb.dl_database('ptb-xl', 'data/ptbxl')\""
-echo "    python3 src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl"
+echo "    python3 src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl --sampling-rate 100"
 if [ -f "data/processed_ptbxl/X_test.npy" ]; then
     python3 src/eval_ptbxl.py \
         --model-path results/wavkan_v2_curriculum/seed_42/best_model.pth \

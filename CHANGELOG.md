@@ -297,3 +297,8 @@ Verified: `python -m pytest tests/ test_ablation.py -q` → 43 passed, 2 skipped
 - **Does not change any reported number** — quarantining removes a fabrication tool from reach; it doesn't alter anything currently in the manuscript (that decoy was never confirmed to be the source of the *currently embedded* figure, only of a same-named root-level file — see H17's original text).
 
 Verified: `python -m pytest tests/ test_ablation.py -q` → 43 passed, 2 skipped (unaffected — neither moved file had any importer).
+
+- **Confirmed live on the GPU box**: re-running `run_gpu_pipeline_phase5b.sh` now shows `[fig6_rr_ablation] already complete. Skipping. OK` instead of re-executing — the fix works as intended.
+
+- **`process_ptbxl.py --sampling-rate` default mismatch found while double-checking step [4]'s documented command before the project owner runs it next.** The manuscript's own text describes the PTB-XL evaluation as using "100 Hz" data, but `process_ptbxl.py --sampling-rate` defaults to `500` (both variants get resampled to the same 360-sample MIT-BIH-matching window internally — not a correctness bug either way — but running with the undocumented default would silently create a mismatch between what the manuscript claims was done and what was actually run). Fixed both `PHASE5_SCOPE_PLAN.md` §5 and `run_gpu_pipeline_phase5b.sh`'s own embedded instructions to explicitly pass `--sampling-rate 100`.
+  - **Does not change any reported number** — PTB-XL hasn't been regenerated/evaluated yet in this checkout; this only affects the command that will produce that data next.
