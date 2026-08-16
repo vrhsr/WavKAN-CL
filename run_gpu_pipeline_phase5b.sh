@@ -134,11 +134,19 @@ done
 # ═══════════════════════════════════════════════════════════════════════════════
 echo ""
 echo "[3/4] Fig. 6 RR-ablation..."
-# (rr_ablation.py, below, reuses SEEDS_20 directly)
-python3 src/rr_ablation.py --model-dir results/wavkan_v2_curriculum \
-    --seeds "${SEEDS_20[@]}" --data-dir "$DATA_DIR" \
-    --output-dir results/rr_ablation_real \
-    2>&1 | tee -a "$LOG_DIR/fig6_rr_ablation.log" || FAILED_RUNS+=("fig6_rr_ablation")
+# Skip-if-complete added 2026-08-16: this step previously had no completion check at
+# all (unlike [1]/[2]'s per-seed run_job() calls), so every re-invocation of this
+# script -- e.g. to pick up [4]'s PTB-XL step after regenerating data -- silently
+# redid the full 20-seed x 5-position leave-one-out ablation from scratch, wasting
+# real GPU time on already-correct, already-saved results.
+if [ -f "results/rr_ablation_real/rr_ablation_report.json" ]; then
+    echo "  [fig6_rr_ablation] already complete. Skipping. OK"
+else
+    python3 src/rr_ablation.py --model-dir results/wavkan_v2_curriculum \
+        --seeds "${SEEDS_20[@]}" --data-dir "$DATA_DIR" \
+        --output-dir results/rr_ablation_real \
+        2>&1 | tee -a "$LOG_DIR/fig6_rr_ablation.log" || FAILED_RUNS+=("fig6_rr_ablation")
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # [4] Cross-dataset (PTB-XL zero-shot, INCART/SVDB zero-shot)

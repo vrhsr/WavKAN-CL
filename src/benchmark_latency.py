@@ -25,37 +25,13 @@ import torch
 import torch.nn as nn
 from pathlib import Path
 
+# Windows consoles default to cp1252, which can't encode the emoji this script
+# prints -- force UTF-8 stdout so a print statement can never crash the run.
+if sys.stdout.encoding is not None and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.wavkan import WavKANLinear
-
-
-# ---------------------------------------------------------------------------
-# Model
-# ---------------------------------------------------------------------------
-class HybridWavKAN_RR(nn.Module):
-    def __init__(self, input_size=360, num_classes=5):
-        super().__init__()
-        self.kan    = WavKANLinear(input_size, 64, wavelet_type='mexican_hat')
-        self.ln     = nn.LayerNorm(64)
-        self.dropout = nn.Dropout(0.0)          # disabled for latency eval
-        self.bigru  = nn.GRU(64, 32, 1, batch_first=True, bidirectional=True)
-        self.rr_mlp = nn.Sequential(
-            nn.Linear(5, 64), nn.ReLU(),
-            nn.Linear(64, 32), nn.ReLU(),
-            nn.Linear(32, 16), nn.ReLU()
-        )
-        self.fc1 = nn.Linear(80, 48)
-        self.fc2 = nn.Linear(48, num_classes)
-
-    def forward(self, x, xr):
-        x  = self.kan(x)
-        x  = self.ln(x)
-        x  = x.unsqueeze(1)
-        x, _ = self.bigru(x)
-        x  = x.squeeze(1)
-        xr = self.rr_mlp(xr)
-        x  = torch.cat((x, xr), dim=1)
-        return self.fc2(torch.relu(self.fc1(x)))
+from models.wavkan_v2 import WavKAN_v2
 
 
 def count_parameters(model):
@@ -145,7 +121,7 @@ def run_benchmark(n_beats=2000, warmup=100, batch_size=64, n_batches=100,
                   model_path=None, out_path="results/latency_report.json"):
     device = torch.device("cpu")   # CPU = worst-case edge scenario
 
-    model = HybridWavKAN_RR()
+    model = WavKAN_v2()
 
     # Load checkpoint if provided
     if model_path and os.path.exists(model_path):
@@ -210,7 +186,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int,   default=64)
     parser.add_argument("--n-batches",  type=int,   default=100)
     parser.add_argument("--model-path", type=str,
-                        default="results/hybrid_rr_history_20_seeds/seed_42/best_hybrid_rr.pth")
+                        default="results/wavkan_v2_curriculum/seed_42/best_model.pth")
     parser.add_argument("--out",        type=str,
                         default="results/latency_report.json")
     args = parser.parse_args()

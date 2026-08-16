@@ -31,6 +31,13 @@ Requirements:
 import os, sys, json, time, argparse, tempfile
 from pathlib import Path
 
+# Windows consoles default to cp1252, which can't encode the emoji this script
+# prints -- that raised UnicodeEncodeError *inside* the checkpoint-load except
+# block, masking whatever the real load error was. Force UTF-8 stdout so a
+# print statement can never itself become the crash.
+if sys.stdout.encoding is not None and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 import numpy as np
 import torch
 import torch.nn as nn
