@@ -97,12 +97,18 @@ def evaluate(model_path: str, data_dir: str, out_path: str):
         print(f"   {class_names[u]}: {c} ({100*c/len(all_labels):.1f}%)")
 
     # Report
+    # labels=list(range(5)) (not list(unique)) -- a class absent from the target dataset
+    # (PTB-XL has no Fusion/F beats) must still occupy its own fixed position matching
+    # class_names, or sklearn positionally reassigns target_names to whichever labels
+    # ARE present, silently relabeling the next real class (Q) as the missing one's name
+    # (F). Matches the pattern confusion_matrix already used correctly below.
     print("\n📋 Zero-Shot Classification Report (MIT-BIH → PTB-XL):")
     print(classification_report(
         all_labels, all_preds,
         target_names=class_names,
-        labels=list(unique),
-        digits=3
+        labels=list(range(5)),
+        digits=3,
+        zero_division=0
     ))
 
     # Confusion matrix
@@ -120,7 +126,7 @@ def evaluate(model_path: str, data_dir: str, out_path: str):
     report_dict = classification_report(
         all_labels, all_preds,
         target_names=class_names,
-        labels=list(unique),
+        labels=list(range(5)),
         output_dict=True,
         zero_division=0
     )

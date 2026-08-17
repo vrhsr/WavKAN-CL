@@ -155,8 +155,14 @@ echo ""
 echo "[4/4] Cross-dataset evaluation..."
 echo "  NOTE: needs PTB-XL/INCART/SVDB raw data downloaded first -- see PHASE5_SCOPE_PLAN.md"
 echo "  section 5. Not auto-downloaded here (PTB-XL alone is ~1.7GB) -- run manually first:"
-echo "    python3 -c \"import wfdb; wfdb.dl_database('ptb-xl', 'data/ptbxl')\""
-echo "    python3 src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl --sampling-rate 100"
+echo "    (do NOT use 'wfdb.dl_database(\"ptb-xl\", ...)' -- confirmed broken 2026-08-16, it"
+echo "    crashes on a malformed path at the records100/records500 boundary. Use the direct"
+echo "    zip download process_ptbxl.py's own docstring recommends instead:)"
+echo "    cd data && wget https://physionet.org/static/published-projects/ptb-xl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3.zip"
+echo "    unzip ptb-xl-*.zip -d ptbxl && cd .."
+echo "    (confirmed 2026-08-17: the zip nests one level deeper -- CSVs/records100/records500 all"
+echo "    live under data/ptbxl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3/)"
+echo "    python3 src/process_ptbxl.py --data-dir \"data/ptbxl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3\" --out-dir data/processed_ptbxl --sampling-rate 100"
 if [ -f "data/processed_ptbxl/X_test.npy" ]; then
     python3 src/eval_ptbxl.py \
         --model-path results/wavkan_v2_curriculum/seed_42/best_model.pth \

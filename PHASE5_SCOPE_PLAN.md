@@ -165,11 +165,29 @@ This covers Fig. 3's 4 baseline models (5 seeds each), Table 4's ablation matrix
 
 **`--sampling-rate 100` is required, not optional** (added 2026-08-16): the manuscript's own text describes this evaluation as "the PTB-XL database (100 Hz...)", but `process_ptbxl.py --sampling-rate` defaults to `500` (both variants get resampled to the same 360-sample MIT-BIH-matching window internally, so this isn't a correctness bug either way — but running with the default would silently create a mismatch between what the manuscript claims was done and what was actually run, the exact class of gap this whole audit exists to catch).
 
+**Do NOT use `wfdb.dl_database('ptb-xl', ...)` to download — found broken 2026-08-16.** It internally lists every file across PTB-XL's two parallel resolution folders (`records100/`, `records500/`) and, at the exact boundary between them, produces a malformed concatenated file path (e.g. `records100/21000/21837_lrrecords500/00000/00001_hr`) that 404s and crashes the entire download — a real bug in `wfdb.dl_database` for this specific dual-resolution database, confirmed live on the GPU box, not a mistake in the command. Use the direct-zip method `process_ptbxl.py`'s own docstring already recommends instead (a single static-file download, no per-record listing/merging involved, so this bug class can't occur):
+
 ```bash
-python -c "import wfdb; wfdb.dl_database('ptb-xl', 'data/ptbxl')"   # large: ~1.7GB
-python src/process_ptbxl.py --data-dir data/ptbxl --out-dir data/processed_ptbxl --sampling-rate 100
+cd data
+wget https://physionet.org/static/published-projects/ptb-xl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3.zip
+unzip ptb-xl-*.zip -d ptbxl
+cd ..
+```
+
+**Confirmed 2026-08-17 (real run on the GPU box): the zip nests everything one level deeper than `data/ptbxl/`**, under the full project name — `ptbxl_database.csv`, `scp_statements.csv`, `records100/`, `records500/` all live in:
+```
+data/ptbxl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3/
+```
+Pass that full nested path as `--data-dir`, not `data/ptbxl` itself:
+
+```bash
+python src/process_ptbxl.py \
+  --data-dir "data/ptbxl/ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3" \
+  --out-dir data/processed_ptbxl --sampling-rate 100
 python src/eval_ptbxl.py --data-dir data/processed_ptbxl --model-path results/wavkan_v2_curriculum/seed_42/best_model.pth
 ```
+
+`process_ptbxl.py` only reads local files via `wfdb.rdrecord()` once the zip is extracted — fully offline after that point, so this failure mode cannot recur mid-processing.
 
 `run_gpu_pipeline_phase5b.sh` will pick up PTB-XL eval automatically if `data/processed_ptbxl` already exists by the time it runs. INCART/SVDB (`eval_multidataset.py`, already correctly using `WavKAN_v2`) — commands available on request once PTB-XL is working.
 
