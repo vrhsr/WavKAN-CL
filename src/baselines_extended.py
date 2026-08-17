@@ -15,6 +15,20 @@ Usage:
     python src/baselines_extended.py --model resnet1d --seed 42
     python src/baselines_extended.py --model transformer --seed 42
     python src/baselines_extended.py --all --seeds 42 101 777
+
+Fixed 2026-08-17 (real 20-seed x 4-model Phase 5b run surfaced this): train_baseline()
+previously paired a fully class-balanced WeightedRandomSampler with an
+inverse-frequency-weighted Focal Loss -- a double correction that, given this
+dataset's real N:Q class ratio (~6300:1), drove N's effective per-sample training
+weight to near-zero while also capping N's per-batch sampling frequency down to
+match the rarest class. Net effect: zero real gradient signal for N, so all 4
+baselines collapsed to never predicting it (v_recall=0.0 for 3 of 4 models,
+macro_f1 in the 0.02-0.10 range vs. WavKAN-v2's ~0.32 on the same test set). Now
+uses natural-distribution sampling only (shuffle=True), matching train_pca.py's own
+proven fair-baseline arm, which pairs the identical weight formula with natural
+sampling and does not collapse. Also added the n_recall field to test_metrics.json
+(previously omitted entirely, unlike every other reported class). See
+AUDIT_FINDINGS.md and tests/test_baselines_extended.py.
 """
 
 import os, sys, json, argparse, math
@@ -25,7 +39,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import (
     f1_score, recall_score, classification_report, confusion_matrix
 )
@@ -262,13 +276,6 @@ MODEL_REGISTRY = {
 }
 
 
-def make_weighted_sampler(labels):
-    unique, counts = np.unique(labels, return_counts=True)
-    w = 1.0 / counts
-    sw = np.array([w[np.where(unique == l)[0][0]] for l in labels])
-    return WeightedRandomSampler(torch.DoubleTensor(sw), len(sw), replacement=True)
-
-
 def run_eval(model, loader, device):
     model.eval()
     preds, trues, probs = [], [], []
@@ -312,14 +319,24 @@ def train_baseline(
     train_labels = train_ds.y.numpy()
     unique, counts = np.unique(train_labels, return_counts=True)
 
-    # Weighted sampler + focal loss
-    sampler  = make_weighted_sampler(train_labels)
+    # Class-weighted focal loss. Natural-distribution sampling only (shuffle=True,
+    # no WeightedRandomSampler) -- found 2026-08-17 (real Phase 5b run) that pairing
+    # a fully class-balanced sampler with this same inverse-frequency loss weighting
+    # is a double-correction: with the real N:Q ratio (~6300:1), N's effective
+    # per-sample weight collapses to ~0.003 while the balanced sampler simultaneously
+    # caps N's per-batch frequency down to match the rarest class. Combined, that
+    # leaves ~zero net gradient signal for N across the whole run -- confirmed via a
+    # real 20-seed run where all 4 baselines never predicted class N (v_recall=0.0
+    # for 3 of 4, macro_f1 in the 0.02-0.10 range vs WavKAN-v2's ~0.32). This mirrors
+    # train_pca.py's own proven fair-baseline arm, which pairs natural sampling with
+    # this exact weight formula and does NOT collapse (see criterion_baseline there) --
+    # apply one imbalance-correction mechanism, not two stacked at full strength.
     raw_w    = (counts.sum()) / (len(unique) * counts.astype(float))
     raw_w[1] *= s_weight
     weights  = torch.tensor(raw_w / raw_w.sum() * len(unique), dtype=torch.float32).to(DEVICE)
     criterion = FocalLoss(gamma=focal_gamma, weight=weights)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, sampler=sampler)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False)
     test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False)
 
@@ -368,6 +385,7 @@ def train_baseline(
         "macro_f1":   float(report["macro avg"]["f1-score"]),
         "v_recall":   float(report["V"]["recall"]),
         "s_recall":   float(report["S"]["recall"]),
+        "n_recall":   float(report["N"]["recall"]),
         "f_recall":   float(report["F"]["recall"]),
         "n_params":   model.count_parameters(),
     }
@@ -413,7 +431,9 @@ if __name__ == "__main__":
             f1s = [m["macro_f1"] for m in all_metrics]
             vrs = [m["v_recall"]  for m in all_metrics]
             srs = [m["s_recall"]  for m in all_metrics]
+            nrs = [m["n_recall"]  for m in all_metrics]
             print(f"\n{mname} ({len(args.seeds)} seeds):")
             print(f"  Macro-F1 : {np.mean(f1s):.4f} ± {np.std(f1s):.4f}")
             print(f"  V-Recall : {np.mean(vrs):.4f} ± {np.std(vrs):.4f}")
             print(f"  S-Recall : {np.mean(srs):.4f} ± {np.std(srs):.4f}")
+            print(f"  N-Recall : {np.mean(nrs):.4f} ± {np.std(nrs):.4f}")
