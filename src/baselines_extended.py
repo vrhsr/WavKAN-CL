@@ -319,22 +319,40 @@ def train_baseline(
     train_labels = train_ds.y.numpy()
     unique, counts = np.unique(train_labels, return_counts=True)
 
-    # Class-weighted focal loss. Natural-distribution sampling only (shuffle=True,
-    # no WeightedRandomSampler) -- found 2026-08-17 (real Phase 5b run) that pairing
-    # a fully class-balanced sampler with this same inverse-frequency loss weighting
-    # is a double-correction: with the real N:Q ratio (~6300:1), N's effective
-    # per-sample weight collapses to ~0.003 while the balanced sampler simultaneously
-    # caps N's per-batch frequency down to match the rarest class. Combined, that
-    # leaves ~zero net gradient signal for N across the whole run -- confirmed via a
-    # real 20-seed run where all 4 baselines never predicted class N (v_recall=0.0
-    # for 3 of 4, macro_f1 in the 0.02-0.10 range vs WavKAN-v2's ~0.32). This mirrors
-    # train_pca.py's own proven fair-baseline arm, which pairs natural sampling with
-    # this exact weight formula and does NOT collapse (see criterion_baseline there) --
-    # apply one imbalance-correction mechanism, not two stacked at full strength.
+    # Class-weighted loss. Natural-distribution sampling only (shuffle=True, no
+    # WeightedRandomSampler) -- found 2026-08-17 (real Phase 5b run, round 1) that
+    # pairing a fully class-balanced sampler with this same inverse-frequency loss
+    # weighting is a double-correction: with the real N:Q ratio (~6300:1), N's
+    # effective per-sample weight collapses to ~0.003 while the balanced sampler
+    # simultaneously caps N's per-batch frequency down to match the rarest class,
+    # leaving ~zero net gradient signal for N. Fixed: natural sampling only.
+    #
+    # Round 2 (same day): fixing *just* the sampler was not sufficient -- a real
+    # re-run still showed resnet1d collapsing (v_recall=0.0) with natural sampling,
+    # because FocalLoss's (1-pt)^gamma adaptive term ALSO suppresses "easy"
+    # (well-classified) N examples, compounding multiplicatively with N's already-
+    # tiny static per-class weight. train_pca.py's proven fair-baseline arm avoids
+    # this by using plain class-weighted CrossEntropyLoss (no adaptive term to
+    # compound with). Fixed: resnet1d/transformer/bspline_kan (plain architecture
+    # comparisons, not focal-loss comparisons) now use weighted CrossEntropyLoss.
+    #
+    # Round 3 (same day): "cnn_focal" -- whose whole point is testing focal loss --
+    # still collapsed even with the round-1/round-2 fixes, because it still combined
+    # FocalLoss's adaptive modulation with the SAME extreme static weight tensor.
+    # Reproduced and confirmed via tests/test_baselines_extended.py: dropping the
+    # static per-class weight entirely (gamma-only Focal Loss, matching the
+    # original Lin et al. 2017 formulation's typical use -- imbalance handled by
+    # the adaptive term alone, not stacked with an extreme static multiplier too)
+    # resolves it. This does change what "CNN + Focal Loss" tests (plain focal
+    # loss, not focal loss + extreme class weighting) but that's a more standard,
+    # defensible formulation, not a weaker one.
     raw_w    = (counts.sum()) / (len(unique) * counts.astype(float))
     raw_w[1] *= s_weight
     weights  = torch.tensor(raw_w / raw_w.sum() * len(unique), dtype=torch.float32).to(DEVICE)
-    criterion = FocalLoss(gamma=focal_gamma, weight=weights)
+    if model_name == "cnn_focal":
+        criterion = FocalLoss(gamma=focal_gamma, weight=None)
+    else:
+        criterion = nn.CrossEntropyLoss(weight=weights)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False)
@@ -367,8 +385,17 @@ def train_baseline(
         else:
             no_improve += 1
 
-        if epoch % 20 == 0:
-            print(f"Epoch {epoch:3d}  val_F1={f1:.4f}  best={best_f1:.4f}")
+        # Print every 5 epochs (was 20) with per-class N/V/S recall, not just macro
+        # F1 -- added 2026-08-17 after a collapse (v_recall stuck at 0.0 all run) was
+        # only visible once training finished. N/V/S recall make a live collapse
+        # (any of them flatlined near 0.0 for many epochs in a row) visible early,
+        # without waiting ~15 minutes for a full run to complete.
+        if epoch % 5 == 0 or epoch == 1:
+            per_class_recall = recall_score(y_true, y_pred, average=None,
+                                             labels=[0, 1, 2], zero_division=0)
+            print(f"Epoch {epoch:3d}  val_F1={f1:.4f}  best={best_f1:.4f}  "
+                  f"N-rec={per_class_recall[0]:.3f}  S-rec={per_class_recall[1]:.3f}  "
+                  f"V-rec={per_class_recall[2]:.3f}")
         if no_improve >= patience:
             print(f"Early stop at epoch {epoch}")
             break

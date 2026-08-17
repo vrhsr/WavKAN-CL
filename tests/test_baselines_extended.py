@@ -1,16 +1,30 @@
 """Regression tests for src/baselines_extended.py's training recipe.
 
-Found 2026-08-17: a real 20-seed x 4-model Phase 5b run showed all 4 baseline
-models (ResNet1D, Transformer, CNN+Focal, B-Spline KAN) never predicted class N
-(the majority class) at all -- v_recall=0.0 for 3 of 4, macro_f1 in the 0.02-0.10
-range vs. WavKAN-v2's ~0.32 on the same test set. Root cause: train_baseline()
-stacked a fully class-balanced WeightedRandomSampler with an inverse-frequency-
-weighted Focal Loss -- with this dataset's real N:Q ratio (~6300:1), that drove
-N's effective per-sample weight to near-zero while also capping its per-batch
-sampling frequency to match the rarest class, leaving ~zero net gradient signal
-for N. These tests reproduce that failure mode on tiny synthetic data (fast,
-no GPU, no real ECG data needed) and confirm the fix (natural-distribution
-sampling only, matching train_pca.py's proven fair-baseline arm) avoids it.
+Found 2026-08-17 in two rounds against the real Phase 5b run:
+
+Round 1: all 4 baseline models never predicted class N (the majority class) at
+all -- v_recall=0.0 for 3 of 4, macro_f1 in the 0.02-0.10 range vs. WavKAN-v2's
+~0.32. Root cause: train_baseline() stacked a fully class-balanced
+WeightedRandomSampler with an inverse-frequency-weighted Focal Loss -- with this
+dataset's real N:Q ratio (~6300:1), that drove N's effective per-sample weight to
+near-zero while also capping its per-batch sampling frequency to match the rarest
+class, leaving ~zero net gradient signal for N. Fixed: natural-distribution
+sampling only (no sampler).
+
+Round 2: the sampler fix alone was NOT sufficient -- a real re-run still showed
+resnet1d collapsing (v_recall=0.0) even with natural sampling, because Focal
+Loss's (1-pt)^gamma term further suppresses "easy" (well-classified) N examples,
+compounding with N's already-tiny per-sample weight a second time. This is
+exactly why train_pca.py's proven fair-baseline arm uses plain class-weighted
+CrossEntropyLoss, not Focal Loss. Fixed: only "cnn_focal" (whose entire point is
+testing focal loss) keeps FocalLoss; the other 3 (plain architecture baselines)
+now use CrossEntropyLoss, matching the proven recipe exactly.
+
+The first synthetic reproduction (round 1) used a ~100:1 imbalance ratio, mild
+enough that it didn't actually reproduce round 2's failure -- these tests were
+strengthened to use a ~1000:1 ratio (closer to the real ~6300:1) and to cover
+BOTH loss paths (CrossEntropyLoss via resnet1d, FocalLoss via cnn_focal), so a
+future regression in either direction would be caught here first.
 """
 import json
 
@@ -22,11 +36,11 @@ from torch.utils.data import WeightedRandomSampler
 from src.baselines_extended import train_baseline
 
 N_CLASSES = 5
-# Extreme, MIT-BIH-like imbalance (real train ratio N:Q is ~6300:1) -- small
-# enough to train in a couple seconds on CPU, skewed enough to reproduce the
-# collapse if the double-correction bug were still present.
-TRAIN_COUNTS = [300, 15, 20, 8, 3]
-EVAL_COUNTS  = [60, 8, 8, 4, 2]
+# Real-scale-like imbalance (real train N:Q ratio is ~6300:1; this uses ~1000:1,
+# strong enough to reproduce both round-1 and round-2 collapse if either bug were
+# still present, while staying small/fast enough for a CPU regression test).
+TRAIN_COUNTS = [1000, 40, 70, 10, 1]
+EVAL_COUNTS  = [100, 10, 12, 4, 2]
 
 
 def _write_synthetic_split(data_dir, split, counts, seed):
@@ -93,22 +107,25 @@ def test_train_baseline_reports_n_recall(imbalanced_data_dir, tmp_path):
     assert 0.0 <= metrics["n_recall"] <= 1.0
 
 
-def test_train_baseline_does_not_collapse_away_from_majority_class(imbalanced_data_dir, tmp_path):
-    """The actual, end-to-end failure mode: with the old sampler+loss double
-    correction, the model reliably never predicted class 0 at all despite it
-    being 100x more common than class 4 and trivially separable by construction.
-    With natural sampling only, it should predict class 0 for at least some of
-    the 60 real class-0 test examples.
+@pytest.mark.parametrize("model_name", ["resnet1d", "cnn_focal"])
+def test_train_baseline_does_not_collapse_away_from_majority_class(model_name, imbalanced_data_dir, tmp_path):
+    """The actual, end-to-end failure mode, checked on BOTH loss paths this file
+    uses (resnet1d -> CrossEntropyLoss, cnn_focal -> FocalLoss): with either the
+    round-1 (sampler+loss double correction) or round-2 (Focal Loss compounding
+    with natural sampling) bug present, the model reliably never predicted class 0
+    at all despite it being ~1000x more common than class 4 and trivially
+    separable by construction. With both fixes in place, it should predict class 0
+    for at least some of the 100 real class-0 test examples.
     """
     out_dir = tmp_path / "out"
     train_baseline(
-        model_name="resnet1d", seed=0, epochs=6, batch_size=16, patience=1000,
+        model_name=model_name, seed=0, epochs=8, batch_size=16, patience=1000,
         data_dir=str(imbalanced_data_dir), output_dir=str(out_dir),
     )
     preds = np.load(out_dir / "predictions.npy")
     assert 0 in set(preds.tolist()), (
-        "Model never predicted class 0 (the majority class) even once on a "
-        "trivially-separable synthetic task -- this is the exact collapse "
-        "signature found in the real 2026-08-17 run (v_recall=0.0, no N "
+        f"[{model_name}] Model never predicted class 0 (the majority class) even "
+        "once on a trivially-separable synthetic task -- this is the exact "
+        "collapse signature found in the real 2026-08-17 runs (v_recall=0.0, no N "
         "predictions at all)."
     )
