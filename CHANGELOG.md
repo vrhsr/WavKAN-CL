@@ -340,3 +340,47 @@ Also found in the process: all 4 baseline `test_metrics.json` files omit the `n_
 **Cleanup**: deleted `results/figures/fig3_seed_stability_real.pdf` and `results/fig3_seed_stability_report.json` — both generated from the broken baseline data before this was caught, per rule 1 (never leave broken data looking like a measured result). Both are gitignored/untracked, so this did not touch anything already committed.
 
 **⚠️ This is a real, previously-unreported problem, not a change to anything already reported** — Fig. 3 has never appeared in the manuscript with real data (C1 already documented it as broken/synthetic). Nothing here changes a previously-reported number; it prevents a wrong one from being reported. **Still needed before Fig. 3/any WavKAN-vs.-baseline comparison can be regenerated**: re-run `run_gpu_pipeline_phase5b.sh` step [1] (all 4 baseline models × 20 seeds) on the GPU box with the fix in place — the 6-config Table 4 ablation matrix (step [2], `train_pca.py`-based) and Fig. 6/PTB-XL are unaffected (they don't go through `baselines_extended.py`) and their real, already-downloaded results remain valid as-is (spot-checked: sane macro_f1/v_recall/s_recall/n_recall across ablation configs, no collapse signature).
+
+---
+
+## 2026-08-17/18 — C15 rounds 2 and 3: the sampler fix alone was not sufficient; real result obtained (AUDIT_FINDINGS.md C16)
+
+The round-1 fix above was deployed to the GPU box and immediately re-tested live rather than trusting it blind (per the project owner's own request for a "clear debug thing" — see round 2's improved logging below). It was not enough, twice, before the real data came back clean.
+
+### Round 2: Focal Loss's adaptive term was independently compounding with the extreme static weights
+
+**Found live**: a real re-run of `resnet1d` seed 42 (post round-1-fix, natural sampling confirmed via `grep` on the GPU box) still produced `V=0.0000`, `Macro-F1=0.0327` — the exact same collapse signature. Root cause: `FocalLoss`'s `(1-pt)^gamma` term further suppresses the loss contribution of "easy" (well-classified) examples — for N, this compounds *multiplicatively* with its already-tiny static per-class weight (~0.02, driven by the real N:Q count ratio), unlike `CrossEntropyLoss`'s purely linear weight scaling. This is exactly why `train_pca.py`'s proven fair-baseline arm uses plain `CrossEntropyLoss`, not Focal Loss.
+
+**Fixed**: `resnet1d`/`transformer`/`bspline_kan` (plain architecture comparisons, not focal-loss comparisons) now use `nn.CrossEntropyLoss(weight=weights)`; only `cnn_focal` (whose defining characteristic is testing focal loss) kept `FocalLoss` at this point.
+
+**Also added, per the project owner's request for better live visibility**: `train_baseline()` now prints every 5 epochs (was 20) with per-class N/S/V recall via `recall_score`, not just macro-F1 — a stuck-near-zero `N-rec` is now visible within a couple minutes of live output instead of only at the end of a ~15-minute run.
+
+### Round 3: `cnn_focal` collapsed too, for the same underlying reason
+
+**Found via a strengthened regression test**, not a second wasted GPU run this time: the original synthetic reproduction (`tests/test_baselines_extended.py`) used only a ~100:1 imbalance ratio, mild enough that it hadn't caught round 2's failure mode. Raised to ~1000:1 (closer to the real ~6300:1) and parametrized the collapse test across both loss paths (`resnet1d` for `CrossEntropyLoss`, `cnn_focal` for `FocalLoss`) — `cnn_focal` failed immediately at the strengthened ratio, *before* any more real GPU time was spent on it.
+
+**Root cause**: `cnn_focal` still combined `FocalLoss`'s adaptive term with the same extreme static weight tensor — the exact round-2 mechanism, just not yet fixed for this one model.
+
+**Fixed**: dropped the static weight for `cnn_focal` specifically (`FocalLoss(gamma=focal_gamma, weight=None)`) — gamma-only Focal Loss, matching the original Lin et al. (2017) formulation's typical usage (imbalance handled by the adaptive term alone) rather than stacking it with a separate extreme multiplier. This does change what "CNN + Focal Loss" tests (plain focal loss vs. focal loss + extreme class weighting) but is the more standard formulation, not a weaker one.
+
+**All 4 model paths now regression-tested together** at the strengthened ~1000:1 ratio: `python -m pytest tests/test_baselines_extended.py -v` → 4 passed. Full suite: `python -m pytest tests/ test_ablation.py -q` → 48 passed, 2 skipped.
+
+### The real, valid 80-seed re-run — and what it actually shows (⚠️ new real result, not a change to a previously-reported number)
+
+The real re-run (all 4 models × 20 seeds, with all 3 rounds of fixes) completed clean on the GPU box on 2026-08-18: spot-checked and fully aggregated, **zero seeds with `v_recall==0.0` or `n_recall==0.0`** across all 80 runs. `src/generate_fig3_seed_stability.py` was run against this real data for the first time.
+
+**The result (logged in full as `AUDIT_FINDINGS.md` C16)**: WavKAN-v2 has **significantly lower** Macro-F1 than all 4 real, fairly-trained baselines, despite being the largest model of the five by parameter count:
+
+| Model | Params | Macro-F1 (mean±std, n=20) | Cohen's d vs. WavKAN-v2 | Holm p |
+|---|---|---|---|---|
+| ResNet1D | 62,869 | 0.351±0.018 | −1.21 (large) | 0.0002 |
+| Transformer | 29,653 | 0.353±0.039 | −0.69 (medium) | 0.0042 |
+| CNN+Focal | 71,061 | 0.362±0.015 | −1.39 (large) | 0.0002 |
+| B-Spline KAN | 118,229 | 0.371±0.023 | −1.68 (large) | 0.00004 |
+| **WavKAN-v2 (curriculum)** | **154,325** | **0.323±0.018** | — | — |
+
+All 4 comparisons survive Holm-Bonferroni correction. V-Recall, separately, is close across all 5 models (0.88–0.91 range) — this is a Macro-F1-specific finding, not a blanket "WavKAN underperforms at everything." The curriculum's own separately-established S-Recall improvement (C5, a within-model comparison) is untouched by this across-model result.
+
+**Directly relevant to the AIIM rejection's reviewer comment #1** ("Macro-F1 too low") — this is a real, data-backed explanation of why, now that the comparison is actually fair. **Not a bug, not acted on in the manuscript** — logged as `AUDIT_FINDINGS.md` C16, **NEEDS-DECISION for Phase 6**, same sign-off requirement as C5/C10/C12.
+
+**Real Fig. 3 output**: `results/figures/fig3_seed_stability_real.pdf`, `results/fig3_seed_stability_report.json` (replacing the invalid ones deleted in the round-1 entry above).
