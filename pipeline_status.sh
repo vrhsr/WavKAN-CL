@@ -137,6 +137,50 @@ else
 fi
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Phase 6 (run_gpu_pipeline_phase6.sh) -- INCART/SVDB data + multi-dataset"
+echo "table, multi-seed PTB-XL, augmentation-study re-run with real logging:"
+echo "----------------------------------------------------------------"
+
+echo ""
+echo "[1] INCART / SVDB data regeneration:"
+for ds in incart svdb; do
+    if [ -f "data/${ds}_processed/X_test.npy" ]; then
+        echo "  $ds: data present"
+    else
+        echo "  $ds: not regenerated yet"
+    fi
+done
+
+echo ""
+echo "[2] Multi-dataset zero-shot table (WavKAN-v2 + 4 baselines x 20 seeds x 3 datasets):"
+if [ -f "results/multidataset_table/multidataset_raw.json" ]; then
+    echo "  complete (results/multidataset_table/multidataset_raw.json, killer_table.tex, killer_table.txt)"
+else
+    echo "  not complete yet (needs step [1] first)"
+fi
+
+echo ""
+echo "[3] Multi-seed PTB-XL zero-shot (20 seeds):"
+if [ -d "results/ptbxl_zeroshot_multiseed" ]; then
+    n_done=$(find "results/ptbxl_zeroshot_multiseed" -maxdepth 1 -name "seed_*.json" 2>/dev/null | wc -l | tr -d ' ')
+    echo "  $n_done / 20 per-seed evals complete"
+fi
+if [ -f "results/ptbxl_zero_shot_metrics_multiseed.json" ]; then
+    echo "  aggregated summary: results/ptbxl_zero_shot_metrics_multiseed.json"
+else
+    echo "  aggregated summary: not yet produced"
+fi
+
+echo ""
+echo "[4] Augmentation study re-run (real per-seed logging, 20 seeds):"
+if [ -f "results/noise_augmentation/augmentation_comparison.json" ]; then
+    echo "  complete (results/noise_augmentation/augmentation_comparison.json -- has real per-seed 'raw' values this time)"
+else
+    echo "  not complete yet"
+fi
+
+echo ""
 echo "Most recently modified log (tail):"
 latest_log=$(ls -t logs/*/*.log 2>/dev/null | head -1)
 if [ -n "$latest_log" ]; then

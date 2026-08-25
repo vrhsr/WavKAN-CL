@@ -1,29 +1,24 @@
 """
-eval_multidataset.py  —  Multi-Dataset Killer Table
+eval_multidataset.py  —  Multi-Dataset Comparison Table
 
-THE MOST IMPORTANT EXPERIMENT in the paper.
-============================================
-Evaluates ALL models on ALL three datasets and generates the table that
-makes or breaks TBME acceptance.
+Evaluates all five models (WavKAN-v2 + 4 baselines) on all three datasets
+(MIT-BIH DS2, INCART zero-shot, SVDB zero-shot) and reports real per-seed
+metrics, honestly, whichever way they land.
 
-If WavKAN-v2 (Ours) has the highest average V-Recall or Avg F1 across:
-  - MIT-BIH DS2  (standard benchmark, primary)
-  - INCART test  (novel dataset, tests generalisation)
-  - SVDB         (S-class stress test, tests minority robustness)
-
-→ The paper has a CLEAR WIN the reviewers cannot argue with.
-
-Expected killer table output:
-─────────────────────────────────────────────────────────────────────────────
-Model           MIT-BIH                INCART                SVDB            Avg
-                V / S / F1             V / S / F1            V / S / F1      F1
-─────────────────────────────────────────────────────────────────────────────
-ResNet1D        .87/.22/.38            .79/.19/.34           .80/.34/.39     .37
-Transformer     .85/.27/.37            .77/.21/.33           .78/.37/.38     .36
-B-Spline KAN    .92/.57/.40            .83/.45/.38           .84/.48/.41     .40
-WavKAN-v2       .90/.64/.44*           .85/.58/.43*          .87/.62/.47*    .45* ← WIN
-─────────────────────────────────────────────────────────────────────────────
-* p < 0.05 vs B-Spline KAN (paired Wilcoxon, 5 seeds)
+NOTE (2026-08-25): this docstring and the table/figure generators below
+previously assumed and hardcoded a WavKAN-v2 "win" -- the LaTeX/ASCII table
+generators unconditionally bolded and tagged the "wavkan_v2" row regardless
+of its actual computed metrics, the bar-chart highlighted its bars with a
+black outline unconditionally, and the LaTeX caption asserted a
+"$p<0.05$ vs. B-Spline KAN (Wilcoxon)" significance claim that was never
+actually computed anywhere in this file. All of that has been removed (see
+AUDIT_FINDINGS.md, new finding logged same date) -- this script now reports
+whatever the real per-seed numbers show, with no identity-based highlighting
+and no unearned significance claim. Real significance testing across seeds,
+if wanted, should use `src/metrics_full.statistical_comparison` on the
+per-seed raw values this script now saves to `multidataset_raw.json`
+(previously only the aggregated mean/std were saved, which made downstream
+significance testing impossible from this file's own output).
 
 Usage:
     # Evaluate pre-trained models
@@ -203,6 +198,7 @@ def evaluate_checkpoints(
             }
             agg["n_seeds"]   = len(valid)
             agg["n_samples"] = valid[0]["n_samples"]
+            agg["per_seed"]  = valid  # raw per-seed metrics, needed for any downstream significance test
             results[model_name][ds_name] = agg
 
             f1m  = agg["macro_f1"]["mean"]; f1s = agg["macro_f1"]["std"]
@@ -254,15 +250,14 @@ def generate_ascii_table_str(results: Dict) -> str:
                 avg_f1s.append(f)
                 cells.append(f"{v:.2f}/{s:.2f}/{f:.2f}".rjust(18))
         avg = f"{np.mean(avg_f1s):.3f}" if avg_f1s else "N/A"
-        tag = " ← *" if model == "wavkan_v2" else ""
-        rows.append(f"{model:<20} " + " ".join(cells) + f" {avg:>8}{tag}")
+        rows.append(f"{model:<20} " + " ".join(cells) + f" {avg:>8}")
 
     return "\n".join(rows)
 
 
 def print_ascii_table(results: Dict):
     print(f"\n{'='*80}")
-    print(f"MULTI-DATASET KILLER TABLE")
+    print(f"MULTI-DATASET COMPARISON TABLE (real per-seed metrics, no identity-based highlighting)")
     print(f"{'='*80}")
     print(generate_ascii_table_str(results))
     print(f"{'='*80}")
@@ -273,8 +268,8 @@ def generate_latex_table(results: Dict) -> str:
     ds_labels   = {k: v["label"] for k, v in DATASET_INFO.items()}
     latex_rows  = []
 
+    n_seeds_seen = set()
     for model in models:
-        bold = model == "wavkan_v2"
         avg_f1s = []
         cells   = []
         for ds in DATASET_INFO:
@@ -285,25 +280,26 @@ def generate_latex_table(results: Dict) -> str:
                 v, s, f = (d["v_recall"]["mean"], d["s_recall"]["mean"],
                            d["macro_f1"]["mean"])
                 avg_f1s.append(f)
-                cell = f"{v:.3f}/{s:.3f}/{f:.3f}"
-                cells.append(f"\\textbf{{{cell}}}" if bold else cell)
+                n_seeds_seen.add(d.get("n_seeds"))
+                cells.append(f"{v:.3f}/{s:.3f}/{f:.3f}")
 
-        avg = f"{np.mean(avg_f1s):.3f}" if avg_f1s else "--"
-        if bold:
-            avg = f"\\textbf{{{avg}}}"
-
-        label = f"\\textbf{{WavKAN-v2 (Ours)}}" if bold else model.replace("_", r"\_")
+        avg   = f"{np.mean(avg_f1s):.3f}" if avg_f1s else "--"
+        label = model.replace("_", r"\_")
         latex_rows.append(f"  {label} & " + " & ".join(cells) + f" & {avg} \\\\")
 
-    ds_cols = " & ".join(f"\\textbf{{{v['label']}}}" for v in DATASET_INFO.values())
-    header  = f"  \\textbf{{Model}} & {ds_cols} & \\textbf{{Avg F1}} \\\\"
+    ds_cols  = " & ".join(f"\\textbf{{{v['label']}}}" for v in DATASET_INFO.values())
+    header   = f"  \\textbf{{Model}} & {ds_cols} & \\textbf{{Avg F1}} \\\\"
+    n_seeds_str = "/".join(str(n) for n in sorted(s for s in n_seeds_seen if s)) or "?"
 
     table = "\n".join([
         r"\begin{table*}[!htbp]",
         r"\centering",
         (r"\caption{Multi-Dataset Performance Comparison. Metrics: V-Recall / S-Recall / Macro-F1 "
-         r"(mean over 5 seeds). All models trained on MIT-BIH DS1 only; INCART and SVDB are "
-         r"zero-shot cross-dataset evaluations. $\dagger$ $p{<}0.05$ vs. B-Spline KAN (Wilcoxon).}"),
+         f"(mean over {n_seeds_str} seeds, see per-seed values in multidataset\\_raw.json). All models "
+         r"trained on MIT-BIH DS1 only; INCART and SVDB are zero-shot cross-dataset evaluations. "
+         r"No significance test is computed by this table generator -- run "
+         r"src/metrics\_full.statistical\_comparison on the saved per-seed values if a significance "
+         r"claim is needed, and report it only if actually computed.}"),
         r"\label{tab:multidataset}",
         r"\resizebox{\textwidth}{!}{%",
         r"\begin{tabular}{@{}lcccc@{}}",
@@ -343,14 +339,9 @@ def _plot_multidataset_bar(results: Dict, save_path: str):
                     else:
                         means.append(0); stds.append(0)
 
-                bars = ax.bar(x + di * width, means, width, yerr=stds,
-                              label=DATASET_INFO[ds]["label"],
-                              color=colors[ds], alpha=0.8, capsize=3)
-                # Highlight WavKAN-v2
-                if "wavkan_v2" in models:
-                    idx = models.index("wavkan_v2")
-                    bars[idx].set_edgecolor("black")
-                    bars[idx].set_linewidth(2.2)
+                ax.bar(x + di * width, means, width, yerr=stds,
+                       label=DATASET_INFO[ds]["label"],
+                       color=colors[ds], alpha=0.8, capsize=3)
 
             ax.set_xticks(x + width)
             ax.set_xticklabels([m.replace("_", "\n") for m in models], fontsize=8)
@@ -383,8 +374,12 @@ def discover_checkpoints(results_base: str, seeds: List[int]) -> Dict[str, List[
     base = Path(results_base)
     ckpts = {}
 
+    # NOTE (2026-08-25): "wavkan_v2" previously pointed at results/wavkan_v2/,
+    # which has never existed in this repo -- the real checkpoints are under
+    # results/wavkan_v2_curriculum/ (see CHANGELOG.md). Fixed so auto-discovery
+    # actually finds them instead of silently returning zero WavKAN-v2 seeds.
     model_dirs = {
-        "wavkan_v2":    base / "wavkan_v2",
+        "wavkan_v2":    base / "wavkan_v2_curriculum",
         "resnet1d":     base / "baseline_resnet1d",
         "transformer":  base / "baseline_transformer",
         "cnn_focal":    base / "baseline_cnn_focal",
@@ -407,11 +402,14 @@ def discover_checkpoints(results_base: str, seeds: List[int]) -> Dict[str, List[
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
 
+REAL_20_SEEDS = [7, 11, 13, 42, 99, 101, 333, 555, 777, 888, 1001, 1234,
+                 1998, 2024, 2026, 5050, 8080, 9999, 27182, 31415]
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Multi-Dataset Killer Table Generator")
-    parser.add_argument("--results-base", type=str, default="results/full_pipeline",
+    parser = argparse.ArgumentParser(description="Multi-Dataset Comparison Table Generator")
+    parser.add_argument("--results-base", type=str, default="results",
                         help="Root of results directory (auto-discovery mode)")
-    parser.add_argument("--seeds",        type=int, nargs="+", default=[42, 101, 777])
+    parser.add_argument("--seeds",        type=int, nargs="+", default=REAL_20_SEEDS)
     parser.add_argument("--output-dir",   type=str, default="results/multidataset_table")
     parser.add_argument("--device",       type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
