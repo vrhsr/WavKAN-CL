@@ -65,13 +65,16 @@ def resample_ann(samples: np.ndarray, orig_fs: int = ORIG_FS, target_fs: int = O
 
 
 def process_record(rec_id: str, raw_dir: Path) -> tuple:
+    """Returns (beats, rr_feats, labels, record_ids) -- record_ids is rec_id
+    repeated once per beat, needed for a downstream record-disjoint split
+    (e.g. few-shot adaptation)."""
     rec_path = str(raw_dir / rec_id)
     try:
         sig_raw, fields = wfdb.rdsamp(rec_path)
         ann             = wfdb.rdann(rec_path, 'atr')
     except Exception as e:
         print(f"  ⚠️  {rec_id}: {e}")
-        return np.array([]), np.array([]), np.array([])
+        return np.array([]), np.array([]), np.array([]), np.array([])
 
     orig_fs   = fields['fs']
     ecg_raw   = sig_raw[:, 0].astype(np.float64)
@@ -105,10 +108,12 @@ def process_record(rec_id: str, raw_dir: Path) -> tuple:
         X_rr.append(rr)
         y.append(AAMI_MAP[sym])
 
+    record_ids = np.array([rec_id] * len(X)) if len(X) else np.array([])
     return (
         np.array(X,    dtype=np.float32),
         np.array(X_rr, dtype=np.float32),
         np.array(y,    dtype=np.int64),
+        record_ids,
     )
 
 
@@ -133,15 +138,16 @@ def process_all(raw_dir: Path, out_dir: Path):
         return
 
     print(f"\n  Processing SVDB ({len(records)} records, S-class stress test)...")
-    all_X, all_Xrr, all_y = [], [], []
+    all_X, all_Xrr, all_y, all_rec_ids = [], [], [], []
 
     for rec_id in tqdm(records):
-        X, Xrr, y = process_record(rec_id, raw_dir)
+        X, Xrr, y, rec_ids = process_record(rec_id, raw_dir)
         if len(X) == 0:
             continue
         all_X.append(X)
         all_Xrr.append(Xrr)
         all_y.append(y)
+        all_rec_ids.append(rec_ids)
 
     if not all_X:
         return
@@ -149,6 +155,7 @@ def process_all(raw_dir: Path, out_dir: Path):
     X   = np.concatenate(all_X)
     Xrr = np.concatenate(all_Xrr)
     y   = np.concatenate(all_y)
+    record_ids = np.concatenate(all_rec_ids)
 
     dist = dict(Counter(y.tolist()))
     s_ratio = dist.get(1, 0) / (y.shape[0] + 1e-8) * 100
@@ -160,6 +167,7 @@ def process_all(raw_dir: Path, out_dir: Path):
     np.save(out_dir / "X_test.npy",    X)
     np.save(out_dir / "X_rr_test.npy", Xrr)
     np.save(out_dir / "y_test.npy",    y)
+    np.save(out_dir / "record_ids_test.npy", record_ids)
     print(f"\n✅ SVDB saved to {out_dir}/")
 
 

@@ -228,7 +228,7 @@ def process_ptbxl(data_dir: str, out_dir: str, sampling_rate: int = 500):
         split_df = df[df["split"] == split]
         print(f"\nProcessing {split} split ({len(split_df)} records)...")
 
-        X_list, Xr_list, y_list = [], [], []
+        X_list, Xr_list, y_list, patient_id_list = [], [], [], []
 
         for ecg_id, row in tqdm(split_df.iterrows(), total=len(split_df)):
             aami_label = map_record_to_aami(row["scp_codes"])
@@ -249,6 +249,10 @@ def process_ptbxl(data_dir: str, out_dir: str, sampling_rate: int = 500):
             X_list.append(beats)
             Xr_list.append(rr_feats)
             y_list.append(labels)
+            # patient_id repeated once per beat -- needed for a downstream
+            # patient-disjoint split (e.g. few-shot adaptation) without
+            # re-reading the raw record.
+            patient_id_list.append(np.full(len(beats), row["patient_id"]))
 
         if not X_list:
             print(f"  ⚠️  No valid samples found for {split}.")
@@ -257,6 +261,7 @@ def process_ptbxl(data_dir: str, out_dir: str, sampling_rate: int = 500):
         X = np.concatenate(X_list, axis=0)
         Xr = np.concatenate(Xr_list, axis=0)
         y = np.concatenate(y_list, axis=0)
+        patient_ids = np.concatenate(patient_id_list, axis=0)
 
         # Normalize each beat: zero-mean, unit-std
         X = (X - X.mean(axis=1, keepdims=True)) / (X.std(axis=1, keepdims=True) + 1e-8)
@@ -265,6 +270,7 @@ def process_ptbxl(data_dir: str, out_dir: str, sampling_rate: int = 500):
         np.save(os.path.join(out_dir, f"X_{split}.npy"), X)
         np.save(os.path.join(out_dir, f"X_rr_{split}.npy"), Xr)
         np.save(os.path.join(out_dir, f"y_{split}.npy"), y)
+        np.save(os.path.join(out_dir, f"patient_ids_{split}.npy"), patient_ids)
 
         print(f"  ✅ {split}: {len(X)} beats | Shape: {X.shape}")
         unique, counts = np.unique(y, return_counts=True)

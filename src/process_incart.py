@@ -72,8 +72,11 @@ def resample_annotations(ann_samples: np.ndarray, orig_fs: int, target_fs: int =
 
 def process_record(rec_id: str, raw_dir: Path) -> tuple:
     """
-    Processes one INCART record. Returns (beats, rr_feats, labels) arrays.
-    Returns empty arrays if record is missing.
+    Processes one INCART record. Returns (beats, rr_feats, labels, record_ids) arrays.
+    record_ids is rec_id repeated once per beat -- needed so a downstream script
+    (e.g. a record-disjoint few-shot adaptation split) can group beats by their
+    source record without re-parsing the raw signal. Returns empty arrays if
+    record is missing.
     """
     rec_path = raw_dir / rec_id
     try:
@@ -81,7 +84,7 @@ def process_record(rec_id: str, raw_dir: Path) -> tuple:
         ann             = wfdb.rdann(str(rec_path), 'atr')
     except Exception as e:
         print(f"  ⚠️  {rec_id}: {e}")
-        return np.array([]), np.array([]), np.array([])
+        return np.array([]), np.array([]), np.array([]), np.array([])
 
     orig_fs = fields['fs']
     # Use Lead I (channel 0); INCART is 12-lead so indices 0–11 are available
@@ -123,24 +126,27 @@ def process_record(rec_id: str, raw_dir: Path) -> tuple:
         X_rr.append(rr)
         y.append(AAMI_MAP[sym])
 
+    record_ids = np.array([rec_id] * len(X)) if len(X) else np.array([])
     return (
         np.array(X,    dtype=np.float32),
         np.array(X_rr, dtype=np.float32),
         np.array(y,    dtype=np.int64),
+        record_ids,
     )
 
 
 def process_split(records: list, split_name: str, raw_dir: Path, out_dir: Path):
-    all_X, all_Xrr, all_y = [], [], []
+    all_X, all_Xrr, all_y, all_rec_ids = [], [], [], []
 
     print(f"\n  Processing INCART {split_name} ({len(records)} records)...")
     for rec_id in tqdm(records):
-        X, Xrr, y = process_record(rec_id, raw_dir)
+        X, Xrr, y, rec_ids = process_record(rec_id, raw_dir)
         if len(X) == 0:
             continue
         all_X.append(X)
         all_Xrr.append(Xrr)
         all_y.append(y)
+        all_rec_ids.append(rec_ids)
 
     if not all_X:
         print(f"  ⚠️  No data found for {split_name}. Check {raw_dir}.")
@@ -149,12 +155,14 @@ def process_split(records: list, split_name: str, raw_dir: Path, out_dir: Path):
     X   = np.concatenate(all_X)
     Xrr = np.concatenate(all_Xrr)
     y   = np.concatenate(all_y)
+    record_ids = np.concatenate(all_rec_ids)
 
     print(f"  → {split_name}: {X.shape[0]} beats  |  dist: {dict(Counter(y.tolist()))}")
 
     np.save(out_dir / f"X_{split_name}.npy",    X)
     np.save(out_dir / f"X_rr_{split_name}.npy", Xrr)
     np.save(out_dir / f"y_{split_name}.npy",     y)
+    np.save(out_dir / f"record_ids_{split_name}.npy", record_ids)
 
     # Class weights (same formula as MIT-BIH)
     if split_name == "train":
