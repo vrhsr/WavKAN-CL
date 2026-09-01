@@ -37,6 +37,14 @@ from pathlib import Path
 import numpy as np
 import torch
 
+# Was: the per-component results print below uses mu/gamma/arrow Unicode
+# characters, which raised UnicodeEncodeError on a Windows cp1252 console --
+# same bug class already fixed in export_quantize.py (CHANGELOG.md 2026-08-14).
+# It crashed on every successful run on such a console, not just the
+# already-fixed checkpoint-load error path (AUDIT_FINDINGS.md C19).
+if sys.stdout.encoding is not None and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.wavkan_pcwi import PCWIWavKANLinear, ECG_PRIORS
 from models.wavkan_v2 import WavKAN_v2

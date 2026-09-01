@@ -198,6 +198,40 @@ else
 fi
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Phase 7 (run_gpu_pipeline_phase7.sh) -- multi-seed WAS, SVDB/INCART"
+echo "confusion diagnostic, augmentation re-run on the final configuration:"
+echo "----------------------------------------------------------------"
+
+echo ""
+echo "[1] Multi-seed WAS (both configurations):"
+n_final=$(find "results/was_multiseed_final" -maxdepth 1 -name "seed_*" -type d 2>/dev/null | wc -l | tr -d ' ')
+n_initial=$(find "results/was_multiseed_initial" -maxdepth 1 -name "seed_*" -type d 2>/dev/null | wc -l | tr -d ' ')
+echo "  final (use_rr_attn=False): $n_final / 20 seeds complete"
+echo "  initial (use_rr_attn=True): $n_initial / 20 seeds complete"
+if [ -f "results/was_multiseed_summary.json" ]; then
+    echo "  aggregated summary: results/was_multiseed_summary.json"
+else
+    echo "  aggregated summary: not yet produced"
+fi
+
+echo ""
+echo "[2] SVDB/INCART confusion-matrix diagnostic:"
+if [ -f "results/svdb_diagnostic/svdb_incart_confusion_diagnostic.json" ]; then
+    echo "  complete (results/svdb_diagnostic/svdb_incart_confusion_diagnostic.json)"
+else
+    echo "  not complete yet"
+fi
+
+echo ""
+echo "[3] Augmentation study re-run, final configuration (real training):"
+if [ -f "results/noise_augmentation_final/augmentation_comparison.json" ]; then
+    echo "  complete (results/noise_augmentation_final/augmentation_comparison.json)"
+else
+    echo "  not complete yet -- the expensive job in Phase 7 (5 strategies x 20 seeds, real training)"
+fi
+
+echo ""
 echo "Most recently modified log (tail):"
 latest_log=$(ls -t logs/*/*.log 2>/dev/null | head -1)
 if [ -n "$latest_log" ]; then

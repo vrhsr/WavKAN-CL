@@ -190,6 +190,7 @@ def train_one_strategy(
     device:        torch.device,
     batch_size:    int = 64,
     patience:      int = 12,
+    use_rr_attn:   bool = True,
 ) -> dict:
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -210,7 +211,7 @@ def train_one_strategy(
     criterion  = nn.CrossEntropyLoss(weight=class_weights)
     aug_fn     = AUGMENTATION_STRATEGIES[strategy_name]
 
-    model      = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
+    model      = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=use_rr_attn).to(device)
     optimizer  = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler  = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
@@ -286,6 +287,7 @@ def run_augmentation_study(
     data_dir:    str,
     output_dir:  str,
     device:      torch.device,
+    use_rr_attn: bool = True,
 ) -> Dict:
     OUT = Path(output_dir)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -298,7 +300,7 @@ def run_augmentation_study(
         print(f"{'─'*50}")
         for seed in seeds:
             print(f"  Seed {seed}...", end=" ", flush=True)
-            res = train_one_strategy(strategy, seed, epochs, data_dir, device)
+            res = train_one_strategy(strategy, seed, epochs, data_dir, device, use_rr_attn=use_rr_attn)
             all_results[strategy].append(res)
             print(f"F1={res['macro_f1']:.4f}  V={res['v_recall']:.3f}  S={res['s_recall']:.3f}")
 
@@ -450,17 +452,22 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir",  type=str, default="results/noise_augmentation")
     parser.add_argument("--device",      type=str,
                         default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--no-rr-attn",  action="store_true",
+                        help="Use the final, adopted configuration (plain-MLP RR fusion, "
+                             "153,045 params) instead of the initial RR-self-attention one.")
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
     print(f"Noise Augmentation Study — {len(args.strategies)} strategies × {len(args.seeds)} seeds")
+    print(f"Configuration: {'final (use_rr_attn=False)' if args.no_rr_attn else 'initial (use_rr_attn=True)'}")
     print(f"{'='*60}")
 
     run_augmentation_study(
-        strategies = args.strategies,
-        seeds      = args.seeds,
-        epochs     = args.epochs,
-        data_dir   = args.data_dir,
-        output_dir = args.output_dir,
-        device     = torch.device(args.device),
+        strategies  = args.strategies,
+        seeds       = args.seeds,
+        epochs      = args.epochs,
+        data_dir    = args.data_dir,
+        output_dir  = args.output_dir,
+        device      = torch.device(args.device),
+        use_rr_attn = not args.no_rr_attn,
     )
