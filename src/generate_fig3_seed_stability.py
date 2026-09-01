@@ -27,7 +27,7 @@ Usage:
         --wavkan-dir results/wavkan_v2_curriculum \\
         --baselines-root results \\
         --seeds 42 101 777 2026 9999 1234 2024 31415 27182 7 11 13 888 555 333 99 1001 5050 8080 1998 \\
-        --output results/figures/fig3_seed_stability_real.pdf
+        --output results/figures/baseline_comparison_seed_stability.pdf
 """
 import argparse
 import json
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument("--seeds", type=int, nargs="+",
                         default=[42, 101, 777, 2026, 9999, 1234, 2024, 31415, 27182,
                                  7, 11, 13, 888, 555, 333, 99, 1001, 5050, 8080, 1998])
-    parser.add_argument("--output", type=str, default="results/figures/fig3_seed_stability_real.pdf")
+    parser.add_argument("--output", type=str, default="results/figures/baseline_comparison_seed_stability.pdf")
     parser.add_argument("--report", type=str, default="results/fig3_seed_stability_report.json")
     args = parser.parse_args()
 

@@ -6,7 +6,20 @@ load error actually was (discovered live: a real checkpoint failed to report why
 it wasn't loading because the *error-reporting print itself* crashed first).
 Fixed by forcing UTF-8 stdout at import time. These tests run real (tiny)
 quantization/inference, not mocks.
+
+Also (2026-09-01): the CLI never had a --no-rr-attn flag and never forwarded
+use_rr_attn from argparse into export_and_benchmark() at all -- every prior
+invocation silently benchmarked with use_rr_attn=True regardless of which
+checkpoint it was pointed at, the same bug class already fixed in 5 sibling
+scripts (eval_ptbxl.py, wavelet_alignment_score.py, rr_ablation.py,
+temperature_scaling.py, per_patient_analysis.py -- commit b8f6379) but missed
+here. test_cli_no_rr_attn_flag_is_forwarded_to_the_model below runs the actual
+CLI entry point as a subprocess (not just the Python function) so it would have
+caught the missing plumbing, not just a missing flag definition.
 """
+import subprocess
+import sys
+
 import torch
 
 from src.export_quantize import (
@@ -53,3 +66,32 @@ def test_export_and_benchmark_loads_a_real_checkpoint_when_path_exists(tmp_path)
         n_latency=5,
     )
     assert report["model_params"] == 154_325
+
+
+def test_use_rr_attn_false_reports_the_smaller_final_configuration(tmp_path):
+    report = export_and_benchmark(
+        checkpoint=str(tmp_path / "does_not_exist.pth"),
+        output_dir=str(tmp_path / "deployment"),
+        n_latency=5,
+        use_rr_attn=False,
+    )
+    assert report["model_params"] == 153_045
+
+
+def test_cli_no_rr_attn_flag_is_forwarded_to_the_model(tmp_path):
+    """Was: --no-rr-attn wasn't even a defined flag, and use_rr_attn was never
+    forwarded from argparse to export_and_benchmark() at all -- the CLI always
+    benchmarked use_rr_attn=True (154,325 params) no matter what checkpoint or
+    flags were passed. Runs the real module as a subprocess CLI invocation so a
+    regression here (flag silently ignored, or not forwarded) actually fails."""
+    result = subprocess.run(
+        [sys.executable, "-m", "src.export_quantize",
+         "--checkpoint", str(tmp_path / "does_not_exist.pth"),
+         "--output-dir", str(tmp_path / "deployment"),
+         "--n-latency", "3",
+         "--no-rr-attn"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        cwd=str(__import__("pathlib").Path(__file__).resolve().parents[1]),
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Parameters  : 153,045" in result.stdout

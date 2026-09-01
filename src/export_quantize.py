@@ -329,6 +329,7 @@ if __name__ == "__main__":
     parser.add_argument("--track-co2",   action="store_true")
     parser.add_argument("--no-pcwi",     action="store_true")
     parser.add_argument("--no-pwam",     action="store_true")
+    parser.add_argument("--no-rr-attn",  action="store_true")
     args = parser.parse_args()
 
     export_and_benchmark(
@@ -337,5 +338,6 @@ if __name__ == "__main__":
         n_latency   = args.n_latency,
         use_pcwi    = not args.no_pcwi,
         use_pwam    = not args.no_pwam,
+        use_rr_attn = not args.no_rr_attn,
         track_co2   = args.track_co2,
     )

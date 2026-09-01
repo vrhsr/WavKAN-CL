@@ -7,8 +7,12 @@ import re
 # check, so it cannot detect a fabricated-but-key-matched citation (see AUDIT_FINDINGS.md
 # C14, where 9 of 21 real citation keys had fabricated or substantially wrong content
 # that this kind of check-by-key-matching alone would never have caught).
-tex = open(os.path.join('Submission_JBHI', 'ieee_manuscript.tex'), encoding='utf-8').read()
-bib = open(os.path.join('paper', 'IEEE PAPER', 'references.bib'), encoding='utf-8').read()
+#
+# Repointed 2026-09-01: see check_manuscript.py -- `ieee_manuscript.tex` and
+# `paper/IEEE PAPER/references.bib` were removed in a repo cleanup, superseded by
+# `ieee_manuscript_v2.tex` and the corrected `Submission_JBHI/references.bib`.
+tex = open(os.path.join('Submission_JBHI', 'ieee_manuscript_v2.tex'), encoding='utf-8').read()
+bib = open(os.path.join('Submission_JBHI', 'references.bib'), encoding='utf-8').read()
 
 # Extract all cite keys from tex
 cite_matches = re.findall(r'\\cite\{([^}]+)\}', tex)

@@ -266,14 +266,14 @@ B-Spline KAN & 118,229 & $0.371\pm0.023$ & $-1.68$ (large) & $0.00004$ \\
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.85\textwidth]{fig3_seed_stability_real.pdf}
+\includegraphics[width=0.85\textwidth]{baseline_comparison_seed_stability.pdf}
 \caption{Cross-architecture Macro-F1 stability, 20 real seeds per model, DS2 test set. Significance markers denote paired Wilcoxon signed-rank tests against WavKAN-v2 with Holm-Bonferroni correction; effect sizes are Cohen's $d$.}
 \label{fig:seed_stability}
 \end{figure*}
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{fig4_convergence_real.pdf}
+\includegraphics[width=\textwidth]{training_convergence_curves.pdf}
 \caption{Training convergence, WavKAN-v2, fair-baseline vs.\ curriculum arm (real training-history logs, DS1 validation Macro-F1 per epoch).}
 \label{fig:convergence}
 \end{figure*}
@@ -327,7 +327,7 @@ $t$ (current) & $-0.0045\pm0.0103$ & $0.0035$ & Yes (small) \\ \bottomrule
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.9\textwidth]{rr_ablation_figure_real.pdf}
+\includegraphics[width=0.9\textwidth]{rr_interval_ablation.pdf}
 \caption{Leave-one-out RR-interval ablation, 20 real seeds, DS2 test set. The $t-2$ position causes the largest, most significant S-Recall drop.}
 \label{fig:rr_ablation}
 \end{figure*}

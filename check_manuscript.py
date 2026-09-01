@@ -16,13 +16,14 @@ if hasattr(sys.stdout, "reconfigure"):
 # anywhere -- running this script as originally written either checked the wrong
 # document or crashed with FileNotFoundError before any check ran.
 #
-# `Submission_JBHI/ieee_manuscript.tex` is the confirmed-canonical live manuscript
-# (CLAUDE.md section 5). It has no references.bib of its own (AUDIT_FINDINGS.md C7 --
-# still open); `paper/IEEE PAPER/references.bib` is the more corrected of the two
-# candidate bib files as of the C14 citation-integrity fixes, though it still has one
-# unresolved entry (xiao_deep_2023 -- see the note in that file).
-tex_file = os.path.join('Submission_JBHI', 'ieee_manuscript.tex')
-bib_file = os.path.join('paper', 'IEEE PAPER', 'references.bib')
+# Repointed 2026-09-01: `Submission_JBHI/ieee_manuscript.tex` (the original draft this
+# script used to check) was removed during a repo cleanup -- superseded by
+# `ieee_manuscript_v2.tex` (CLAUDE.md section 5), now the sole live manuscript in that
+# folder. `Submission_JBHI/references.bib` is the corrected, in-place-fixed bib file
+# (all C14/C7 citation fixes applied directly to it) -- `paper/IEEE PAPER/references.bib`
+# was a duplicate copy, also removed in the same cleanup.
+tex_file = os.path.join('Submission_JBHI', 'ieee_manuscript_v2.tex')
+bib_file = os.path.join('Submission_JBHI', 'references.bib')
 
 def check_consistency():
     with open(tex_file, 'r', encoding='utf-8') as f:
@@ -69,11 +70,20 @@ def check_consistency():
         print("✅ All \\ref targets are defined.")
 
     # 3. Check Image Files
+    # Fixed 2026-09-01: was `os.path.exists(g)`, checking relative to the process's cwd
+    # (repo root) instead of the manuscript's own directory -- LaTeX resolves a bare
+    # \includegraphics{name.pdf} relative to the .tex file, not the shell's cwd. This
+    # silently "passed" for years only because repo-root duplicate copies of 4 of these
+    # figures happened to exist under the same bare filenames (removed 2026-09-01 as
+    # part of a repo cleanup of superseded old-draft manuscripts) -- once those
+    # coincidental duplicates were gone, every real figure reported MISSING despite all
+    # of them being present in Submission_JBHI/.
+    tex_dir = os.path.dirname(tex_file)
     graphics = set(re.findall(r'\\includegraphics(?:\[.*?\])?\{([^}]+)\}', tex_content))
     print("-" * 20)
     print(f"Found {len(graphics)} included graphics.")
     for g in graphics:
-        if os.path.exists(g):
+        if os.path.exists(os.path.join(tex_dir, g)):
             print(f"  - {g} [FOUND]")
         else:
             print(f"  - {g} [MISSING ❌]")

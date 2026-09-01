@@ -35,6 +35,21 @@
 #       script itself doesn't save one (it does -- src/noise_augmentation.py
 #       already writes augmentation_comparison.json with both a summary and
 #       the raw per-seed values; it just needs to actually be run again).
+#   [6] CPU latency + INT8 quantization re-benchmark for the FINAL
+#       (use_rr_attn=False) headline checkpoint -- src/export_quantize.py
+#       never had a --no-rr-attn flag until now (2026-09-01) and never wired
+#       its use_rr_attn parameter to any CLI flag at all, so every prior call
+#       silently benchmarked with use_rr_attn=True regardless of which
+#       checkpoint it was pointed at -- same bug class already fixed in the
+#       5 sibling scripts (commit b8f6379), just missed on this one. Existing
+#       results/deployment/benchmark_report.json is the use_rr_attn=True
+#       number quoted in the manuscript's abstract/limitations; this produces
+#       the matching number for the seed-42 ablation_no_rr_attn checkpoint so
+#       the headline-config swap (AUDIT_FINDINGS.md C16 resolution) doesn't
+#       leave latency/quantization as the one number still quietly measuring
+#       the superseded architecture. Runs on CPU by design (the script forces
+#       DEVICE=cpu) -- included here for convenience, not because it needs
+#       the GPU box specifically.
 #
 # Same resilience pattern as run_gpu_pipeline_phase5b.sh: skip-if-complete per
 # job, log-and-continue on a single job's failure, summary at the end. Nothing
@@ -257,8 +272,66 @@ if [ -f "data/processed_ptbxl/X_test.npy" ]; then
             python3 src/eval_ptbxl.py --model-path "$ckpt" --no-rr-attn \
                 --data-dir data/processed_ptbxl --out "$out" || true
     done
+
+    echo "  Aggregating across seeds (final configuration)..."
+    python3 -c "
+import json, glob
+import numpy as np
+
+files = sorted(glob.glob('results/ptbxl_zeroshot_multiseed_final/seed_*.json'))
+if not files:
+    print('  No per-seed PTB-XL (final config) results found -- nothing to aggregate.')
+else:
+    per_seed = [json.load(open(f)) for f in files]
+
+    def agg_top(key):
+        vals = [d[key] for d in per_seed if d.get(key) is not None]
+        if not vals:
+            return None
+        return {'mean': float(np.mean(vals)), 'std': float(np.std(vals, ddof=1) if len(vals) > 1 else 0.0), 'n': len(vals)}
+
+    def agg_class_recall(cls):
+        vals = [d.get('per_class_recall', {}).get(cls) for d in per_seed]
+        vals = [v for v in vals if v is not None]
+        if not vals:
+            return None
+        return {'mean': float(np.mean(vals)), 'std': float(np.std(vals, ddof=1) if len(vals) > 1 else 0.0), 'n': len(vals)}
+
+    per_class = {}
+    for cls in ['N', 'S', 'V', 'F', 'Q']:
+        result = agg_class_recall(cls)
+        if result is not None:
+            per_class[cls] = result
+
+    summary = {
+        'configuration': 'final (use_rr_attn=False, 153045 params, results/ablation_no_rr_attn checkpoints)',
+        'n_seeds': len(per_seed),
+        'macro_f1': agg_top('macro_f1'),
+        'per_class_recall': per_class,
+        'note': 'A class is omitted from per_class_recall above if every seed reported it as null (e.g. zero support in this PTB-XL extraction).',
+    }
+    with open('results/ptbxl_zero_shot_metrics_multiseed_final.json', 'w') as f:
+        json.dump(summary, f, indent=2)
+    print(f'  Aggregated {len(per_seed)} seeds -> results/ptbxl_zero_shot_metrics_multiseed_final.json')
+    print(f\"  Macro-F1: {summary['macro_f1']['mean']:.4f} +- {summary['macro_f1']['std']:.4f} (n={summary['macro_f1']['n']})\")
+"
 else
     echo "  Skipping -- data/processed_ptbxl not regenerated yet."
+fi
+
+echo ""
+echo "================================================================"
+echo "[6/6] CPU latency + INT8 quantization re-benchmark (final, use_rr_attn=False)..."
+FINAL_CKPT="results/ablation_no_rr_attn/seed_42/best_model.pth"
+if [ -f "$FINAL_CKPT" ]; then
+    run_job "deployment_final" '[ -f results/deployment_final/benchmark_report.json ]' \
+        python3 src/export_quantize.py \
+            --checkpoint "$FINAL_CKPT" \
+            --output-dir results/deployment_final \
+            --no-rr-attn || true
+else
+    echo "  Skipping -- $FINAL_CKPT not found."
+    FAILED_RUNS+=("deployment_final (missing checkpoint $FINAL_CKPT)")
 fi
 
 echo ""

@@ -21,7 +21,7 @@ Usage:
     python src/generate_fig4_convergence.py --seed 42 \\
         --baseline-dir results/wavkan_v2_baseline \\
         --curriculum-dir results/wavkan_v2_curriculum \\
-        --output results/figures/fig4_convergence_real.pdf
+        --output results/figures/training_convergence_curves.pdf
 """
 import argparse
 import json
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--baseline-dir", type=str, default="results/wavkan_v2_baseline")
     parser.add_argument("--curriculum-dir", type=str, default="results/wavkan_v2_curriculum")
-    parser.add_argument("--output", type=str, default="results/figures/fig4_convergence_real.pdf")
+    parser.add_argument("--output", type=str, default="results/figures/training_convergence_curves.pdf")
     args = parser.parse_args()
 
     baseline_history = load_history(args.baseline_dir, args.seed)
