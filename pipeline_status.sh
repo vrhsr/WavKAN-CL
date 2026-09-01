@@ -181,6 +181,23 @@ else
 fi
 
 echo ""
+echo "[5] Multi-dataset + PTB-XL re-eval, FINAL (plain-MLP-RR) configuration:"
+if [ -f "results/multidataset_table_final/multidataset_raw.json" ]; then
+    echo "  multidataset_eval_final: complete (results/multidataset_table_final/multidataset_raw.json)"
+else
+    echo "  multidataset_eval_final: not complete yet (this step re-evaluates all 6 models x 20 seeds x"
+    echo "  3 datasets = 360 forward passes into one fresh file -- it has no per-model progress marker of"
+    echo "  its own, so 'not complete' just means the single final JSON hasn't been written yet; check the"
+    echo "  live log tail below for which model/dataset it's currently on)"
+fi
+if [ -d "results/ptbxl_zeroshot_multiseed_final" ]; then
+    n_done=$(find "results/ptbxl_zeroshot_multiseed_final" -maxdepth 1 -name "seed_*.json" 2>/dev/null | wc -l | tr -d ' ')
+    echo "  ptbxl_final: $n_done / 20 per-seed evals complete"
+else
+    echo "  ptbxl_final: not started yet"
+fi
+
+echo ""
 echo "Most recently modified log (tail):"
 latest_log=$(ls -t logs/*/*.log 2>/dev/null | head -1)
 if [ -n "$latest_log" ]; then
