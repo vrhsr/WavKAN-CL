@@ -294,6 +294,7 @@ def calibrate_model(
     output_dir:  str,
     model_name:  str = "WavKAN-v2",
     device_str:  str = "cpu",
+    use_rr_attn: bool = True,
 ) -> dict:
     OUT    = Path(output_dir)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -318,7 +319,11 @@ def calibrate_model(
             print(f"  ⚠️  {ckpt} not found")
             continue
 
-        model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
+        # use_rr_attn hardcoded True until 2026-08-27 -- same recurring bug fixed the
+        # same day in eval_ptbxl.py/wavelet_alignment_score.py/rr_ablation.py
+        # (AUDIT_FINDINGS.md C19): would fail load_state_dict on a
+        # results/ablation_no_rr_attn/ checkpoint.
+        model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=use_rr_attn).to(device)
         model.load_state_dict(torch.load(str(ckpt), map_location=device))
 
         # ECE before calibration
@@ -392,6 +397,9 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir",  type=str, default="results/calibration")
     parser.add_argument("--device",      type=str,
                         default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--no-rr-attn", action="store_true",
+                        help="Match a checkpoint trained with use_rr_attn=False, e.g. "
+                             "results/ablation_no_rr_attn/*/best_model.pth.")
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
@@ -399,10 +407,11 @@ if __name__ == "__main__":
     print(f"{'='*60}")
 
     result = calibrate_model(
-        model_dir  = args.model_dir,
-        seeds      = args.seeds,
-        data_dir   = args.data_dir,
-        output_dir = args.output_dir,
-        device_str = args.device,
+        model_dir   = args.model_dir,
+        seeds       = args.seeds,
+        data_dir    = args.data_dir,
+        output_dir  = args.output_dir,
+        device_str  = args.device,
+        use_rr_attn = not args.no_rr_attn,
     )
     print(f"\n✅ Calibration complete. Results in {args.output_dir}/")

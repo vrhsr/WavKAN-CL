@@ -26,11 +26,15 @@ data/           NOT present in this checkout (gitignored — too large for git).
 results/        Real, git-tracked checkpoints and a few JSON metric files. Most result JSONs that later
                 pipeline stages expect are ABSENT from this checkout (see AUDIT_FINDINGS.md C5, H2).
 paper/          Older manuscript drafts + patent/pitch docs. Not the current submission target.
-Submission_JBHI/   THE CURRENT CANONICAL SUBMISSION (see §5). references.bib (C7) and the two missing
-                    embedded figures (H14) were fixed 2026-08-14 (asset placement, not manuscript-text
-                    edits) — one known compile-blocker remains: a \ref to a PTB-XL results table that
-                    was never actually authored (H24), left open since fixing it means writing new
-                    manuscript content, which needs Phase 6 sign-off.
+Submission_JBHI/   Contains BOTH `ieee_manuscript.tex` (the original, still-uncorrected draft — see §5)
+                    AND `ieee_manuscript_v2.tex` (new 2026-08-25/27, a full Phase-6 reconciliation
+                    against real data — see §5). `references.bib` (C7) and the two originally-missing
+                    embedded figures (H14) were fixed 2026-08-14; 4 more citations added and 2 real
+                    citation errors fixed 2026-08-27 (see §7 rule 2 update). `git`: this specific file
+                    was gitignored (blanket `references.bib` rule) with zero history until 2026-08-27 —
+                    fixed with a scoped `!Submission_JBHI/references.bib` negation rule; verify it's
+                    still tracked before assuming any future edit to it is recoverable.
+run_gpu_pipeline_phase6.sh, src/phase0_validation_backfill.py   2026-08-25/27 additions — see §10.
 Final_Submission_Files/, Medium_Article/   Older/adjacent artifacts, not the live submission.
 AUDIT_FINDINGS.md   The full Phase-2 findings register from the ongoing integrity audit. Living document —
                     rows get a Status update, never deleted.

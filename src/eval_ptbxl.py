@@ -51,12 +51,18 @@ class PTBXLDataset(Dataset):
 # ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
-def evaluate(model_path: str, data_dir: str, out_path: str):
+def evaluate(model_path: str, data_dir: str, out_path: str, use_rr_attn: bool = True):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
     # Load model
-    model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
+    # use_rr_attn hardcoded True until 2026-08-27 (AUDIT_FINDINGS.md C19-class bug):
+    # any checkpoint trained with use_rr_attn=False (e.g. results/ablation_no_rr_attn/,
+    # the architecture ieee_manuscript_v2.tex now reports as final/headline) failed
+    # load_state_dict outright -- same failure mode already found and fixed once this
+    # session in src/wavelet_alignment_score.py, recurring here because that fix was
+    # never cross-checked against this script too.
+    model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=use_rr_attn).to(device)
     if not os.path.exists(model_path):
         raise FileNotFoundError(
             f"Checkpoint not found: {model_path}\n"
@@ -153,5 +159,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--data-dir", type=str, default="data/processed_ptbxl")
     parser.add_argument("--out",  type=str, default="results/ptbxl_zero_shot_metrics.json")
+    parser.add_argument("--no-rr-attn", action="store_true",
+                        help="Match a checkpoint trained with use_rr_attn=False, e.g. "
+                             "results/ablation_no_rr_attn/*/best_model.pth.")
     args = parser.parse_args()
-    evaluate(args.model_path, args.data_dir, args.out)
+    evaluate(args.model_path, args.data_dir, args.out, use_rr_attn=not args.no_rr_attn)

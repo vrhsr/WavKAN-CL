@@ -364,6 +364,9 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir",   type=str, default="results/per_patient")
     parser.add_argument("--device",       type=str,
                         default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--no-rr-attn", action="store_true",
+                        help="Match a checkpoint trained with use_rr_attn=False, e.g. "
+                             "results/ablation_no_rr_attn/*/best_model.pth.")
     args = parser.parse_args()
 
     OUT    = Path(args.output_dir)
@@ -381,7 +384,10 @@ if __name__ == "__main__":
         if not ckpt.exists():
             print(f"  ⚠️  {ckpt} not found, skipping.")
             continue
-        model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
+        # use_rr_attn hardcoded True until 2026-08-27 -- same recurring bug fixed the
+        # same day in eval_ptbxl.py/wavelet_alignment_score.py/rr_ablation.py/
+        # temperature_scaling.py (AUDIT_FINDINGS.md C19).
+        model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=not args.no_rr_attn).to(device)
         model.load_state_dict(torch.load(str(ckpt), map_location=device))
         print(f"\n  Seed {seed} — WavKAN-v2")
         res = run_per_patient_inference(model, args.data_dir, device)

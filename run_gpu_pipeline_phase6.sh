@@ -254,7 +254,7 @@ if [ -f "data/processed_ptbxl/X_test.npy" ]; then
         out="results/ptbxl_zeroshot_multiseed_final/seed_${seed}.json"
         [ -f "$ckpt" ] || { echo "  [ptbxl_final/seed_${seed}] no checkpoint -- skipping."; continue; }
         run_job "ptbxl_final/seed_${seed}" "[ -f ${out} ]" \
-            python3 src/eval_ptbxl.py --model-path "$ckpt" \
+            python3 src/eval_ptbxl.py --model-path "$ckpt" --no-rr-attn \
                 --data-dir data/processed_ptbxl --out "$out" || true
     done
 else

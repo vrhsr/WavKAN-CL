@@ -111,9 +111,13 @@ def ablate_one_seed(
     ckpt_path: str,
     data_dir:  str,
     device:    torch.device,
+    use_rr_attn: bool = True,
 ) -> dict:
     """Runs leave-one-out ablation on one trained model checkpoint."""
-    model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True).to(device)
+    # use_rr_attn hardcoded True until 2026-08-27 -- same recurring bug fixed the same
+    # day in eval_ptbxl.py/wavelet_alignment_score.py (AUDIT_FINDINGS.md C19): would
+    # fail load_state_dict outright on a results/ablation_no_rr_attn/ checkpoint.
+    model = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=use_rr_attn).to(device)
     state = torch.load(ckpt_path, map_location=device)
     model.load_state_dict(state)
 
@@ -147,6 +151,7 @@ def run_multiseed_ablation(
     seeds:     list,
     data_dir:  str,
     device:    torch.device,
+    use_rr_attn: bool = True,
 ) -> dict:
     """Runs ablation across all seeds, aggregates deltas with mean±std."""
     base          = Path(model_dir)
@@ -158,7 +163,7 @@ def run_multiseed_ablation(
             print(f"  ⚠️  Checkpoint not found: {ckpt}")
             continue
         print(f"\n  Seed {seed}:")
-        result = ablate_one_seed(str(ckpt), data_dir, device)
+        result = ablate_one_seed(str(ckpt), data_dir, device, use_rr_attn=use_rr_attn)
         all_seed_data.append(result)
 
     if not all_seed_data:
@@ -314,6 +319,9 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="results/rr_ablation")
     parser.add_argument("--device",     type=str,
                         default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--no-rr-attn", action="store_true",
+                        help="Match a checkpoint trained with use_rr_attn=False, e.g. "
+                             "results/ablation_no_rr_attn/*/best_model.pth.")
     args = parser.parse_args()
 
     OUT    = Path(args.output_dir)
@@ -324,7 +332,8 @@ if __name__ == "__main__":
     print(f"Leave-One-Out RR Ablation  (device={device})")
     print(f"{'='*60}")
 
-    agg = run_multiseed_ablation(args.model_dir, args.seeds, args.data_dir, device)
+    agg = run_multiseed_ablation(args.model_dir, args.seeds, args.data_dir, device,
+                                  use_rr_attn=not args.no_rr_attn)
 
     if not agg:
         print("Exiting: no data.")
