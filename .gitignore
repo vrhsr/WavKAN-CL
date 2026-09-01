@@ -88,6 +88,14 @@ WavKAN_CL_Submission.zip
 manuscript_v_ai_backup.tex
 manuscript_complete.pdf
 references.bib
+# 2026-08-27: Submission_JBHI/references.bib is carved back out of the blanket rule
+# above. It's the live, current submission bibliography (AUDIT_FINDINGS.md C7 fixed
+# 13 fabricated citations into it) and had zero git history -- confirmed via
+# `git check-ignore -v`, `path exists on disk but not in HEAD`. One bad `git clean`
+# or filesystem hiccup away from unrecoverable loss of that fix. Other references.bib
+# files (paper/, paper/IEEE PAPER/) are intentionally left under the blanket rule --
+# not touched here.
+!Submission_JBHI/references.bib
 
 # Figures & Generated Images (Keep Local)
 fig_*.png
