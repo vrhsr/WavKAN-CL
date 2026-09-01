@@ -50,9 +50,9 @@ def generate_workflow_figure(output_path):
     
     # --- 1. Inputs ---
     # ECG Signal
-    draw_box(ax, (1.5, 4.5), 1.8, 0.6, "Raw ECG Signal\n(5s Window)", color='#E6F3FF')
+    draw_box(ax, (1.5, 4.5), 1.8, 0.6, "Raw ECG Signal\n(360 samples, 1s)", color='#E6F3FF')
     # RR Interval
-    draw_box(ax, (1.5, 2.5), 1.8, 0.6, "RR Intervals\n(Pre/Post Beat)", color='#FFE6E6')
+    draw_box(ax, (1.5, 2.5), 1.8, 0.6, "RR Intervals\n(5 Preceding, Causal)", color='#FFE6E6')
     
     # --- 2. Feature Extraction ---
     # WavKAN Backbone
@@ -101,7 +101,7 @@ def generate_workflow_figure(output_path):
     draw_arrow(ax, (9.25, 3.5), (9.5, 3.5))
     
     # --- Titles & Labels ---
-    plt.suptitle("Proposed Hybrid WavKAN Architecture with Curriculum Learning", fontsize=16, y=0.96, fontweight='bold')
+    plt.suptitle("WavKAN-v2 Architecture (153,045 params, plain-MLP RR fusion)", fontsize=16, y=0.96, fontweight='bold')
     
     # Add a bounding box for the whole system
     # Expanded y-range to prevent overlap with bottom text
@@ -117,4 +117,19 @@ def generate_workflow_figure(output_path):
     print(f"Generated workflow diagram at {output_path}")
 
 if __name__ == "__main__":
-    generate_workflow_figure(r"e:\The\results\figures\final_submission\final_methodology_workflow.png")
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=str,
+                        default="results/figures/final_methodology_workflow_v2.pdf",
+                        help="Fixed 2026-08-27: the old default here was a broken, "
+                             "seemingly-truncated path (e:\\The\\...) that could never "
+                             "have produced Submission_JBHI's actual file -- that file was "
+                             "evidently generated some other way and never reproduced from "
+                             "this script since. Also fixed two real content bugs found "
+                             "against the current manuscript text: the input window was "
+                             "labeled '5s Window' (real: 360 samples = 1s at 360Hz), and "
+                             "the RR box said 'Pre/Post Beat' (real: 5 causal, preceding-"
+                             "only intervals -- the old 'Pre/Post' phrasing matched a "
+                             "since-corrected non-causal formula error in the manuscript).")
+    args = parser.parse_args()
+    generate_workflow_figure(args.output)

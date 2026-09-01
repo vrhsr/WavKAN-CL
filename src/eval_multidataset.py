@@ -93,6 +93,14 @@ MODEL_CONSTRUCTORS = {
     "cnn_focal":   SimpleCNN1D,
     "bspline_kan": BSplineKAN_RR,
     "wavkan_v2":   lambda: WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=True),
+    # Added 2026-08-27: the final, adopted architecture (plain-MLP RR fusion,
+    # 153,045 params) that ieee_manuscript_v2.tex now reports as headline for
+    # the in-distribution comparison -- see AUDIT_FINDINGS.md C16 resolution
+    # and CHANGELOG.md 2026-08-27. Cross-dataset numbers for this configuration
+    # were not yet computed when the manuscript was drafted; this entry exists
+    # so that gap can be closed by running this same script, unmodified, with
+    # --results-base pointing wherever "ablation_no_rr_attn" checkpoints live.
+    "wavkan_v2_final": lambda: WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=False),
 }
 
 
@@ -379,11 +387,12 @@ def discover_checkpoints(results_base: str, seeds: List[int]) -> Dict[str, List[
     # results/wavkan_v2_curriculum/ (see CHANGELOG.md). Fixed so auto-discovery
     # actually finds them instead of silently returning zero WavKAN-v2 seeds.
     model_dirs = {
-        "wavkan_v2":    base / "wavkan_v2_curriculum",
-        "resnet1d":     base / "baseline_resnet1d",
-        "transformer":  base / "baseline_transformer",
-        "cnn_focal":    base / "baseline_cnn_focal",
-        "bspline_kan":  base / "baseline_bspline_kan",
+        "wavkan_v2":       base / "wavkan_v2_curriculum",
+        "wavkan_v2_final": base / "ablation_no_rr_attn",
+        "resnet1d":        base / "baseline_resnet1d",
+        "transformer":     base / "baseline_transformer",
+        "cnn_focal":       base / "baseline_cnn_focal",
+        "bspline_kan":     base / "baseline_bspline_kan",
     }
 
     for model_name, model_dir in model_dirs.items():

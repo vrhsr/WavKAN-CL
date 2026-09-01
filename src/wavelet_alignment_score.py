@@ -209,8 +209,16 @@ def analyse_interpretability(
         state = torch.load(checkpoint, map_location=DEVICE)
         model.load_state_dict(state)
     except Exception as e:
-        print(f"⚠️  Could not load checkpoint: {e}")
-        print("   Analysing randomly initialised model for demonstration.")
+        # Fixed 2026-08-27: the emoji below crashed with UnicodeEncodeError on the
+        # Windows cp1252 console, which raised a SECOND exception that masked the
+        # real one above (a state_dict mismatch, e.g. wrong use_rr_attn flag) --
+        # same class of bug already found and fixed once in export_quantize.py
+        # (CHANGELOG.md 2026-08-14). A load failure here must be loud, never
+        # silently swallowed into "randomly initialised model for demonstration"
+        # -- reporting WAS for an untrained model as if it were the real result
+        # would be exactly the kind of fabrication rule 1 forbids. Re-raise instead.
+        print(f"Could not load checkpoint: {e!r}")
+        raise
 
     model.eval()
     kan_layer = model.kan
@@ -248,6 +256,13 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir",  type=str, default="results/interpretability")
     parser.add_argument("--no-pcwi",     action="store_true")
     parser.add_argument("--no-pwam",     action="store_true")
+    parser.add_argument("--no-rr-attn",  action="store_true",
+                        help="Match a checkpoint trained with use_rr_attn=False "
+                             "(e.g. results/ablation_no_rr_attn/*) -- added 2026-08-27, "
+                             "this flag was previously missing so this script could only "
+                             "ever load a use_rr_attn=True checkpoint, silently failing "
+                             "(and, due to the encoding bug fixed below, silently masked) "
+                             "on any other config.")
     args = parser.parse_args()
 
     analyse_interpretability(
@@ -255,4 +270,5 @@ if __name__ == "__main__":
         output_dir  = args.output_dir,
         use_pcwi    = not args.no_pcwi,
         use_pwam    = not args.no_pwam,
+        use_rr_attn = not args.no_rr_attn,
     )

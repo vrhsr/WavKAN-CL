@@ -215,6 +215,52 @@ run_job "augmentation_study" '[ -f results/noise_augmentation/augmentation_compa
         --data-dir data/processed_rr_history \
         --output-dir results/noise_augmentation || true
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# [5] Multi-dataset re-eval for the FINAL architecture (added 2026-08-27)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Step [2] above evaluated the checkpoint set as it existed when this script was
+# first written -- the *initial* RR-self-attention WavKAN-v2 (results/wavkan_v2_
+# curriculum/). ieee_manuscript_v2.tex has since been rewritten to report a
+# DIFFERENT, final configuration (plain-MLP RR fusion, results/ablation_no_rr_attn/,
+# 153,045 params) as headline for the in-distribution comparison -- see
+# AUDIT_FINDINGS.md C16's resolution and CHANGELOG.md 2026-08-27 -- but its
+# INCART/SVDB/PTB-XL cross-dataset numbers are still the initial configuration's,
+# explicitly labeled as such in the manuscript (\S5.5's "note on which
+# configuration"). This step closes that gap: no new training, just a forward
+# pass of the ALREADY-EXISTING ablation_no_rr_attn checkpoints against the same
+# three datasets. src/eval_multidataset.py was extended with a "wavkan_v2_final"
+# registry entry for exactly this (use_rr_attn=False, checkpoints from
+# ablation_no_rr_attn/) -- running it again now evaluates both configurations
+# side by side in one fresh output directory, rather than only the new one, so
+# the two are directly comparable in the same file.
+echo ""
+echo "[5/5] Multi-dataset re-eval including the FINAL (plain-MLP-RR) configuration..."
+if [ -f "data/incart_processed/X_test.npy" ] || [ -f "data/svdb_processed/X_test.npy" ]; then
+    run_job "multidataset_eval_final" '[ -f results/multidataset_table_final/multidataset_raw.json ]' \
+        python3 src/eval_multidataset.py \
+            --results-base results \
+            --seeds "${SEEDS_20[@]}" \
+            --output-dir results/multidataset_table_final || true
+else
+    echo "  Skipping -- neither INCART nor SVDB data is present (step [1] must complete first)."
+    FAILED_RUNS+=("multidataset_eval_final (blocked on step 1)")
+fi
+echo ""
+echo "[5/5] Multi-seed PTB-XL zero-shot for the FINAL configuration..."
+if [ -f "data/processed_ptbxl/X_test.npy" ]; then
+    mkdir -p results/ptbxl_zeroshot_multiseed_final
+    for seed in "${SEEDS_20[@]}"; do
+        ckpt="results/ablation_no_rr_attn/seed_${seed}/best_model.pth"
+        out="results/ptbxl_zeroshot_multiseed_final/seed_${seed}.json"
+        [ -f "$ckpt" ] || { echo "  [ptbxl_final/seed_${seed}] no checkpoint -- skipping."; continue; }
+        run_job "ptbxl_final/seed_${seed}" "[ -f ${out} ]" \
+            python3 src/eval_ptbxl.py --model-path "$ckpt" \
+                --data-dir data/processed_ptbxl --out "$out" || true
+    done
+else
+    echo "  Skipping -- data/processed_ptbxl not regenerated yet."
+fi
+
 echo ""
 echo "================================================================"
 if [ ${#FAILED_RUNS[@]} -eq 0 ]; then
