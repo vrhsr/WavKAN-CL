@@ -55,12 +55,29 @@ def plot_convergence(baseline_history: list, curriculum_history: list, seed: int
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(2, 2, figsize=(10, 7))
+    # Publication-format pass (2026-09-02, project owner request): serif
+    # typography matching the paper's other restyled figures. Also fixes a
+    # real disclosure gap found the same day (AUDIT_FINDINGS.md, see
+    # CHANGELOG.md): results/wavkan_v2_curriculum/ is the INITIAL
+    # (use_rr_attn=True, 154,325-param) configuration -- verified directly
+    # against the real checkpoint's state_dict keys and parameter count --
+    # not the final, 153,045-param plain-MLP-RR configuration this paper
+    # otherwise reports as headline. The old title never said which
+    # configuration this is, unlike every other figure/table in the paper
+    # that draws from only one of the two configurations.
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+        "mathtext.fontset": "stix",
+    })
+
+    fig, axes = plt.subplots(2, 2, figsize=(11, 7.6))
     fig.suptitle(
-        f"Training Convergence: Baseline vs. Curriculum (seed={seed}, real run, 2026-08-13)\n"
+        f"Training Convergence: Baseline vs. Curriculum, Initial (RR-Self-Attention) "
+        f"Configuration, 154,325 Params (seed={seed}, real run)\n"
         f"Baseline ran {len(baseline_history)} epochs, Curriculum ran {len(curriculum_history)} "
         f"epochs (independent early stopping, patience=15)",
-        fontsize=10,
+        fontsize=11, fontweight="bold", y=0.99,
     )
 
     panels = [
@@ -82,15 +99,18 @@ def plot_convergence(baseline_history: list, curriculum_history: list, seed: int
         ax.plot(c_epochs, c_vals, color="#e15759", lw=2, label="Curriculum (PCA)")
         if transition_epoch is not None:
             ax.axvline(transition_epoch, color="grey", lw=1, ls="--",
-                       label="Curriculum warmup→anneal transition" if key == "loss" else None)
-        ax.set_title(title, fontsize=11)
-        ax.set_xlabel("Epoch")
+                       label="Curriculum warmup->anneal transition" if key == "loss" else None)
+        ax.set_title(title, fontsize=11.5, fontweight="bold")
+        ax.set_xlabel("Epoch", fontsize=10.5)
         ax.grid(alpha=0.3)
+        for spine in ax.spines.values():
+            spine.set_color("#333333")
+            spine.set_linewidth(0.8)
 
-    axes[0, 0].legend(fontsize=8, loc="best")
-    plt.tight_layout()
+    axes[0, 0].legend(fontsize=8.5, loc="best")
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=200, bbox_inches="tight")
+    fig.savefig(save_path, dpi=400, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {save_path}")
 

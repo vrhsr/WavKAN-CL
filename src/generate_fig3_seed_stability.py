@@ -131,7 +131,17 @@ def plot_fig3(data: dict, test_results: dict, save_path: str):
     import matplotlib.pyplot as plt
     import numpy as np
 
-    fig, ax = plt.subplots(figsize=(10, 5.8))
+    # Publication-format pass (2026-09-02, project owner request): serif
+    # typography and bolded title/axis labels to match the paper's other
+    # figures restyled this session. Styling only -- no change to any
+    # statistic computed above this function.
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+        "mathtext.fontset": "stix",
+    })
+
+    fig, ax = plt.subplots(figsize=(10, 6.4))
     labels = [s[0] for s in data["series"]]
     values = [s[1] for s in data["series"]]
     colors = [s[2] for s in data["series"]]
@@ -164,15 +174,29 @@ def plot_fig3(data: dict, test_results: dict, save_path: str):
                     f"{marker} (d={tr['cohens_d']:+.2f}, n={tr['n']})", ha="center", fontsize=8)
 
     ax.set_xticks(positions)
-    ax.set_xticklabels(labels, fontsize=9)
-    ax.set_ylabel("Macro-F1 (DS2 Test)")
-    ax.set_title("Seed Stability Analysis -- WavKAN-v2 vs. 4 Baselines\n"
-                  "(real per-seed data; * / ** = two-sided Wilcoxon vs. WavKAN-v2, paired by seed identity)",
-                  fontsize=10)
+    ax.set_xticklabels(labels, fontsize=10)
+    ax.set_ylabel("Macro-F1 (DS2 Test)", fontsize=11.5, fontweight="bold")
+    ax.set_title("Seed Stability Analysis --- WavKAN-v2 vs. 4 Baselines\n"
+                  "(real per-seed data; * = Holm-significant, ns = not significant after correction, "
+                  "two-sided Wilcoxon vs. WavKAN-v2, paired by seed identity)",
+                  fontsize=10.5, fontweight="bold", pad=16)
     ax.grid(axis="y", alpha=0.3)
+    for spine in ax.spines.values():
+        spine.set_color("#333333")
+        spine.set_linewidth(0.9)
+
+    # Explicit headroom above the highest significance annotation so the
+    # (now taller, bolded, two-line) title never overlaps plot content --
+    # was a real visual collision in an earlier pass of this restyling,
+    # caught by the project owner from a rendered figure.
+    all_vals = [v for series_vals in values if series_vals for v in series_vals]
+    y_top = max(all_vals) + 0.045 if all_vals else 1.0
+    y_bottom = min(all_vals) - 0.01 if all_vals else 0.0
+    ax.set_ylim(y_bottom, y_top)
+
     plt.tight_layout()
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path, dpi=200, bbox_inches="tight")
+    fig.savefig(save_path, dpi=400, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved: {save_path}")
 

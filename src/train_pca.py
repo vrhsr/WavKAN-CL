@@ -471,6 +471,8 @@ def train_pca(
             "use_pwam":    use_pwam,
             "use_rr_attn": use_rr_attn,
             "wavelet_type": wavelet_type,
+            "use_augment": use_augment,
+            "use_curriculum": use_curriculum,
         },
     }
 

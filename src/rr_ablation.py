@@ -47,7 +47,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from models.wavkan_v2 import WavKAN_v2
 
 CLASS_NAMES  = ["N", "S", "V", "F", "Q"]
-RR_POSITIONS = ["t-4", "t-3", "t-2", "t-1", "t"]   # indices 0-4 in the 5-beat window
+# Fixed 2026-09-02 (AUDIT_FINDINGS.md C21): these labels were WRONG. They assumed
+# the 5-element RR-history array is purely causal ([t-4,t-3,t-2,t-1,t]), but the
+# array actually saved by src/process_data.py (data/processed_rr_history, the
+# canonical training data for every checkpoint in this paper) is
+# [RR_-2, RR_-1, RR_0(Pre), RR_+1(Post), RR_+2] -- index 3 is a FUTURE interval
+# (the one following the classified beat), not "t-1". Index 2 ("t-2" under the
+# old, wrong labels) is really RR_0, the classified beat's OWN immediate pre-RR
+# interval, not "two beats prior". See CHANGELOG.md 2026-09-02 for the full
+# derivation and what this changes in the manuscript's RR-ablation narrative.
+RR_POSITIONS = ["RR-2", "RR-1", "RR0 (Pre)", "RR+1 (Post)", "RR+2 (Post)"]  # indices 0-4
 TARGET_CLASS = 1   # S-class (supraventricular)
 
 

@@ -1,0 +1,170 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{takalo-mattila_inter-patient_2018,guo_inter-patient_2019}
+\citation{akan_ecgformer_2024}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\citation{taleban_explainable_2025}
+\citation{bahrami_investigation_2025}
+\citation{xiao_deep_2023,silva_systematic_2025}
+\citation{elsheikhy_lightweight_2025}
+\citation{liu_kan_2024}
+\citation{zhao_mak-net_2025}
+\citation{addison_wavelet_2005,bozorgasl_liu_2024}
+\citation{bengio_curriculum_2009,schmale_curriculum_2025}
+\citation{holm_simple_1979}
+\citation{wilcoxon_individual_1945}
+\citation{cohen_statistical_1988}
+\citation{xiao_deep_2023}
+\citation{silva_systematic_2025}
+\citation{bahrami_investigation_2025}
+\citation{chazal_automatic_2004}
+\citation{guo_inter-patient_2019}
+\citation{zhou_inter-patient_2024}
+\citation{mousavi_inter-_2019}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{section.2}\protected@file@percent }
+\newlabel{sec:related_work}{{II}{2}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-A}Inter-Patient Evaluation Paradigm}{2}{subsection.2.1}\protected@file@percent }
+\citation{taleban_explainable_2025}
+\citation{liu_kan_2024}
+\citation{zhao_mak-net_2025}
+\citation{bozorgasl_liu_2024}
+\citation{bozorgasl_liu_2024}
+\citation{addison_wavelet_2005}
+\citation{silva_systematic_2025}
+\citation{bengio_curriculum_2009}
+\citation{bae_handling_2025}
+\citation{schmale_curriculum_2025}
+\citation{dai_angular_2026}
+\citation{farag_tiny_2023}
+\citation{elsheikhy_lightweight_2025}
+\citation{addison_wavelet_2005}
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-B}Explainability and Kolmogorov-Arnold Networks}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {II-C}Handling Imbalance and Edge Constraints}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {III}Methodology}{3}{section.3}\protected@file@percent }
+\newlabel{sec:methods}{{III}{3}{Methodology}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-A}Problem Formalization}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-B}The WavKAN-v2 Architecture}{3}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.1}Feature Extraction: WavKAN Backbone}{3}{subsubsection.3.2.1}\protected@file@percent }
+\citation{zhao_mak-net_2025}
+\citation{guo_inter-patient_2019}
+\citation{chazal_automatic_2004}
+\citation{takalo-mattila_inter-patient_2018}
+\citation{xiao_deep_2023,luz_survey_2016}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {WavKAN-v2 Architecture.} Dual-branch architecture: the morphology branch (WavKAN backbone $\to $ BiGRU temporal context $\to $ PWAM P-wave attention, which takes the raw ECG signal as a second input alongside the BiGRU output) is fused with the RR-history rhythm branch before classification. The curriculum scheduler (training only) anchors minority-class decision boundaries before annealing to the natural class distribution.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:arch}{{1}{4}{\textbf {WavKAN-v2 Architecture.} Dual-branch architecture: the morphology branch (WavKAN backbone $\to $ BiGRU temporal context $\to $ PWAM P-wave attention, which takes the raw ECG signal as a second input alongside the BiGRU output) is fused with the RR-history rhythm branch before classification. The curriculum scheduler (training only) anchors minority-class decision boundaries before annealing to the natural class distribution}{figure.1}{}}
+\newlabel{sec:rhythm}{{III-B.2}{4}{Rhythm Encoding}{subsubsection.3.2.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.2}Rhythm Encoding}{4}{subsubsection.3.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.3}Fusion and Classification}{4}{subsubsection.3.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-C}Progressive Curriculum Anchoring (PCA)}{4}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Dataset and Evaluation Protocol}{4}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-A}Inter-Patient Data Splitting Protocol}{4}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Micro-Architecture of WavKAN.} Learnable wavelet functions $\psi (t;\mu ,\gamma )$ replace fixed node activations, with each edge learning its own translation and dilation parameters.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:wavkan_micro}{{2}{5}{\textbf {Micro-Architecture of WavKAN.} Learnable wavelet functions $\psi (t;\mu ,\gamma )$ replace fixed node activations, with each edge learning its own translation and dilation parameters}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Inter-Patient Data Splitting Protocol (DS1/DS2).}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:split_protocol}{{I}{5}{Inter-Patient Data Splitting Protocol (DS1/DS2)}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {IV-B}Class Distribution and AAMI Mapping}{5}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Experimental Setup}{5}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-A}Training Details}{5}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-B}Baselines}{5}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Results}{5}{section.6}\protected@file@percent }
+\newlabel{sec:results}{{VI}{5}{Results}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-A}Curriculum vs. Fair Baseline (Within-Model, 20 Seeds)}{5}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:results_curriculum}{{VI-A}{5}{Curriculum vs. Fair Baseline (Within-Model, 20 Seeds)}{subsection.6.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Class Distribution and AAMI Standard Mapping.}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:class_dist}{{II}{6}{Class Distribution and AAMI Standard Mapping}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Baseline Architectures (identical protocol/split/epoch budget as WavKAN-v2).}}{6}{table.3}\protected@file@percent }
+\newlabel{tab:baselines}{{III}{6}{Baseline Architectures (identical protocol/split/epoch budget as WavKAN-v2)}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Curriculum vs. Fair Baseline, WavKAN-v2, 20 Seeds, DS2 Test Set. Only S-Recall survives Holm-Bonferroni correction.}}{6}{table.4}\protected@file@percent }
+\newlabel{tab:curriculum_stats}{{IV}{6}{Curriculum vs. Fair Baseline, WavKAN-v2, 20 Seeds, DS2 Test Set. Only S-Recall survives Holm-Bonferroni correction}{table.4}{}}
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Progressive Curriculum Anchoring (PCA)}}{6}{algorithm.1}\protected@file@percent }
+\newlabel{alg:curriculum}{{1}{6}{Progressive Curriculum Anchoring (PCA)}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-B}Comparison Against Standard Architectures (Cross-Model, 20 Seeds)}{6}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:results_baselines}{{VI-B}{6}{Comparison Against Standard Architectures (Cross-Model, 20 Seeds)}{subsection.6.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Cross-Architecture Comparison, Final Architecture (Plain-MLP RR Fusion) vs. Four Standard Baselines, 20 Seeds Each, DS2 Test Set. None of the four comparisons survive Holm-Bonferroni correction.}}{7}{table.5}\protected@file@percent }
+\newlabel{tab:baseline_comparison}{{V}{7}{Cross-Architecture Comparison, Final Architecture (Plain-MLP RR Fusion) vs. Four Standard Baselines, 20 Seeds Each, DS2 Test Set. None of the four comparisons survive Holm-Bonferroni correction}{table.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Row-normalized confusion matrix, final architecture (153,045 params), seed 42, DS2 test set. Generated directly from this checkpoint's real predictions, not reused from an earlier configuration.}}{7}{figure.3}\protected@file@percent }
+\newlabel{fig:confusion}{{3}{7}{Row-normalized confusion matrix, final architecture (153,045 params), seed 42, DS2 test set. Generated directly from this checkpoint's real predictions, not reused from an earlier configuration}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-C}Internal Architectural Ablation}{7}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:results_ablation}{{VI-C}{7}{Internal Architectural Ablation}{subsection.6.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-D}RR-Interval Position Ablation}{7}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:results_rr}{{VI-D}{7}{RR-Interval Position Ablation}{subsection.6.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Cross-architecture Macro-F1 stability for the \emph  {initial, RR-self-attention} configuration (154,325 params), 20 real seeds per model, DS2 test set --- superseded as our proposed architecture by the plain-MLP configuration of Table~\ref {tab:baseline_comparison} (\S  \ref {sec:results_ablation}), shown here for completeness since it is part of the real architecture-development record. Significance markers denote paired Wilcoxon signed-rank tests against this earlier configuration with Holm-Bonferroni correction; effect sizes are Cohen's $d$.}}{8}{figure.4}\protected@file@percent }
+\newlabel{fig:seed_stability}{{4}{8}{Cross-architecture Macro-F1 stability for the \emph {initial, RR-self-attention} configuration (154,325 params), 20 real seeds per model, DS2 test set --- superseded as our proposed architecture by the plain-MLP configuration of Table~\ref {tab:baseline_comparison} (\S \ref {sec:results_ablation}), shown here for completeness since it is part of the real architecture-development record. Significance markers denote paired Wilcoxon signed-rank tests against this earlier configuration with Holm-Bonferroni correction; effect sizes are Cohen's $d$}{figure.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Internal Ablation, WavKAN-v2 Family, 20 Seeds Each. Removing the RR self-attention branch yields the best Macro-F1 in the family, on both splits.}}{8}{table.6}\protected@file@percent }
+\newlabel{tab:family_ablation}{{VI}{8}{Internal Ablation, WavKAN-v2 Family, 20 Seeds Each. Removing the RR self-attention branch yields the best Macro-F1 in the family, on both splits}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces RR-Interval Leave-One-Out Ablation, 20 Seeds, DS2 Test Set. Baseline S-Recall (RR history intact): $0.1225\pm 0.0524$.}}{8}{table.7}\protected@file@percent }
+\newlabel{tab:rr_ablation}{{VII}{8}{RR-Interval Leave-One-Out Ablation, 20 Seeds, DS2 Test Set. Baseline S-Recall (RR history intact): $0.1225\pm 0.0524$}{table.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-E}Cross-Dataset Zero-Shot Generalization (PTB-XL, INCART, SVDB)}{8}{subsection.6.5}\protected@file@percent }
+\newlabel{sec:results_ptbxl}{{VI-E}{8}{Cross-Dataset Zero-Shot Generalization (PTB-XL, INCART, SVDB)}{subsection.6.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Training convergence, WavKAN-v2, fair-baseline vs.\ curriculum arm, \emph  {initial} (RR-self-attention, 154,325-param) configuration (real training-history logs, seed 42, DS1 validation Macro-F1 per epoch) --- consistent with Table~\ref {tab:curriculum_stats}, which reports this same comparison's aggregated 20-seed statistics on this same initial configuration.}}{9}{figure.5}\protected@file@percent }
+\newlabel{fig:convergence}{{5}{9}{Training convergence, WavKAN-v2, fair-baseline vs.\ curriculum arm, \emph {initial} (RR-self-attention, 154,325-param) configuration (real training-history logs, seed 42, DS1 validation Macro-F1 per epoch) --- consistent with Table~\ref {tab:curriculum_stats}, which reports this same comparison's aggregated 20-seed statistics on this same initial configuration}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Leave-one-out RR-interval ablation, 20 real seeds, DS2 test set. $RR_0$ (the interval immediately preceding the classified beat) causes the largest, most significant S-Recall drop; $RR_{+2}$ (an interval following the classified beat, non-causal) is the second significant position.}}{9}{figure.6}\protected@file@percent }
+\newlabel{fig:rr_ablation}{{6}{9}{Leave-one-out RR-interval ablation, 20 real seeds, DS2 test set. $RR_0$ (the interval immediately preceding the classified beat) causes the largest, most significant S-Recall drop; $RR_{+2}$ (an interval following the classified beat, non-causal) is the second significant position}{figure.6}{}}
+\citation{zhao_mak-net_2025}
+\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces PTB-XL Zero-Shot Generalization (20 Seeds, No Fine-Tuning). Macro-F1: final configuration $0.200\pm 0.005$; initial configuration $0.198\pm 0.006$.}}{10}{table.8}\protected@file@percent }
+\newlabel{tab:ptbxl_zero_shot}{{VIII}{10}{PTB-XL Zero-Shot Generalization (20 Seeds, No Fine-Tuning). Macro-F1: final configuration $0.200\pm 0.005$; initial configuration $0.198\pm 0.006$}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-F}Quantified Interpretability (WAS)}{10}{subsection.6.6}\protected@file@percent }
+\newlabel{sec:results_was}{{VI-F}{10}{Quantified Interpretability (WAS)}{subsection.6.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VI-G}Deployment Efficiency and Quantization}{10}{subsection.6.7}\protected@file@percent }
+\newlabel{sec:results_deploy}{{VI-G}{10}{Deployment Efficiency and Quantization}{subsection.6.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Discussion}{10}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{VII}{10}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-A}Statistical Parity with Standard Architectures, Plus Two Real Additional Properties}{10}{subsection.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IX}{\ignorespaces Cross-Dataset Zero-Shot Generalization, INCART and SVDB, 20 Seeds Each. Final configuration (adopted, plain-MLP RR fusion) is the headline result; initial (RR-self-attention) configuration retained for the architecture-development record.}}{11}{table.9}\protected@file@percent }
+\newlabel{tab:multidataset}{{IX}{11}{Cross-Dataset Zero-Shot Generalization, INCART and SVDB, 20 Seeds Each. Final configuration (adopted, plain-MLP RR fusion) is the headline result; initial (RR-self-attention) configuration retained for the architecture-development record}{table.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces \textbf  {Learned Wavelet Bases.} WavKAN-v2 learns adaptive Mexican Hat wavelets (blue curves) whose translation/dilation parameters align with QRS/P/T-wave priors (WAS $=0.9578\pm 0.0128$ across 20 seeds on the final, adopted configuration).}}{11}{figure.7}\protected@file@percent }
+\newlabel{fig:wavelets}{{7}{11}{\textbf {Learned Wavelet Bases.} WavKAN-v2 learns adaptive Mexican Hat wavelets (blue curves) whose translation/dilation parameters align with QRS/P/T-wave priors (WAS $=0.9578\pm 0.0128$ across 20 seeds on the final, adopted configuration)}{figure.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {X}{\ignorespaces Real Measured Deployment Metrics (CPU, FP32 vs.\ INT8 Dynamic Quantization).}}{11}{table.10}\protected@file@percent }
+\newlabel{tab:deployment}{{X}{11}{Real Measured Deployment Metrics (CPU, FP32 vs.\ INT8 Dynamic Quantization)}{table.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-B}Why the RR Self-Attention Branch Underperforms}{11}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:discussion_rr}{{VII-B}{11}{Why the RR Self-Attention Branch Underperforms}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-C}Augmentation Strategies for S-Class Detection}{11}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:results_augmentation}{{VII-C}{11}{Augmentation Strategies for S-Class Detection}{subsection.7.3}{}}
+\citation{bae_handling_2025}
+\citation{silva_systematic_2025}
+\citation{silva_systematic_2025}
+\@writefile{lot}{\contentsline {table}{\numberline {XI}{\ignorespaces Augmentation Strategy Comparison, 20 Seeds, DS2 Test Set, Final Configuration.}}{12}{table.11}\protected@file@percent }
+\newlabel{tab:augmentation}{{XI}{12}{Augmentation Strategy Comparison, 20 Seeds, DS2 Test Set, Final Configuration}{table.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Augmentation strategy comparison, DS2 test set, final (\texttt  {use\_rr\_attn=False}) configuration. SMOTE substantially raises S-Recall but at the largest Macro-F1 cost measured in this study; the three noise-based strategies significantly improve V-Recall but none reach significance on S-Recall under this configuration (\S  \ref {sec:discussion}.3).}}{12}{figure.8}\protected@file@percent }
+\newlabel{fig:augmentation}{{8}{12}{Augmentation strategy comparison, DS2 test set, final (\texttt {use\_rr\_attn=False}) configuration. SMOTE substantially raises S-Recall but at the largest Macro-F1 cost measured in this study; the three noise-based strategies significantly improve V-Recall but none reach significance on S-Recall under this configuration (\S \ref {sec:discussion}.3)}{figure.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-D}E3C Compliance}{12}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-E}Limitations}{12}{subsection.7.5}\protected@file@percent }
+\newlabel{sec:limitations}{{VII-E}{12}{Limitations}{subsection.7.5}{}}
+\citation{dai_angular_2026}
+\citation{moody_mit-bih_1992}
+\bibstyle{IEEEtran}
+\bibdata{references}
+\bibcite{takalo-mattila_inter-patient_2018}{1}
+\@writefile{toc}{\contentsline {subsection}{\numberline {VII-F}Future Work}{13}{subsection.7.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VIII}Conclusion}{13}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{VIII}{13}{Conclusion}{section.8}{}}
+\bibcite{guo_inter-patient_2019}{2}
+\bibcite{akan_ecgformer_2024}{3}
+\bibcite{taleban_explainable_2025}{4}
+\bibcite{bahrami_investigation_2025}{5}
+\bibcite{xiao_deep_2023}{6}
+\bibcite{silva_systematic_2025}{7}
+\bibcite{elsheikhy_lightweight_2025}{8}
+\bibcite{liu_kan_2024}{9}
+\bibcite{zhao_mak-net_2025}{10}
+\bibcite{addison_wavelet_2005}{11}
+\bibcite{bozorgasl_liu_2024}{12}
+\bibcite{bengio_curriculum_2009}{13}
+\bibcite{schmale_curriculum_2025}{14}
+\bibcite{holm_simple_1979}{15}
+\bibcite{wilcoxon_individual_1945}{16}
+\bibcite{cohen_statistical_1988}{17}
+\bibcite{chazal_automatic_2004}{18}
+\bibcite{zhou_inter-patient_2024}{19}
+\bibcite{mousavi_inter-_2019}{20}
+\bibcite{bae_handling_2025}{21}
+\bibcite{dai_angular_2026}{22}
+\bibcite{farag_tiny_2023}{23}
+\bibcite{luz_survey_2016}{24}
+\bibcite{moody_mit-bih_1992}{25}
+\@writefile{toc}{\contentsline {section}{Biographies}{15}{biography.0}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{Venkateramanan Manivannan}{15}{biography.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{Ramanathan Lakshmanan}{15}{biography.2}\protected@file@percent }
+\gdef \@abspage@last{15}

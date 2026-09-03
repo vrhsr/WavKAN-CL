@@ -253,6 +253,12 @@ def train_one_strategy(
             no_improve = 0
         else:
             no_improve += 1
+
+        if epoch % 5 == 0 or epoch == 1:
+            print(f"\n    epoch {epoch:>3d}/{epochs}  val_f1={val_f1:.4f}  "
+                  f"best={best_f1:.4f}  no_improve={no_improve}/{patience}",
+                  flush=True)
+
         if no_improve >= patience:
             break
 
@@ -321,7 +327,7 @@ def run_augmentation_study(
         json.dump({"summary": summary, "raw": all_results}, f, indent=2)
 
     print_summary(summary)
-    plot_augmentation(summary, str(OUT / "augmentation_figure.pdf"))
+    plot_augmentation(summary, str(OUT / "augmentation_figure.pdf"), use_rr_attn=use_rr_attn)
     latex = generate_latex_table(summary)
     with open(OUT / "augmentation_table.tex", "w") as f:
         f.write(latex)
@@ -339,7 +345,7 @@ STRATEGY_LABELS = {
     "gaussian":         "Gaussian Noise",
     "baseline_wander":  "Baseline Wander",
     "powerline":        "Power-Line (50 Hz)",
-    "combined":         "★ Combined (Ours)",
+    "combined":         "Combined (Ours)*",
     "smote":            "SMOTE (interpolation)",
 }
 
@@ -358,41 +364,62 @@ def print_summary(summary: dict):
     print(f"{'='*70}")
 
 
-def plot_augmentation(summary: dict, save_path: str):
+def plot_augmentation(summary: dict, save_path: str, use_rr_attn: bool = True):
+    # Publication-format pass (2026-09-02, project owner request, to match the
+    # 5 other figures already restyled this session): serif typography,
+    # bolded title/axis labels, dpi 400. Styling + a config-disclosure fix
+    # only -- no change to any value in `summary`, which is untouched real
+    # data from run_augmentation_study(). The old title never said which
+    # WavKAN-v2 configuration (use_rr_attn True/False) this run used, unlike
+    # every other figure/table in the paper drawing from only one config --
+    # same disclosure gap already fixed in fig4 (training_convergence_curves).
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+        "mathtext.fontset": "stix",
+    })
+
     strategies = list(summary.keys())
     labels     = [STRATEGY_LABELS.get(s, s) for s in strategies]
     metrics    = ["macro_f1", "v_recall", "s_recall"]
     m_labels   = ["Macro-F1", "V-Recall (Primary)", "S-Recall (Secondary)"]
-    colors     = ["#4e79a7", "#e15759", "#f28e2b"]
+    colors     = ["#1f4e79", "#c9564d", "#c9a84c"]
 
     x     = np.arange(len(strategies))
     width = 0.25
-    fig, ax = plt.subplots(figsize=(13, 5.5))
+    fig, ax = plt.subplots(figsize=(13, 5.8))
 
     for mi, (metric, ml, color) in enumerate(zip(metrics, m_labels, colors)):
         means = [summary[s][metric]["mean"] for s in strategies]
         stds  = [summary[s][metric]["std"]  for s in strategies]
         bars  = ax.bar(x + mi * width, means, width, label=ml,
-                       color=color, alpha=0.8, yerr=stds, capsize=4,
+                       color=color, alpha=0.85, yerr=stds, capsize=4,
                        error_kw={"linewidth": 1.2})
         # Highlight "combined"
         if "combined" in strategies:
             idx = strategies.index("combined")
-            bars[idx].set_edgecolor("black"); bars[idx].set_linewidth(2.5)
+            bars[idx].set_edgecolor("black"); bars[idx].set_linewidth(2.2)
 
     ax.set_xticks(x + width)
-    ax.set_xticklabels(labels, rotation=22, ha="right", fontsize=9)
-    ax.set_ylabel("Score", fontsize=12)
+    ax.set_xticklabels(labels, rotation=22, ha="right", fontsize=9.5)
+    ax.set_ylabel("Score", fontsize=11.5, fontweight="bold")
     ax.set_ylim(0, 1.05)
-    ax.legend(fontsize=10)
-    ax.grid(axis="y", alpha=0.35)
+    ax.legend(fontsize=9.5, loc="upper right")
+    ax.grid(axis="y", alpha=0.3)
+    for spine in ax.spines.values():
+        spine.set_color("#333333")
+        spine.set_linewidth(0.8)
+
+    config_str = "Initial (RR-Self-Attention), 154,325 Params" if use_rr_attn \
+        else "Final (Plain-MLP RR Fusion), 153,045 Params"
     ax.set_title(
-        "Augmentation Strategy Comparison — WavKAN-v2 on MIT-BIH DS2\n"
-        "★ Combined (Gaussian + Wander) is our selected strategy in train_pca.py",
-        fontweight="bold", fontsize=11,
+        f"Augmentation Strategy Comparison --- WavKAN-v2 on MIT-BIH DS2\n"
+        f"{config_str} Configuration; * Combined (Gaussian + Wander) is the strategy "
+        f"selected in train_pca.py",
+        fontweight="bold", fontsize=10.5, pad=14,
     )
     plt.tight_layout()
-    fig.savefig(save_path, dpi=200, bbox_inches="tight")
+    fig.savefig(save_path, dpi=400, bbox_inches="tight")
     plt.close(fig)
     print(f"  Figure: {save_path}")
 
