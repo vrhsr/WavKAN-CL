@@ -814,3 +814,15 @@ A complete, self-validating, restartable job rather than an instruction to "run 
 ### Still requiring computation after this pass
 
 Only the Phase 10 ablation above is publication-blocking. Everything else remains legitimate future work and is stated as such in the paper: the PTB-XL re-extraction (C23), linking PPR to model behaviour rather than parameters alone (C22), the SVDB wavelet-KAN S→V mechanism, ARM-class benchmarking with a quantised wavelet layer, and a causal-RR retrain. `AUDIT_FINDINGS.md` H2/H4/H7 remain open — dev tooling and dead scripts no current result depends on.
+
+### 2026-09-04 — Phase 10 first launch: preflight caught a GPU-box environment fault, and its diagnostics were sharpened
+
+The pipeline's first real launch on the GPU box (`sjt418scope042`, RTX A4000 16 GB, driver 580.173.02, torch 2.5.1+cu121) **aborted at preflight stage 1 with exit 2, having spent no GPU time** — which is the designed behaviour. `nvidia-smi` reported the GPU normally while `torch.cuda.is_available()` was `False` with "CUDA unknown error", i.e. an environment fault on the machine, not a fault in the job, the data or the config.
+
+**The message was wrong about the cause, though, and that was worth fixing.** It read "CUDA is not available ... not intended for CPU", which describes a machine with no GPU. This machine has one; the fix for "GPU present, CUDA cannot initialise" is completely different from the fix for "wrong machine", and conflating them sends the operator down the wrong path. `run_remote_experiment.py`'s CUDA gate now distinguishes the two: it queries `nvidia-smi` for the device, calls `cuInit(0)` through `ctypes` to obtain the **raw CUDA driver-API error code** (far more diagnostic than torch's warning text — 803 means a driver/kernel-module version mismatch, 802 or 304 usually mean `nvidia_uvm` is absent, 100 means the device is hidden), and prints the four candidate causes with the exact command for each. The no-GPU branch is kept for the genuine case.
+
+**`diagnose_gpu.sh` (new)** is a read-only diagnostic that checks all of it in one pass: userspace driver vs kernel-module version, whether `nvidia`/`nvidia_uvm`/`nvidia_modeset` are loaded, `/dev/nvidia*` node existence and per-user accessibility, the environment variables that can hide a GPU, what PyTorch reports alongside the raw `cuInit` code, and compute-mode/MIG/other-process state. It ends with a ranked verdict naming the specific fix and the evidence for it, rather than a list of things to try. It changes no system state.
+
+Verified locally on both branches: the no-GPU path reports "nvidia-smi reports no GPU, so this machine appears to have none", and the GPU-present path is the new diagnostic block. `diagnose_gpu.sh` passes `bash -n`.
+
+No scientific content changed. Nothing was trained; the experiment is still pending.

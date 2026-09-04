@@ -140,9 +140,84 @@ def check_environment(cfg) -> dict:
     say(f"  torch     : {torch.__version__}")
 
     if not torch.cuda.is_available():
+        # Distinguish "there is no GPU here" from "there is a GPU but CUDA
+        # cannot initialise". They look identical to torch.cuda.is_available()
+        # and have completely different fixes, so report which one it is and
+        # the raw driver-API error code, which is far more diagnostic than
+        # torch's own warning text.
+        smi, gpu_line = shutil.which("nvidia-smi"), ""
+        if smi:
+            try:
+                gpu_line = subprocess.run(
+                    [smi, "--query-gpu=name,driver_version,memory.total",
+                     "--format=csv,noheader"],
+                    capture_output=True, text=True, timeout=30).stdout.strip()
+            except Exception:
+                gpu_line = ""
+
+        rc, rc_name = None, ""
+        try:
+            import ctypes
+            for lib in ("libcuda.so.1", "libcuda.so", "nvcuda.dll"):
+                try:
+                    rc = ctypes.CDLL(lib).cuInit(0)
+                    break
+                except OSError:
+                    continue
+            rc_name = {0: "CUDA_SUCCESS", 100: "CUDA_ERROR_NO_DEVICE",
+                       304: "CUDA_ERROR_OPERATING_SYSTEM",
+                       802: "CUDA_ERROR_SYSTEM_NOT_READY",
+                       803: "CUDA_ERROR_SYSTEM_DRIVER_MISMATCH",
+                       999: "CUDA_ERROR_UNKNOWN"}.get(rc, "")
+        except Exception:
+            pass
+
+        if gpu_line:
+            # A GPU is physically present and the userspace driver works, so
+            # this is an environment fault, not a wrong-machine mistake.
+            msg = [
+                "nvidia-smi reports a GPU but PyTorch cannot initialise CUDA.",
+                "",
+                f"       GPU (per nvidia-smi) : {gpu_line}",
+                f"       torch                : {torch.__version__} "
+                f"(built for CUDA {torch.version.cuda})",
+            ]
+            if rc is not None:
+                msg.append(f"       raw cuInit(0)         : {rc}"
+                           + (f"  ({rc_name})" if rc_name else ""))
+            msg += [
+                "",
+                "       This is an environment fault on this machine, not a problem with",
+                "       the job or the data. The usual causes, most common first:",
+                "",
+                "         1. nvidia_uvm kernel module not loaded. nvidia-smi only needs",
+                "            /dev/nvidiactl, but CUDA also needs Unified Memory.",
+                "              ls -l /dev/nvidia-uvm  ->  if missing:  sudo modprobe nvidia_uvm",
+                "         2. Driver upgraded without reloading the kernel module, so the",
+                "            userspace and kernel versions differ.",
+                "              cat /proc/driver/nvidia/version   (compare with nvidia-smi)",
+                "              -> reboot",
+                "         3. /dev/nvidia* nodes exist but this user cannot open them.",
+                "              sudo usermod -aG video $(id -un)   (then re-login)",
+                "         4. CUDA_VISIBLE_DEVICES set to '' or '-1'.",
+                "              unset CUDA_VISIBLE_DEVICES",
+                "",
+                "       Run the bundled diagnostic, which checks all of these and prints",
+                "       the specific fix with its evidence:",
+                "",
+                "           bash diagnose_gpu.sh",
+                "",
+                "       Then re-check for free, without training:",
+                "",
+                "           bash run_remote_experiment.sh --preflight-only",
+            ]
+            die(EXIT_PREFLIGHT, "\n".join(msg))
+
         die(EXIT_PREFLIGHT,
-            "CUDA is not available. This job trains 20 seeds x N arms and is not "
-            "intended for CPU. If you really mean to run on CPU, pass --allow-cpu.")
+            "CUDA is not available and nvidia-smi reports no GPU, so this machine "
+            "appears to have none.\n"
+            "       This job trains 20 seeds x N arms and is not intended for CPU.\n"
+            "       Run it on the GPU box, or pass --allow-cpu if you really mean CPU.")
     info["cuda"] = torch.version.cuda
     info["gpu_name"] = torch.cuda.get_device_name(0)
     props = torch.cuda.get_device_properties(0)
