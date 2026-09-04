@@ -826,3 +826,49 @@ The pipeline's first real launch on the GPU box (`sjt418scope042`, RTX A4000 16 
 Verified locally on both branches: the no-GPU path reports "nvidia-smi reports no GPU, so this machine appears to have none", and the GPU-present path is the new diagnostic block. `diagnose_gpu.sh` passes `bash -n`.
 
 No scientific content changed. Nothing was trained; the experiment is still pending.
+
+## 2026-09-04 — Phase 10 made runnable without root; `REMOTE_RUNBOOK.md` added
+
+The GPU box (`nvidia-smi` reporting an RTX A4000 on driver 580.173.02, torch
+2.5.1+cu121) could not initialise CUDA, and the project owner has no root there.
+Preflight behaved correctly — exit 2, zero GPU time spent — but the tooling
+prescribed only fixes requiring `sudo`, which made it useless to the one person
+who has to run the job. Fixed, plus the transport path documented end to end.
+
+- **`diagnose_gpu.sh`** now leads every relevant verdict with `nvidia-modprobe
+  -u -c 0` instead of `sudo modprobe nvidia_uvm`. `nvidia-modprobe` is installed
+  setuid-root precisely so the CUDA runtime can load Unified Memory on demand,
+  so this is the same repair available to an unprivileged user. A new section
+  (4b) checks whether the helper exists *and* carries the setuid bit, and says
+  plainly when the no-root route is closed and an administrator is required —
+  rather than emitting a command that will fail.
+- **`run_remote_experiment.sh`** attempts that repair itself before starting
+  Python, but only when CUDA is actually unavailable. **It must happen before
+  the interpreter starts**: torch caches its device count in a c10
+  function-local static, so a process that once observed zero GPUs keeps
+  observing zero even after the module appears — an in-process retry was
+  written first, found to be useless for this reason, and removed rather than
+  left in as reassuring dead code.
+- **`run_remote_experiment.py`**'s CUDA-gate message gained the no-root command
+  alongside the privileged one. The gate's diagnostics (nvidia-smi device line,
+  torch/CUDA build, raw `cuInit(0)` code with named interpretations) are
+  unchanged.
+- **`run_remote_experiment.sh`** now packages the completed run into
+  `final_component_ablation_<UTC stamp>.tar.gz` and prints its size and the
+  unpack command, so the return trip is one `scp` rather than a directory walk.
+  Checkpoints and histories are included deliberately: they are small, and they
+  let `integrate_remote_results.py` re-derive every statistic here from source
+  instead of trusting the remote summary.
+- **`REMOTE_RUNBOOK.md` (new)** — the runbook, tracked so it arrives with
+  `git pull`. It covers the three inputs that are gitignored and therefore will
+  *not* arrive with the code, which is what preflight is most likely to stop on:
+  CUDA/UVM, `data/processed_rr_history/` (regenerate with `src/process_data.py`),
+  and the reference arm `results/ablation_no_rr_attn/`. The reference arm is
+  explicitly **not** retrained — it holds a published number — so its 20
+  `test_metrics.json` files are shipped instead, packaged as
+  `reference_arm_metrics.tar.gz` (1.8 KB, gitignored as transport payload).
+- Fixed in passing: `run_remote_experiment.sh` read `CONFIG` from the
+  environment inside a Python heredoc but never exported it, so a non-default
+  `CONFIG=` would have been silently ignored when resolving the output path.
+
+No result, statistic or manuscript number is affected by any of the above.

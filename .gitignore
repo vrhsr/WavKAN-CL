@@ -108,3 +108,7 @@ data/raw/ptb-xl/
 *.dat
 *.hea
 *.atr
+
+# transport tarballs (payload moved between this machine and the GPU box)
+reference_arm_metrics.tar.gz
+final_component_ablation_*.tar.gz

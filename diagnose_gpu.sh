@@ -58,7 +58,7 @@ if command -v lsmod >/dev/null 2>&1; then
       echo "  ${m}: loaded"
     else
       echo "  ${m}: NOT LOADED"
-      [[ "$m" == "nvidia_uvm" ]] && note "nvidia_uvm is not loaded. This is the single most common cause of 'CUDA unknown error' on a box where nvidia-smi works: nvidia-smi only needs /dev/nvidiactl, but CUDA needs Unified Memory. FIX: sudo modprobe nvidia_uvm"
+      [[ "$m" == "nvidia_uvm" ]] && note "nvidia_uvm is not loaded. This is the single most common cause of 'CUDA unknown error' on a box where nvidia-smi works: nvidia-smi only needs /dev/nvidiactl, but CUDA also needs Unified Memory. FIX WITHOUT ROOT: nvidia-modprobe -u -c 0  (nvidia-modprobe ships setuid-root precisely so unprivileged users can load UVM and create its device nodes). If that is missing or refuses: sudo modprobe nvidia_uvm"
     fi
   done
 else
@@ -79,14 +79,32 @@ if ls /dev/nvidia* >/dev/null 2>&1; then
       fi
     else
       echo "  ${d}: MISSING"
-      [[ "$d" == "/dev/nvidia-uvm" ]] && note "/dev/nvidia-uvm is missing, which CUDA requires. FIX: sudo modprobe nvidia_uvm  (it is normally created on demand; if that fails, reboot)."
+      [[ "$d" == "/dev/nvidia-uvm" ]] && note "/dev/nvidia-uvm is missing, which CUDA requires. FIX WITHOUT ROOT: nvidia-modprobe -u -c 0  (creates the UVM nodes via its setuid-root helper). If that fails: sudo modprobe nvidia_uvm, or reboot."
     fi
   done
   echo
   echo "  current user: $(id -un)  groups: $(id -Gn)"
 else
   echo "  no /dev/nvidia* device nodes at all"
-  note "No /dev/nvidia* nodes exist. FIX: sudo modprobe nvidia nvidia_uvm, or reboot."
+  note "No /dev/nvidia* nodes exist. FIX WITHOUT ROOT: nvidia-modprobe -c 0 -u. If that fails: sudo modprobe nvidia nvidia_uvm, or reboot."
+fi
+
+sec "4b. nvidia-modprobe (the no-root route to loading UVM)"
+# CUDA normally loads nvidia_uvm on demand by invoking this helper, which is
+# installed setuid-root for exactly that purpose. If it is present and setuid,
+# an unprivileged user can create the missing device nodes without sudo.
+if command -v nvidia-modprobe >/dev/null 2>&1; then
+  NVM=$(command -v nvidia-modprobe)
+  ls -l "$NVM"
+  if [[ -u "$NVM" ]]; then
+    echo "  ${NVM}: present and setuid-root -- you can run: nvidia-modprobe -u -c 0"
+  else
+    echo "  ${NVM}: present but NOT setuid -- it cannot load the module as a normal user"
+    note "nvidia-modprobe exists but is not setuid-root, so the no-root route is closed. Loading nvidia_uvm needs an administrator, or the job needs to run via the cluster scheduler."
+  fi
+else
+  echo "  nvidia-modprobe NOT FOUND"
+  note "nvidia-modprobe is absent, so the no-root route to loading nvidia_uvm is closed. Ask an administrator to run 'modprobe nvidia_uvm', or submit the job through the cluster scheduler if this is a shared machine."
 fi
 
 sec "5. Environment variables that can hide the GPU"
@@ -174,10 +192,11 @@ if ((${#VERDICTS[@]} == 0)); then
 
       bash run_remote_experiment.sh
 
-  If it still shows False, try in this order (least disruptive first):
+  If it still shows False, try in this order (no root needed first):
 
-      sudo modprobe nvidia_uvm            # most common fix
+      nvidia-modprobe -u -c 0             # most common fix, needs no root
       unset CUDA_VISIBLE_DEVICES
+      sudo modprobe nvidia_uvm            # same fix, if you do have root
       sudo nvidia-smi -pm 1               # enable persistence mode
       sudo reboot                         # resolves driver-upgrade mismatches
 
