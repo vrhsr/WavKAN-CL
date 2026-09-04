@@ -120,23 +120,41 @@ class StatisticalValidator:
         if exp2_name not in self.results:
             self.load_experiment_results(exp2_name)
         
-        # Get metric values
-        values1 = [r[metric] for r in self.results[exp1_name]]
-        values2 = [r[metric] for r in self.results[exp2_name]]
-        
-        # Ensure same number of seeds
-        min_len = min(len(values1), len(values2))
-        values1 = values1[:min_len]
-        values2 = values2[:min_len]
-        
-        statistic, p_value = wilcoxon(values1, values2)
-        
+        # FIXED 2026-09-03 (AUDIT_FINDINGS.md H8b). This previously truncated
+        # both arms to min(len) and paired them positionally, with no seed
+        # alignment at all -- if the two arms had dropped different seeds, the
+        # "paired" test compared unrelated runs. It now delegates to
+        # src/paired_stats.py, the single canonical implementation, which pairs
+        # strictly by seed identity and refuses to emit a p-value below n=6
+        # (the exact two-sided Wilcoxon minimum is 0.0625 at n=5, so a
+        # "p<0.05" claim is unreachable there -- H8c).
+        from src.paired_stats import paired_compare
+
+        def _by_seed(rows):
+            out = {}
+            for r in rows:
+                key = r.get("seed", r.get("seed_name"))
+                if key is None:
+                    raise ValueError(
+                        "result rows carry no 'seed' field, so a paired test "
+                        "cannot be aligned by seed identity (H8b)")
+                out[str(key)] = r[metric]
+            return out
+
+        res = paired_compare(_by_seed(self.results[exp1_name]),
+                             _by_seed(self.results[exp2_name]),
+                             metric_name=metric)
+        _p = res["p_value"]
         return {
-            'statistic': float(statistic),
-            'p_value': float(p_value),
-            'significant_at_0.05': p_value < 0.05,
-            'significant_at_0.01': p_value < 0.01,
-            'mean_diff': np.mean(values1) - np.mean(values2)
+            "statistic": res["wilcoxon_stat"],
+            "p_value": _p,
+            "significant_at_0.05": bool(_p == _p and _p < 0.05),
+            "significant_at_0.01": bool(_p == _p and _p < 0.01),
+            "mean_diff": res["mean_diff"],
+            "n_paired": res["n_paired"],
+            "paired_seeds": res["paired_seeds"],
+            "cohens_d": res["cohens_d"],
+            "alternative": res["alternative"],
         }
     
     def bonferroni_correction(self, p_values: List[float]) -> List[float]:

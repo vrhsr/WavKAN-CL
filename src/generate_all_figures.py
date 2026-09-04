@@ -150,6 +150,9 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
 
     # ── Annotations: mean±std, Wilcoxon star, Cohen's d ───────────────────────
     ref = plot_data[0]
+    # Seed labels parallel to plot_data, when the caller supplies them.
+    # Absent them, no p-value is emitted (see H8a note below).
+    plot_seeds = locals().get('plot_seeds') or globals().get('PLOT_SEEDS') or []
     for i, vals in enumerate(plot_data, 1):
         if not vals:
             continue
@@ -159,14 +162,40 @@ def fig3_seed_stability(results_base: str, out_dir: str, seeds: list):
         μ, σ = np.mean(clean), (np.std(clean, ddof=1) if len(clean) > 1 else 0.0)
         top   = max(clean)
 
+        # FIXED 2026-09-03 (AUDIT_FINDINGS.md H8a/H8d). Two real defects here:
+        #  (d) the test was one-sided with alternative="greater", i.e. hardcoded
+        #      to the hypothesis that the reference arm beats the comparator,
+        #      while metrics_full.py -- the function the live pipeline calls --
+        #      used two-sided. A model-favouring alternative selected by which
+        #      script happened to run is not a defensible reporting choice.
+        #  (a) pairing was gated on len(ref) == len(clean), which is not seed
+        #      alignment: two arms that had each dropped a *different* seed to
+        #      the same count would be silently mispaired.
+        # Both now delegate to src/paired_stats.py, the single canonical
+        # implementation, which pairs by seed identity and refuses to report a
+        # p-value below n=6 (H8c: the exact two-sided minimum is 0.0625 at n=5,
+        # so "p<0.05" is unreachable there).
         sig_txt, d_txt = "", ""
-        if i > 1 and ref and len(ref) == len(clean) and len(clean) >= 3:
+        if i > 1 and ref:
             try:
-                _, pval = wilcoxon(ref, clean, alternative="greater", zero_method="wilcox")
-                sig_txt = "**" if pval < 0.01 else ("*" if pval < 0.05 else "ns")
-                diffs   = np.array(ref) - np.array(clean)
-                d_val   = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-9)
-                d_txt   = f"d={d_val:.1f}"
+                from src.paired_stats import paired_compare, MIN_N
+                seeds_ref = plot_seeds[0] if plot_seeds else None
+                seeds_cmp = plot_seeds[i - 1] if plot_seeds else None
+                if seeds_ref and seeds_cmp:
+                    res = paired_compare(dict(zip(seeds_ref, ref)),
+                                         dict(zip(seeds_cmp, clean)))
+                else:
+                    # No seed labels available from the caller: report the
+                    # effect size only. Emitting a p-value from positionally
+                    # zipped arrays is exactly the H8a failure mode.
+                    res = None
+                if res is not None and res["n_paired"] >= MIN_N:
+                    pval = res["p_value"]
+                    sig_txt = "**" if pval < 0.01 else ("*" if pval < 0.05 else "ns")
+                    d_txt = f"d={res['cohens_d']:.1f}"
+                elif res is not None:
+                    d_txt = f"d={res['cohens_d']:.1f}"
+                    sig_txt = "n/a"
             except Exception:
                 pass
 

@@ -410,12 +410,14 @@ def plot_augmentation(summary: dict, save_path: str, use_rr_attn: bool = True):
         spine.set_color("#333333")
         spine.set_linewidth(0.8)
 
-    config_str = "Initial (RR-Self-Attention), 154,325 Params" if use_rr_attn \
-        else "Final (Plain-MLP RR Fusion), 153,045 Params"
+    config_str = "self-attention rhythm encoder, 154,325 params" if use_rr_attn \
+        else "MLP rhythm encoder, 153,045 params"
+    # Title updated 2026-09-03 (AUDIT_FINDINGS.md H43): uses the paper's method
+    # name, and no longer prints an internal source filename into a published
+    # figure. The starred strategy is identified in the legend label instead.
     ax.set_title(
-        f"Augmentation Strategy Comparison --- WavKAN-v2 on MIT-BIH DS2\n"
-        f"{config_str} Configuration; * Combined (Gaussian + Wander) is the strategy "
-        f"selected in train_pca.py",
+        f"Augmentation strategy comparison --- PC-WavKAN, MIT-BIH DS2\n"
+        f"{config_str}; * marks the strategy used in the headline training recipe",
         fontweight="bold", fontsize=10.5, pad=14,
     )
     plt.tight_layout()
@@ -446,7 +448,7 @@ def generate_latex_table(summary: dict) -> str:
     return "\n".join([
         r"\begin{table}[!htbp]",
         r"\centering",
-        r"\caption{Augmentation strategy ablation on WavKAN-v2 (DS2 test set, minority classes only). "
+        r"\caption{Augmentation strategy ablation on PC-WavKAN (DS2 test set, minority classes only). "
         r"$^\star$Selected strategy used in all experiments. SMOTE replicates the negative result "
         r"from our preliminary study. Noise-based augmentation is consistent with Zhou et al. (2024).}",
         r"\label{tab:augmentation}",

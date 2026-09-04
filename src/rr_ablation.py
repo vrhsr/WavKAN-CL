@@ -37,7 +37,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from scipy.stats import wilcoxon
-from sklearn.metrics import recall_score
+from sklearn.metrics import recall_score, f1_score
 
 import matplotlib
 matplotlib.use("Agg")
@@ -105,10 +105,20 @@ def inference_with_mask(
     y_true = np.array(trues)
     y_pred = np.array(preds)
 
+    # NOTE (fixed 2026-09-03, AUDIT_FINDINGS.md H38): the third entry was
+    # previously keyed "macro_f1" but computed recall_score(average="macro"),
+    # i.e. macro-averaged RECALL, not macro-F1. That is why this script's
+    # reported "macro_f1" baseline (0.3759) never reconciled with the same
+    # checkpoints' real DS2 Macro-F1 (0.3228) in test_metrics.json. The value
+    # was never quoted in the manuscript -- only this analysis's S-recall
+    # deltas are -- so no published number was wrong, but the key is renamed
+    # to what it actually measures so no future reader can mistake it. Both
+    # metrics are now emitted so the distinction is explicit on disk.
     return {
         "s_recall": float(recall_score(y_true, y_pred, labels=[1], average="macro", zero_division=0)),
         "v_recall": float(recall_score(y_true, y_pred, labels=[2], average="macro", zero_division=0)),
-        "macro_f1": float(recall_score(y_true, y_pred, average="macro", zero_division=0)),
+        "macro_recall": float(recall_score(y_true, y_pred, average="macro", zero_division=0)),
+        "macro_f1": float(f1_score(y_true, y_pred, average="macro", zero_division=0)),
     }
 
 
@@ -187,7 +197,7 @@ def run_multiseed_ablation(
                 "mean": float(np.mean([d["baseline"][k] for d in all_seed_data])),
                 "std":  float(np.std([d["baseline"][k] for d in all_seed_data], ddof=1)),
             }
-            for k in ["s_recall", "v_recall", "macro_f1"]
+            for k in ["s_recall", "v_recall", "macro_recall", "macro_f1"]
         },
         "per_position": {},
     }

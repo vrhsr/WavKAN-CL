@@ -1,0 +1,165 @@
+# ---------------------------------------------------------------------------
+# final_component_ablation.yaml
+#
+# Phase 10 -- component ablation on the ADOPTED architecture.
+#
+# WHY THIS EXPERIMENT EXISTS
+# --------------------------
+# The manuscript's central architectural claim is that physiology-constrained
+# wavelet initialisation (PCWI) is the component that measurably helps. That
+# claim currently rests on Table IV, whose every row varies one component of the
+# BASE configuration (use_rr_attn=True). The architecture the paper actually
+# adopts is use_rr_attn=False, and no PCWI-off run exists for it: a scan of every
+# trained configuration in results/ confirms there is no arm with
+# use_pcwi=False AND use_rr_attn=False. So the paper's primary contribution has
+# only ever been ablated on a configuration it abandoned.
+#
+# This job closes that gap. Two arms, both on the adopted architecture:
+#   arm A  no_pcwi     -- use_pcwi=False, use_rr_attn=False   (the essential one)
+#   arm B  no_pwam     -- use_pwam=False, use_rr_attn=False   (closes Limitations item 9)
+# Everything else matches the already-published adopted arm exactly, so each is a
+# genuine single-variable ablation against results/ablation_no_rr_attn/.
+#
+# The reference arm is NOT retrained: results/ablation_no_rr_attn/ already holds
+# 20 seeds of it and must not be overwritten.
+# ---------------------------------------------------------------------------
+
+experiment:
+  name: final_component_ablation
+  phase: 10
+  # Directory created under results/. Never overwritten: the runner refuses to
+  # start if a completed run is already present unless --allow-resume is given,
+  # in which case it skips only the seeds that already finished.
+  output_root: results/final_component_ablation
+
+  # The already-published arm every new arm is compared against. Read-only.
+  reference_arm:
+    name: pcwi_pwam_on
+    dir: results/ablation_no_rr_attn
+    expect_seeds: 20
+    expect_params: 153045
+    description: >
+      Adopted architecture (PCWI on, gated P-region fusion on, MLP rhythm
+      encoder, Mexican Hat basis, RAC curriculum, augmentation on).
+
+# ---------------------------------------------------------------------------
+# Arms to train. Each is one flag away from the reference arm.
+# ---------------------------------------------------------------------------
+arms:
+  - name: no_pcwi
+    priority: essential
+    flags: ["--no-pcwi", "--no-rr-attn"]
+    expect_params: 153045          # PCWI changes initialisation, not shape
+    protects_claim: >
+      "PCWI is the only novel component of the architecture with a corrected
+      large positive effect" -- Introduction contribution 1, Results Sec. V-A,
+      Discussion Sec. VI-A. Currently measured on the base configuration only.
+
+  - name: no_pwam
+    priority: high
+    flags: ["--no-pwam", "--no-rr-attn"]
+    expect_params: 118229          # removing the P-region pathway drops ~34.8K
+    protects_claim: >
+      Limitations item (9): the P-region pathway was ablated only on the base
+      configuration. Running it here retires that caveat entirely rather than
+      leaving half of it open.
+
+  # Optional. The paper reports the mother wavelet as interchangeable, which is
+  # a null result already established on the base configuration; re-verifying a
+  # null is legitimate future work rather than a publication blocker. Enable
+  # with --include-optional only if GPU time is genuinely free.
+  - name: basis_bspline
+    priority: optional
+    enabled: false
+    flags: ["--wavelet", "b_spline", "--no-rr-attn"]
+    expect_params: 153045
+    protects_claim: >
+      "The mother wavelet is interchangeable" (Results Sec. V-A), currently
+      established on the base configuration.
+
+# ---------------------------------------------------------------------------
+# Training recipe. These values are NOT free choices: every one of them is
+# copied from the reference arm so the comparison is single-variable. Changing
+# any of them invalidates the comparison against results/ablation_no_rr_attn/.
+# Source of truth: src/train_pca.py argument defaults, cross-checked against the
+# recipe described in the manuscript's Experimental Setup section.
+# ---------------------------------------------------------------------------
+training:
+  epochs: 100
+  patience: 15                 # early stopping on validation Macro-F1
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 1.0e-4         # train_pca.py default
+  optimizer: AdamW
+  scheduler: CosineAnnealingLR # T_max = epochs
+  grad_clip_norm: 1.0
+  warmup: 0.25                 # RAC warm-up fraction
+  focal_gamma: 2.0
+  s_weight: 8.0                # extra S-class loss weight
+  wavelet: mexican_hat
+  use_curriculum: true         # RAC on, as in the reference arm
+  use_augment: true            # augmentation on, as in the reference arm
+  checkpoint_rule: best_validation_macro_f1
+  select_on: DS1_validation_only   # DS2 is never read during training
+
+# The exact 20 seeds of every published arm. Paired statistics require these
+# identities, not merely this count -- see src/paired_stats.py (H8a/H8b).
+seeds: [42, 101, 777, 2026, 9999, 1234, 2024, 31415, 27182, 7,
+        11, 13, 888, 555, 333, 99, 1001, 5050, 8080, 1998]
+
+# ---------------------------------------------------------------------------
+# Data. Regenerate with:  python src/process_data.py
+# ---------------------------------------------------------------------------
+data:
+  dir: data/processed_rr_history
+  required_files:
+    - X_train.npy
+    - X_rr_train.npy
+    - y_train.npy
+    - X_val.npy
+    - X_rr_val.npy
+    - y_val.npy
+    - X_test.npy
+    - X_rr_test.npy
+    - y_test.npy
+  # Preflight asserts these exactly; a mismatch means the wrong preprocessing
+  # was run and the results would not be comparable to the published arms.
+  expect_beats: {train: 40726, val: 10266, test: 49684}
+  expect_class_counts:
+    train: {0: 36396, 1: 773, 2: 3150, 3: 399, 4: 8}
+    val:   {0: 9443,  1: 170, 2: 638,  3: 15,  4: 0}
+    test:  {0: 44232, 1: 1837, 2: 3220, 3: 388, 4: 7}
+  beat_length: 360
+  rr_length: 5
+  n_classes: 5
+
+# ---------------------------------------------------------------------------
+# Statistics computed after training, against the reference arm.
+# ---------------------------------------------------------------------------
+statistics:
+  # One Holm family per arm, across these five metrics. Matches the manuscript's
+  # declared families (Sec. IV-F).
+  metrics: [macro_f1, v_recall, s_recall, f_recall, n_recall]
+  test: wilcoxon_signed_rank
+  alternative: two-sided
+  correction: holm_bonferroni
+  effect_size: cohens_d_paired
+  ci: 0.95
+  # positive d favours the REFERENCE arm, i.e. favours keeping the component.
+  sign_convention: reference_minus_variant
+  implementation: src/paired_stats.py
+
+environment:
+  python: ">=3.9"
+  torch: ">=2.0"
+  cuda: ">=11.8"
+  packages: [torch, numpy, scipy, scikit-learn, matplotlib, tqdm, pyyaml]
+  deterministic:
+    # train_pca.py seeds torch and numpy per run. cuDNN autotuning is left on
+    # because the published reference arm was trained that way; forcing
+    # determinism here would make this arm differently-conditioned from the arm
+    # it is compared against, which matters more than bitwise reproducibility.
+    torch_manual_seed: per_run
+    numpy_seed: per_run
+    cudnn_deterministic: false
+    note: matches the reference arm's conditions -- do not change

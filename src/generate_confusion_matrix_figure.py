@@ -29,7 +29,7 @@ Usage:
     python src/generate_confusion_matrix_figure.py \\
         --checkpoint-dir results/ablation_no_rr_attn/seed_42 \\
         --output Submission_JBHI/final_confusion_matrix_main.pdf \\
-        --label "WavKAN-v2 (final, 153,045 params), seed 42, DS2 test set"
+        --label "PC-WavKAN (153,045 params), seed 42, DS2 test set"
 """
 import matplotlib
 matplotlib.use("Agg")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                         help="Directory containing this seed's confusion_matrix.npy")
     parser.add_argument("--output", type=str, default="Submission_JBHI/final_confusion_matrix_main.pdf")
     parser.add_argument("--label", type=str,
-                        default="WavKAN-v2 (final, 153,045 params), seed 42, DS2 test set")
+                        default="PC-WavKAN (153,045 params), seed 42, DS2 test set")
     args = parser.parse_args()
 
     cm_path = Path(args.checkpoint_dir) / "confusion_matrix.npy"

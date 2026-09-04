@@ -14,9 +14,23 @@
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
+
+% ---------------------------------------------------------------------------
+% Author-photo switch.  JBHI's limit is 14 pages including supplementary
+% material.  With photo biographies this manuscript sets to 15 pages, the
+% overflow being the reference list plus one biography.  Both forms fit within 14 pages once the
+% photo biographies cost exactly one page (15 vs 14), so \photobiosfalse (the
+% default) uses IEEEbiographynophoto and is page-limit compliant for review;
+% \photobiostrue restores the 1in x 1.25in photos for camera-ready, where
+% IEEE requests them and the extra page is normally accepted. Both variants
+% carry identical biography text and both compile cleanly.
+\newif\ifphotobios
+\photobiosfalse
+% ---------------------------------------------------------------------------
+
 \begin{document}
 
-\title{\vspace{15mm}WavKAN-v2: Quantified Structural Interpretability and Curriculum-Anchored Minority-Class Recall for Inter-Patient ECG Arrhythmia Classification}
+\title{\vspace{15mm}Physiology-Constrained Wavelet Kolmogorov--Arnold Networks for Inter-Patient ECG Arrhythmia Classification}
 
 \author{Venkateramanan~Manivannan and Ramanathan~Lakshmanan
 \thanks{Manuscript submitted for review to the IEEE Journal of Biomedical and Health Informatics.}
@@ -28,134 +42,166 @@ School of Computer Science and Engineering, Vellore Institute of Technology (VIT
 Tamil Nadu 632014, India (Corresponding author, e-mail: lramanathan@vit.ac.in).}}
 
 \markboth{\hskip25pc IEEE JOURNAL OF BIOMEDICAL AND HEALTH INFORMATICS}
-{Venkateramanan Manivannan \MakeLowercase{\textit{et al.}}: WavKAN-v2 for Inter-Patient Arrhythmia Detection}
+{Venkateramanan Manivannan \MakeLowercase{\textit{et al.}}: Physiology-Constrained Wavelet KANs for Inter-Patient Arrhythmia Classification}
 
 \maketitle
 
 \begin{abstract}
-Automated arrhythmia classification from ECG signals is limited by two persistent, under-addressed problems: the opacity of high-performing black-box classifiers, and the tendency of reported metrics to be measured under evaluation protocols that leak patient identity between training and test sets. We present WavKAN-v2, a Wavelet Kolmogorov--Arnold Network that replaces fixed activation functions with learnable Mexican Hat wavelet basis functions, combined with a Progressive Curriculum Anchoring (PCA) training schedule for severe class imbalance, and evaluated exclusively under the strict inter-patient DS1/DS2 protocol (de Chazal et al.) on the MIT-BIH Arrhythmia Database. An internal architectural ablation, reported in full rather than only in its favorable direction, showed that a self-attention mechanism over the model's 5-element RR-interval history was net-harmful; we therefore adopt, as our final architecture, a 153,045-parameter configuration that replaces this self-attention branch with a plain MLP, and report all headline results for this configuration. Under a rigorous 20-seed evaluation with Holm-Bonferroni-corrected Wilcoxon signed-rank tests and Cohen's $d$ effect sizes, this final architecture achieves a Macro-F1 of $0.357\pm0.019$ that is \emph{not significantly different} (all four Holm-adjusted $p \geq 0.36$) from four standard, comparably-sized architectures evaluated under an identical protocol and training budget --- ResNet1D (62,869 params, $0.351\pm0.019$), a lightweight Transformer (29,653 params, $0.353\pm0.040$), a CNN with Focal Loss (71,061 params, $0.362\pm0.015$), and a same-family B-Spline KAN (118,229 params, $0.371\pm0.024$). Separately, and evaluated on the initial (RR-self-attention) configuration during architecture development, Progressive Curriculum Anchoring produces a real, statistically robust improvement in Supraventricular (S) recall (0.079$\pm$0.016 $\to$ 0.123$\pm$0.052, Holm-adjusted $p=0.0016$, $d=-0.77$) with no statistically significant cost elsewhere. Beyond raw accuracy, WavKAN-v2 offers a quantified interpretability metric unavailable to any comparator: a Wavelet--ECG Alignment Score (WAS) of $0.9578\pm0.0128$ (mean$\pm$std, 20 seeds), obtained by directly measuring the correspondence between each learned wavelet's translation/dilation parameters and known ECG fiducial priors. We additionally report real, measured CPU inference latency ($3.18\pm1.22$ ms/beat, batch size 1) and an honest negative result for post-training INT8 quantization, which provides no benefit for this architecture ($1.08\times$ size reduction, 28\% \emph{slower} inference). Zero-shot cross-dataset evaluation, re-run on the final architecture and reported without narrative softening, shows a mixed but clearer picture than architecture development alone suggested: on INCART, the final architecture achieves the numerically highest Macro-F1 of all five models tested ($0.374\pm0.009$) and is significantly better than three of four baselines (Holm-adjusted $p<0.001$, large effect sizes); on SVDB, an S-class stress-test dataset, it is significantly \emph{worse} than three of four baselines (large effect sizes) but statistically indistinguishable from its same-family B-Spline KAN sibling, suggesting the weakness is specific to the wavelet-KAN family's structure rather than to this model in particular; on PTB-XL (20 seeds), Macro-F1 remains weak ($0.200\pm0.005$). We position WavKAN-v2's contribution accordingly: a wavelet-KAN architecture that is statistically competitive with, not superior to, standard architectures on in-distribution Macro-F1, offers a real and quantified interpretability property none of them do, and whose cross-dataset generalization is real but uneven --- evaluated throughout with a level of statistical rigor (20 seeds, multiple-comparison correction, effect sizes) uncommon in the inter-patient ECG classification literature.
+Beat-level arrhythmia classifiers are frequently evaluated under protocols that place beats from the same patient in both training and test sets, and their interpretability is typically asserted from filter visualisations rather than measured. We present PC-WavKAN, a 153,045-parameter wavelet Kolmogorov--Arnold Network for inter-patient ECG classification. It extends Wav-KAN with physiology-constrained wavelet initialisation (PCWI), which initialises each output-channel group's translation and dilation from QRS, P-wave and T-wave morphological priors, and trains with a Rarity-Anchored Curriculum (RAC) annealing from class-balanced to natural sampling. Evaluation follows the de Chazal DS1/DS2 inter-patient protocol on MIT-BIH using 20 seeded runs per arm, paired Wilcoxon signed-rank tests, Holm--Bonferroni correction and Cohen's $d$. The architecture was selected on DS1 validation alone, where the adopted configuration outperformed all six alternatives tested (Holm-adjusted $p\leq0.0008$); the component ablation identifies PCWI as the only novel component with a corrected large effect there, and shows the mother wavelet to be interchangeable. On held-out DS2, Macro-F1 is $0.357\pm0.019$: statistically indistinguishable from four recipe-matched baselines of 29K--118K parameters (all Holm-adjusted $p\geq0.36$, every paired 95\% confidence interval including zero). RAC yields a large gain in supraventricular recall ($0.137\rightarrow0.222$, Holm-adjusted $p<10^{-4}$, $d=+1.47$) and in fusion recall. Benchmarked against an untrained null, PCWI's physiological structure is substantially retained after training; we report this as prior retention, not learned alignment. Cross-dataset, PC-WavKAN attains the highest INCART Macro-F1 of five models but is weaker on SVDB, which per-class analysis attributes to a supraventricular-to-ventricular bias shared with B-spline KANs.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Kolmogorov-Arnold Networks, Wavelet, Arrhythmia Classification, Quantified Interpretability, Curriculum Learning, Inter-Patient Generalization, Statistical Rigor
+Kolmogorov-Arnold Networks, Wavelets, Arrhythmia Classification, Inter-Patient Evaluation, Curriculum Learning, Class Imbalance, Model Transparency
 \end{IEEEkeywords}
 
 \section{Introduction}
 
-\IEEEPARstart{C}{ardiovascular} diseases (CVDs) are currently the leading cause of death worldwide and require reliable and continuous cardiac monitoring. While the Electrocardiogram (ECG) is regarded as the gold standard for the detection of arrhythmias, manual interpretation of long-term Holter recordings is labor intensive, error-prone and infeasible for large-scale screening. To automate this process, deep learning architectures, in particular Convolutional Neural Networks (CNNs) \cite{takalo-mattila_inter-patient_2018, guo_inter-patient_2019} and Transformers \cite{akan_ecgformer_2024} have been widely adopted with high accuracy under controlled experimental conditions.
+\IEEEPARstart{C}{ardiovascular} disease is the leading cause of death worldwide, and continuous cardiac rhythm monitoring is central to its management. The electrocardiogram (ECG) remains the reference modality for arrhythmia detection, but manual interpretation of long-term Holter recordings is labour-intensive and does not scale to population screening. Convolutional and attention-based deep networks now report high beat-classification accuracy \cite{takalo-mattila_inter-patient_2018, guo_inter-patient_2019, akan_ecgformer_2024}.
 
-However, despite these improvements in accuracy, existing state-of-the-art solutions encounter three major hurdles to safe clinical deployment, and, as we show in this paper, a fourth methodological hurdle that is rarely confronted directly: the difficulty of reporting an honest, statistically rigorous comparison once a genuinely fair inter-patient protocol is enforced on all sides of the comparison.
+Two properties of that literature limit what those numbers establish. First, much of it evaluates under an \emph{intra-patient} protocol, in which beats from a single recording are distributed randomly across training and test partitions. Because a classifier can then memorise a patient's baseline morphology, accuracies above 97\% are routinely reported that do not transfer to unseen patients \cite{bahrami_investigation_2025, xiao_deep_2023, silva_systematic_2025}. Under the strict inter-patient protocol of de Chazal \emph{et al.} \cite{chazal_automatic_2004}, performance drops sharply, and minority-class recall in particular collapses. Second, transparency claims in this literature are usually qualitative. Models are described as interpretable on the basis of a figure of learned filters, or by attaching a post-hoc attribution method such as Grad-CAM whose output is itself sensitive to noise and to the choice of attribution algorithm \cite{taleban_explainable_2025}.
+
+Kolmogorov--Arnold Networks (KANs) \cite{liu_kan_2024} respond to the second problem: their learnable univariate functions sit on network \emph{edges} rather than at nodes, so the learned function space is inspectable in parameter space rather than only through gradients or occlusion. Bozorgasl and Chen's Wav-KAN \cite{bozorgasl_wavkan_2024} replaces the original B-spline basis with wavelets parameterised by translation and dilation, aligning the basis with classical time--frequency analysis of the ECG \cite{addison_wavelet_2005}. Applications of KANs to ECG such as MAK-Net \cite{zhao_mak-net_2025} show competitive accuracy, but the inspectability of the basis has not been converted into a measured, falsifiable quantity: an inspectable parameter is not the same thing as one that demonstrably encodes physiology.
+
+This work addresses a specific gap at the intersection of those two problems. The wavelet-KAN basis is parameterised in exactly the units --- a temporal/amplitude offset and a width --- in which ECG fiducial morphology is conventionally described. That correspondence can be exploited at initialisation and then \emph{measured} after training. Related work is reviewed in \S\ref{sec:related_work}. Our contributions are:
 
 \begin{enumerate}
-    \item \textbf{Opacity of Black-Box Models:} The lack of inherent interpretability in CNNs and Transformers limits the ability of clinicians to associate learned representations with underlying physiological markers, such as P-wave morphology. This lack of interpretability reduces clinical trust and complicates regulatory approval \cite{taleban_explainable_2025}.
-    \item \textbf{Inter-Patient Generalization Gap:} A major limitation of previous studies is intra-patient evaluation, in which beats from the same patient are mixed across training and test sets, inflating reported performance via patient-specific overfitting \cite{bahrami_investigation_2025}. Under strict inter-patient evaluation, models are often shown to have significant performance degradation, particularly for minority arrhythmia classes \cite{xiao_deep_2023, silva_systematic_2025}.
-    \item \textbf{Computational Inefficiency:} Architectures such as Vision Transformers (ViT) require millions of parameters, making them unsuitable for battery-powered wearable devices \cite{elsheikhy_lightweight_2025}.
-    \item \textbf{Unverified Interpretability and Uncorrected Statistics:} ``Interpretable'' is frequently asserted qualitatively (a figure of learned filters) rather than measured quantitatively against a physiological ground truth, and multi-metric comparisons are frequently reported without correcting for multiple comparisons, inflating the apparent rate of significant findings.
+    \item \textbf{PC-WavKAN, a physiology-constrained wavelet KAN.} We introduce physiology-constrained wavelet initialisation (PCWI), which partitions the KAN's output channels into QRS-, P- and T-associated groups and initialises each group's wavelet translation and dilation from morphological priors for that component, replacing Wav-KAN's isotropic random initialisation. A component ablation resolved entirely on DS1 validation data identifies PCWI as the only novel component of the architecture with a large, multiplicity-corrected positive effect, and shows that the choice of mother wavelet within the family is not measurably consequential (\S\ref{sec:results_selection}). That ablation was run against the base configuration from which the final architecture was selected, so PCWI's contribution is established relative to that base rather than re-measured on the adopted model; we state this scope wherever the claim is used and treat closing it as the study's main outstanding experiment (\S\ref{sec:future}).
+    \item \textbf{Measured retention of the physiological prior, with an explicit null.} We define Physiological Prior Retention (PPR) as the normalised proximity of the trained wavelet parameters to those priors, and --- unlike interpretability scores reported without a reference point --- we evaluate it against both an untrained PCWI model and a randomly initialised one. This shows what the measurement does and does not license: the trained basis retains physiological structure far beyond a random basis, but the score decreases from its initialisation value, so it quantifies \emph{retention}, not learned alignment (\S\ref{sec:results_ppr}).
+    \item \textbf{A curriculum that targets the class the inter-patient protocol breaks.} The Rarity-Anchored Curriculum (RAC) anneals from class-balanced to natural sampling. On the adopted architecture it produces a large, corrected improvement in supraventricular (S) recall and fusion (F) recall at no significant cost to other classes (\S\ref{sec:results_curriculum}).
+    \item \textbf{An evaluation protocol strong enough to support a negative result.} All comparisons use 20 independently seeded runs, paired tests, Holm--Bonferroni correction within declared families, effect sizes, and confidence intervals; the architecture was selected without reference to the test set. Under that protocol the honest finding on the field's headline metric is parity, not superiority, and we report it as such (\S\ref{sec:results_primary}).
 \end{enumerate}
 
-To address these four issues jointly, i.e.\ interpretability (both qualitative and quantitative), inter-patient generalization, edge efficiency, and statistical honesty, we explore the use of Kolmogorov-Arnold Networks (KANs) \cite{liu_kan_2024} as a structural foundation. Unlike standard Multi-Layer Perceptrons, KANs use learnable activation functions along edges instead of fixed nodes, making the architecture structurally transparent. However, most existing KAN-based ECG models, such as MAK-Net \cite{zhao_mak-net_2025}, rely on B-spline basis functions, which may not optimally capture sharp transient components such as the QRS complex, and none of the KAN-ECG literature we are aware of quantifies the resulting interpretability claim against a physiological reference.
-
-To better capture sharp transient ECG morphology, we substitute B-splines with learnable Mexican Hat Wavelets \cite{addison_wavelet_2005, bozorgasl_liu_2024}. To address class imbalance, we use a two-phase, minority-anchored curriculum (Progressive Curriculum Anchoring, PCA) \cite{bengio_curriculum_2009, schmale_curriculum_2025}. Critically, and unlike prior applications of curriculum learning to this problem, we evaluate its effect with 20-seed, Holm-Bonferroni-corrected statistics against a hyperparameter-matched fair baseline, so that the reported effect is not an artifact of uncorrected multiple comparisons or a mismatched training recipe.
-
-The contributions of this study are:
-\begin{enumerate}
-    \item \textbf{A quantified interpretability metric.} We introduce the Wavelet--ECG Alignment Score (WAS), which measures the numerical correspondence between each learned wavelet edge's translation ($\mu$) and dilation ($\gamma$) parameters and known QRS/P/T-wave priors. Our final architecture achieves a Macro-WAS of $0.9578\pm0.0128$ across all 20 independently-trained seeds --- to our knowledge the first quantitative (not solely visual) interpretability metric reported for a KAN-based ECG classifier.
-    \item \textbf{An architecture-development process reported in full, including the ablation that changed our proposed configuration.} An internal ablation showed that a self-attention mechanism over the RR-interval history, part of our initially proposed architecture, was net-harmful; replacing it with a plain MLP is the change that takes our comparison against four standard architectures (ResNet1D, a lightweight Transformer, a CNN with Focal Loss, and a same-family B-Spline KAN, 20 seeds each, Holm-Bonferroni-corrected \cite{holm_simple_1979} Wilcoxon signed-rank tests \cite{wilcoxon_individual_1945} and Cohen's $d$ \cite{cohen_statistical_1988}) from a significant Macro-F1 deficit to statistical parity (all Holm-adjusted $p \geq 0.36$). We report both the initial result and the ablation that superseded it, rather than only the final one.
-    \item \textbf{A real, targeted curriculum-learning benefit.} Progressive Curriculum Anchoring produces a statistically robust improvement in Supraventricular (S) recall with no significant cost to any other metric, once measured with correction for multiple comparisons across the five metrics tested.
-    \item \textbf{Honest efficiency and generalization reporting.} We report real, measured CPU latency and an honest negative quantization result, and a real, uneven cross-dataset picture on the final architecture --- significantly better than three of four baselines on INCART, significantly worse than three of four (but statistically tied with the same-family B-Spline KAN) on SVDB's S-class stress test, weak on PTB-XL --- rather than omitting or selectively reporting it.
-\end{enumerate}
+The resulting position is deliberate: a model that matches four standard architectures on Macro-F1 while additionally supporting a measurable structural property and a targeted minority-class gain is a different contribution from an accuracy win, and the diagnostic findings this protocol produced are results in their own right.
 
 %% 2. RELATED WORK
 \section{Related Work}
 \label{sec:related_work}
 
-The automated classification of ECG arrhythmias has changed significantly in the past decade. However, the literature shows consistent methodological differences in evaluation protocol, model transparency, and computational efficiency, and --- as this paper's own results illustrate --- an under-examined tendency for multi-metric comparisons to go unreported without correction for multiple comparisons.
+\subsection{Inter-Patient Evaluation}
+Systematic reviews by Xiao \emph{et al.} \cite{xiao_deep_2023} and Silva \emph{et al.} \cite{silva_systematic_2025} document how prevalent intra-patient evaluation remains and how strongly it inflates reported performance; Bahrami \emph{et al.} \cite{bahrami_investigation_2025} quantify the resulting optimism directly. The DS1/DS2 partition of de Chazal \emph{et al.} \cite{chazal_automatic_2004} is the established remedy for MIT-BIH and is the protocol we adopt without modification. Architectures evaluated under it include the CNN--RNN hybrid of Guo \emph{et al.} \cite{guo_inter-patient_2019}, the multiscale attention CNN of Zhou \emph{et al.} \cite{zhou_inter-patient_2024}, and the sequence-to-sequence models of Mousavi \emph{et al.} \cite{mousavi_inter-_2019}. We do not tabulate published accuracies from these works against ours --- differences in lead selection, beat extraction, AAMI mapping and Q-class handling make them non-comparable --- and instead retrain four architectures ourselves under one protocol (\S\ref{sec:baselines}).
 
-\subsection{Inter-Patient Evaluation Paradigm}
-One of the key methodological differences in ECG classification is the choice between intra-patient and inter-patient evaluation. As underscored by systematic reviews by Xiao et al. \cite{xiao_deep_2023} and Silva et al. \cite{silva_systematic_2025}, many early deep learning studies adopted the intra-patient paradigm in which heartbeats from a single patient are randomly allocated for training and testing sets. While this approach results in extremely high accuracies ($> 97\%$), it leads to leakage of data, as models tend to memorize the morphological baselines for each individual patient, rather than trying to generalize to physiological markers of arrhythmia \cite{bahrami_investigation_2025}. To address this, De Chazal et al. \cite{chazal_automatic_2004} proposed the strict inter-patient protocol (DS1/DS2 split) for the MIT-BIH dataset, where patients in the test set are entirely unseen. Recent state-of-the-art architectures evaluated under this protocol include the convolutional and recurrent neural network (CNN+RNN) by Guo et al. \cite{guo_inter-patient_2019}, the multiscale CNN with attention by Zhou et al. \cite{zhou_inter-patient_2024}, and the sequence-to-sequence models by Mousavi et al. \cite{mousavi_inter-_2019}.
+\subsection{Kolmogorov--Arnold Networks and Wavelet Bases}
+KANs \cite{liu_kan_2024} place learnable univariate functions on edges, with B-splines as the original basis. Wav-KAN \cite{bozorgasl_wavkan_2024} substitutes wavelet functions --- including the Mexican Hat --- parameterised by translation and dilation, arguing that this improves both multi-resolution capacity and interpretability. Our architecture inherits this construction: the wavelet-KAN layer, the Mexican Hat basis, and the argument that a wavelet basis is more inspectable than an opaque activation are due to \cite{bozorgasl_wavkan_2024, liu_kan_2024} and are not claimed here. MAK-Net \cite{zhao_mak-net_2025} pairs spline-activation KAN layers with multiscale convolution and a BiGRU for imbalanced ECG classification, reporting interpretability via Grad-CAM --- post-hoc attribution over inputs rather than a measurement on the basis itself.
 
-\subsection{Explainability and Kolmogorov-Arnold Networks}
-The black-box nature of standard CNN and Transformer architectures is a major challenge to clinical adoption. A recent systematic review by Taleban et al. \cite{taleban_explainable_2025} underscored the need to move from post-hoc explanation methods (e.g., Grad-CAM, LIME), which can be computationally expensive and sensitive to noise, towards ``intrinsically interpretable'' models.
+What we add to this line of work is not a new basis but a constraint on it and a measurement of that constraint's persistence. Initialisation of KANs is itself an active question: Rigas \emph{et al.} \cite{rigas_initialization_2025} study LeCun- and Glorot-inspired and power-law schemes for KAN basis coefficients, and find the choice materially affects stability and accuracy. That work is deliberately basis- and domain-agnostic and optimises a numerical property --- activation-variance preservation across layers. PCWI is orthogonal to it and complementary: it leaves the coefficient initialisation to such a scheme and instead sets the \emph{translation and dilation} of each channel group from domain priors, which is possible only because those two parameters have units a domain expert can specify. To our reading of this literature, wavelet-KAN translation and dilation have not previously been initialised from ECG fiducial priors, nor has the post-training distance between learned basis parameters and such priors been reported for any KAN-based ECG classifier. We deliberately state this as a gap in reported practice rather than a claim of priority, and we make the accompanying measurement falsifiable by publishing its null baselines (\S\ref{sec:results_ppr}).
 
-Kolmogorov-Arnold Networks (KANs) \cite{liu_kan_2024} place learnable univariate activation functions on network edges rather than fixed node activations. Early applications of KANs to ECG signals, such as MAK-Net by Zhao et al. \cite{zhao_mak-net_2025}, showed promising accuracy using B-spline bases, but B-splines may have difficulty separating fast transient physiological features \cite{bozorgasl_liu_2024}. Bozorgasl and Chen \cite{bozorgasl_liu_2024} proposed Wav-KAN, using wavelet functions instead, consistent with classical ECG time-frequency analysis theory. Per Addison's theory of Mexican Hat wavelet analysis \cite{addison_wavelet_2005}, the Mexican Hat wavelet has a natural representation of QRS time-frequency geometry, making it a physiologically motivated basis for interpretable feature extraction. However, to our knowledge no prior KAN-ECG study has \emph{quantified} the resulting interpretability against a physiological ground truth, or evaluated it with corrected multi-seed statistics against a hyperparameter-matched set of standard baselines --- both of which this paper does directly.
+\subsection{Class Imbalance and Curricula}
+Inter-patient MIT-BIH exhibits N:F ratios above 100:1 \cite{silva_systematic_2025}, under which plain cross-entropy training tends toward majority-class collapse. Curriculum learning \cite{bengio_curriculum_2009} varies the sampling distribution or loss weighting over training. Bae and Shin \cite{bae_handling_2025} show naive contrastive training on imbalanced medical data can \emph{degrade} performance while a curriculum-phased variant recovers it, and Schmale \emph{et al.} \cite{schmale_curriculum_2025} that prioritising rare phenotypes stabilises decision boundaries. Our curriculum is of this family, and \Sef{sec:results} reports where its benefit is and is not statistically robust. A methodologically distinct alternative operates on logits rather than on sampling: Dai \emph{et al.} \cite{dai_angular_2026} apply adaptive logit adjustment to long-tailed \emph{record}-level multi-label ECG diagnosis, learning bounded label-state-specific prior corrections. That is a different task granularity from the beat-level single-label problem addressed here, so we do not treat it as a comparator, but it is a concrete alternative worth testing at beat level (\S\ref{sec:limitations}).
 
-\subsection{Handling Imbalance and Edge Constraints}
-Inter-patient MIT-BIH datasets show extreme imbalance ratios (Normal to Fusion beats exceeding 100:1) \cite{silva_systematic_2025}. Standard cross-entropy training often leads to majority-class collapse. Curriculum Learning \cite{bengio_curriculum_2009} takes a dynamic approach in which the sampling distribution or loss weighting changes during training. Bae \& Shin \cite{bae_handling_2025} showed that naive contrastive learning on unbalanced medical data can \emph{degrade} performance, while a curriculum-phased, distribution-aware variant restored and improved it. Schmale et al. \cite{schmale_curriculum_2025} similarly showed that curricula prioritizing rare, complex phenotypes can stabilize decision boundaries. These findings motivate our own minority-anchored curriculum --- but, as our results show (\S\ref{sec:results}), motivation is not the same as an accuracy guarantee: we find the curriculum's real, statistically defensible benefit is narrower (S-recall specifically) than the broad ``improves minority-class detection'' framing common in this literature. A methodologically distinct alternative to sampling/loss-schedule curricula is direct logit-level calibration: Dai et al. \cite{dai_angular_2026} apply an Adaptive Logit Adjustment mechanism to long-tailed \emph{record}-level, multi-label ECG diagnosis (PTB-XL diagnostic codes and a nocturnal recording dataset), learning bounded label-state-specific prior corrections rather than reweighting samples or losses during training. This is a different task granularity than the beat-level, single-label classification addressed here, so we do not treat it as directly comparable, but it is a concrete, real alternative to our own curriculum-based imbalance handling worth testing at the beat level in future work (\S\ref{sec:limitations}).
+\subsection{Efficient Inference}
+Farag \cite{farag_tiny_2023} and Elsheikhy \emph{et al.} \cite{elsheikhy_lightweight_2025} argue for small memory footprints for on-device ECG inference. We report measured parameter counts, model size, x86 CPU latency and post-training quantisation behaviour for our own model (\S\ref{sec:results_deploy}) rather than inferring efficiency from parameter count alone, and we are explicit about the hardware class on which those measurements were taken.
 
-Deploying these models in wearable Holter monitors also requires attention to computational cost. Farag \cite{farag_tiny_2023} and Elsheikhy et al. \cite{elsheikhy_lightweight_2025} emphasize reduced memory footprints for on-device inference; we report real measured latency and quantization behavior for WavKAN-v2 specifically (\S\ref{sec:results}), rather than an unmeasured efficiency claim.
-
-%% 3. METHODOLOGY
-\section{Methodology}
+%% 3. METHOD
+\section{Method}
 \label{sec:methods}
 
-\subsection{Problem Formalization}
-The ECG signal is segmented into beat-centered windows $x_i \in \mathbb{R}^T$ ($T=360$ samples at 360\,Hz) together with an RR-interval history $r_i \in \mathbb{R}^K$ ($K=5$, comprising the two inter-beat intervals preceding beat $i$, the interval immediately preceding beat $i$ itself, and the \emph{two intervals following} beat $i$ --- see \S\ref{sec:results_rr} for why this matters) to learn $f:(x_i,r_i)\to y_i$, $y_i \in \{N,S,V,F,Q\}$, under severe class imbalance ($N \gg V > S > F \gg Q$). We note explicitly, correcting an earlier draft of this section, that this representation is \emph{not} strictly causal: the two following-interval features require observing the next two beats before beat $i$ can be classified, so this architecture as trained and evaluated is not compatible with true streaming/real-time inference without a two-beat lookahead buffer (\S\ref{sec:results_rr} shows this lookahead information is not merely present but statistically significant to the model's S-class predictions).
+\subsection{Problem Formulation}
+Each annotated beat is represented by a signal window $x_i \in \mathbb{R}^{T}$ ($T=360$ samples, 360\,Hz, centred on the annotated R-peak) and a five-element inter-beat-interval vector $r_i \in \mathbb{R}^{5}$. The task is to learn $f:(x_i,r_i)\mapsto y_i$ with $y_i \in \{N,S,V,F,Q\}$ under severe imbalance ($N \gg V > S > F \gg Q$).
 
-\subsection{The WavKAN-v2 Architecture}
-The proposed system (Fig.~\ref{fig:arch}) employs a dual-branch architecture combining a learnable wavelet backbone (morphology) with a rhythm-aware branch (RR history), fused before classification.
+\subsubsection*{Temporal scope of the task}
+Two aspects of this representation make the task \emph{offline beat classification} rather than streaming classification, and we state them here because they bound every claim in this paper. First, $r_i$ contains two intervals that follow beat $i$ (\S\ref{sec:rhythm}), so labelling beat $i$ requires observing beats $i{+}1$ and $i{+}2$. Second, the signal is band-pass filtered over each complete record before beat extraction, which is not a causal operation. A deployment of this model would therefore require a two-beat lookahead buffer and a causal replacement for the record-level filter. \S\ref{sec:results_rr} shows the lookahead is not a formality: the model draws statistically significant signal from one of the two following intervals. We accordingly avoid the terms real-time and streaming throughout.
+
+\subsection{PC-WavKAN Architecture}
+The model (Fig.~\ref{fig:arch}) has a morphology branch and a rhythm branch, fused before classification.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{final_methodology_workflow_v2.pdf}
-\caption{\textbf{WavKAN-v2 Architecture.} Dual-branch architecture: the morphology branch (WavKAN backbone $\to$ BiGRU temporal context $\to$ PWAM P-wave attention, which takes the raw ECG signal as a second input alongside the BiGRU output) is fused with the RR-history rhythm branch before classification. The curriculum scheduler (training only) anchors minority-class decision boundaries before annealing to the natural class distribution.}
+\caption{\textbf{PC-WavKAN.} The morphology branch (PCWI wavelet-KAN layer $\rightarrow$ BiGRU temporal context $\rightarrow$ gated P-region fusion, which takes the raw beat as a second input alongside the BiGRU output) is concatenated with the rhythm branch before classification. The curriculum scheduler acts on training only.}
 \label{fig:arch}
 \end{figure*}
 
-\subsubsection{Feature Extraction: WavKAN Backbone}
-Morphological features $z_m$ are extracted by a dense Wavelet Kolmogorov-Arnold Network (WavKAN) layer with physiology-constrained wavelet initialization (PCWI) and a P-wave attention module (PWAM). As illustrated in Fig.~\ref{fig:wavkan_micro}, unlike a standard MLP, the learnable function sits on every edge $(j,k)$ rather than on the node: each edge learns an independently parameterized Mexican Hat wavelet $\psi(t;\mu,\gamma)$, the negative normalized second derivative of a Gaussian, chosen because it behaves as a high-frequency transient detector well matched to the sharp QRS complex, unlike smooth B-spline polynomials or the oscillatory Morlet wavelet \cite{addison_wavelet_2005}. The WavKAN layer maps $x_i \in \mathbb{R}^{360}$ to $z_{kan} \in \mathbb{R}^{64}$:
+\subsubsection{Wavelet-KAN Morphology Backbone}
+Following Wav-KAN \cite{bozorgasl_wavkan_2024}, the learnable function sits on every edge $(j,k)$ rather than at the node (Fig.~\ref{fig:wavkan_micro}): each edge carries an independently parameterised Mexican Hat wavelet $\psi$, the negative normalised second derivative of a Gaussian. The layer maps $x_i \in \mathbb{R}^{360}$ to $z_{\mathrm{kan}} \in \mathbb{R}^{64}$,
 \begin{equation}
-z_{kan}^{(k)} = \sum_{j=1}^{360} w_{j,k} \cdot \psi\left(\frac{x_j - \mu_{j,k}}{\gamma_{j,k}}\right), \quad k=1,\dots,64.
+z_{\mathrm{kan}}^{(k)} = \sum_{j=1}^{360} w_{j,k}\,
+\psi\!\left(\frac{x_j - \mu_{j,k}}{\gamma_{j,k}}\right)
++ \lambda \sum_{j=1}^{360} v_{j,k}\, x_j ,
+\label{eq:kan}
 \end{equation}
-The output is normalized (LayerNorm) and passed through a Bidirectional GRU (32 hidden units/direction) to produce $z_m \in \mathbb{R}^{64}$.
+for $k=1,\dots,64$, where $\mu_{j,k}$ and $\gamma_{j,k}$ are the learnable translation and dilation of edge $(j,k)$, $w_{j,k}$ its weight, and the second term is a linear residual path with a fixed gate $\lambda=0.1$ that we retain for gradient flow. The output is layer-normalised and passed through a bidirectional GRU (32 hidden units per direction) yielding $z_m \in \mathbb{R}^{64}$.
 
-\begin{figure*}[!t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=0.9\textwidth]{wavkan_micro_architecture_v2.pdf}
-\caption{\textbf{Micro-Architecture of WavKAN.} Learnable wavelet functions $\psi(t;\mu,\gamma)$ replace fixed node activations, with each edge learning its own translation and dilation parameters.}
+\includegraphics[width=\columnwidth]{wavkan_micro_architecture_v2.pdf}
+\caption{\textbf{Wavelet-KAN edge parameterisation.} Learnable wavelets $\psi(t;\mu,\gamma)$ replace fixed node activations; every edge of the $j\times k$ grid carries its own translation and dilation, as in \eqref{eq:kan}.}
 \label{fig:wavkan_micro}
-\end{figure*}
+\end{figure}
 
-\subsubsection{Rhythm Encoding}
+\subsubsection{Physiology-Constrained Wavelet Initialisation (PCWI)}
+\label{sec:pcwi}
+PCWI (\S\ref{sec:pcwi}) is the component that distinguishes this architecture from a generic wavelet KAN. The 64 output channels are partitioned into three groups associated with the ECG components whose morphology the branch must separate, and each group's edge parameters are initialised from a prior for that component rather than from a single isotropic distribution:
+\begin{equation}
+\mu_{j,k} \sim \mathcal{U}(\bar\mu_c - \epsilon_c,\ \bar\mu_c + \epsilon_c),\quad
+\gamma_{j,k} \sim \mathcal{U}(\bar\gamma_c - \delta_c,\ \bar\gamma_c + \delta_c)
+\label{eq:pcwi}
+\end{equation}
+for every edge of the channel group $c$, with $(\bar\mu_c,\bar\gamma_c)$ set from morphology and $(\epsilon_c,\delta_c)$ small jitter terms that break symmetry between edges. PCWI constrains only the translation and dilation; the edge coefficients $w_{j,k}$ keep the standard variance-preserving initialisation \cite{rigas_initialization_2025}, so PCWI is a domain-prior constraint layered on top of a numerical scheme rather than a replacement for one. Parameters are in units of the per-beat $z$-scored signal (\S\ref{sec:preprocessing}), in which the input is approximately zero-mean and unit-variance. We use channels $1$--$32$ for QRS with $(\bar\mu,\bar\gamma)=(0.0,0.05)$, since the QRS complex crosses the beat's own baseline and is the sharpest transient, so a narrow wavelet is appropriate; channels $33$--$48$ for the P-wave with $(-0.10,0.12)$; and channels $49$--$64$ for the T-wave with $(+0.10,0.10)$, both being slower, lower-amplitude deflections and therefore wider.
+
+We are deliberate about what \eqref{eq:pcwi} is. It is a physiologically \emph{motivated} allocation of the initial function space, not an assertion that channel group $c$ computes component $c$: the priors constrain where in parameter space each group begins, they are not constraints during training, and $\mu$ and $\gamma$ are amplitude-domain quantities that correspond to ECG components by way of those components' characteristic amplitude and sharpness rather than by explicit temporal localisation. \S\ref{sec:results_selection} tests whether the allocation helps and \S\ref{sec:results_ppr} tests whether it survives training.
+
+\subsubsection{Gated P-Region Fusion}
+Supraventricular beats are distinguished largely by P-wave abnormality (shortened PR interval, inverted or absent P-wave), but the P-wave contributes a small fraction of a beat window's total energy relative to the QRS and T-wave. We therefore add a low-parameter pathway over the pre-R interval: samples $80$--$160$ of the window, i.e.\ $278$\,ms to $56$\,ms before the R-peak, are encoded by a small randomly initialised wavelet-KAN layer, projected to the morphology dimension, and combined with $z_m$ through a learned sigmoid gate that determines per beat how much P-region information enters the main representation. The pathway is implemented with a multi-head attention block, but as it attends over a single key/value token, the softmax is degenerate and the operation reduces to a learned linear projection; the selectivity is supplied by the gate, not by attention weights, and we describe it as gated fusion rather than as attention for that reason. It adds approximately 34K parameters.
+
+\subsubsection{Rhythm Branch}
 \label{sec:rhythm}
-The RR-history vector $R_{seq} = [RR_{-2}, RR_{-1}, RR_{0}, RR_{+1}, RR_{+2}]$ (the two preceding intervals, the interval immediately preceding beat $i$, and the two intervals \emph{following} beat $i$ --- not strictly causal, see \S\ref{sec:methods}) is normalized by the local moving average of the preceding 10 beats, then passed through a self-attention branch and a small MLP to produce $z_r \in \mathbb{R}^{16}$. \S\ref{sec:results} reports a within-family ablation (Table~\ref{tab:family_ablation}) showing this RR self-attention branch is, on the current data, \emph{not} the best-performing choice among the variants we tested --- a finding we report and discuss (\S\ref{sec:discussion}) rather than omit.
+The rhythm vector is
+\begin{equation}
+r_i = [\,RR_{-2},\ RR_{-1},\ RR_{0},\ RR_{+1},\ RR_{+2}\,],
+\end{equation}
+where $RR_{0}$ is the interval from beat $i{-}1$ to beat $i$ (the pre-beat interval of the classified beat), $RR_{-1}$ and $RR_{-2}$ are the two intervals preceding it, and $RR_{+1}$ and $RR_{+2}$ are the two intervals \emph{following} beat $i$. Intervals are in seconds and clipped to $[0.2,3.0]$\,s to bound the effect of missed or spurious detections; no further normalisation is applied. The vector is encoded to $z_r \in \mathbb{R}^{16}$. Two encoders were evaluated: a single-head self-attention block over the five intervals projected to tokens, and a plain multi-layer perceptron over the raw vector. \S\ref{sec:results_selection} selects between them.
 
 \subsubsection{Fusion and Classification}
-$z=[z_m;z_r]\in\mathbb{R}^{80}$ is passed to a final classifier ($80\to48\to5$). With the RR self-attention branch (\S\ref{sec:rhythm}) enabled, total trainable parameters are \textbf{154,325}; with it replaced by the plain-MLP alternative that \S\ref{sec:results_ablation} shows is the better choice, \textbf{153,045} --- either way, a $>$95\% reduction relative to MAK-Net (6.1M) \cite{zhao_mak-net_2025} and DenseNet+GRU architectures \cite{guo_inter-patient_2019}. All headline results in \S\ref{sec:results} use the 153,045-parameter (plain-MLP) configuration unless stated otherwise.
+The concatenation $z = [z_m; z_r] \in \mathbb{R}^{80}$ is classified by an $80\rightarrow48\rightarrow5$ head. With the self-attention rhythm encoder the model has 154,325 trainable parameters; with the plain-MLP encoder selected in \S\ref{sec:results_selection}, 153,045. Both are more than an order of magnitude smaller than MAK-Net (6.1M) \cite{zhao_mak-net_2025} and comparable dense recurrent architectures \cite{guo_inter-patient_2019}. All results outside \S\ref{sec:results_selection} use the 153,045-parameter configuration.
 
-\subsection{Progressive Curriculum Anchoring (PCA)}
-Unlike a generic easy-to-hard curriculum, PCA restructures training by class rarity, in two phases (summarized in Algorithm~\ref{alg:curriculum}):
-\begin{enumerate}
-    \item \textbf{Warm-up} ($\approx$25\% of the epoch budget): a fully class-balanced \texttt{WeightedRandomSampler} (every class equally likely per batch) with plain, unweighted cross-entropy, so that no class's decision boundary is anchored purely by frequency before the others are seen.
-    \item \textbf{Anneal} (remaining epochs): the sampler's balancing exponent decays linearly from 1.0 (fully balanced) to 0.0 (natural distribution), paired with Focal Loss ($\gamma=2.0$, inverse-frequency class weights, with the S-class weight further multiplied by $8\times$ to counteract its morphological similarity to N).
-\end{enumerate}
-This schedule is training-only; inference uses the natural class distribution. The \textbf{fair-baseline arm} used for every comparison in \S\ref{sec:results} is architecturally identical and uses natural-distribution sampling for every epoch with plain class-weighted cross-entropy (same weight formula, no warm-up/anneal distinction) --- i.e., the only variable that differs between arms is the sampling/loss schedule itself, not the architecture, optimizer, or epoch budget.
+\subsection{Rarity-Anchored Curriculum (RAC)}
+\label{sec:rac}
+RAC restructures training by class rarity in two phases (Algorithm~\ref{alg:curriculum}). During warm-up (the first 25\% of the epoch budget) mini-batches are drawn by a fully class-balanced sampler and the loss is unweighted cross-entropy, so that no class's decision boundary is established purely by frequency before the rare classes have been seen. During annealing the sampler's balancing exponent $\beta$ decays linearly from 1 (balanced) to 0 (natural), paired with focal loss ($\gamma=2$) under inverse-frequency class weights, with the S-class weight multiplied by 8 to counter its morphological similarity to N. The schedule affects training only; inference always uses the natural distribution. We name it \emph{rarity-anchored} rather than \emph{progressive} to distinguish it from difficulty-ordered curricula: the ordering variable is class frequency, which is known in advance, not per-example difficulty, which is not.
 
 \begin{algorithm}[!t]
-\caption{Progressive Curriculum Anchoring (PCA)}
+\caption{Rarity-Anchored Curriculum (RAC)}
 \label{alg:curriculum}
 \begin{algorithmic}[1]
-\STATE \textbf{Input:} Training set $\mathcal{D}$, total epochs $E$, warm-up fraction $\alpha=0.25$
-\STATE \textbf{Output:} Trained model $f_\theta$
-\STATE Compute class frequencies $\{n_c\}$, $c \in \{N,S,V,F,Q\}$; inverse-frequency weights $w_c$; $w_S \gets 8\cdot w_S$
+\STATE \textbf{Input:} training set $\mathcal{D}$, epoch budget $E$, warm-up fraction $\alpha=0.25$
+\STATE \textbf{Output:} trained model $f_\theta$
+\STATE Compute class counts $\{n_c\}$, $c\in\{N,S,V,F,Q\}$; inverse-frequency weights $w_c$; $w_S \gets 8 w_S$
 \FOR{epoch $e=1$ to $E$}
 \IF{$e \le \alpha E$}
-\STATE Sample mini-batches via a fully class-balanced sampler (balance exponent $\beta=1.0$)
-\STATE $\mathcal{L} \gets \mathcal{L}_{\text{CE}}$ (unweighted)
+\STATE $\beta \gets 1$; \quad $\mathcal{L} \gets \mathcal{L}_{\mathrm{CE}}$ (unweighted)
 \ELSE
-\STATE $\beta \gets$ linear decay from 1.0 to 0.0 over the remaining epochs
-\STATE Sample mini-batches via sampler with balance exponent $\beta$
-\STATE $\mathcal{L} \gets \text{FocalLoss}(\gamma=2.0, w_c)$
+\STATE $\beta \gets 1 - (e - \alpha E)/(E - \alpha E)$
+\STATE $\mathcal{L} \gets \mathrm{Focal}(\gamma{=}2, w_c)$
 \ENDIF
-\STATE Update $\theta$ via AdamW on $\mathcal{L}$; checkpoint on validation Macro-F1 improvement
+\STATE Draw mini-batches with sampling weights $\propto n_c^{-\beta}$
+\STATE Update $\theta$ by AdamW; clip gradient norm to 1
+\STATE Checkpoint if validation Macro-F1 improved
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
-%% DATASET
-\section{Dataset and Evaluation Protocol}
+\subsection{Physiological Prior Retention (PPR)}
+\label{sec:ppr_def}
+To make the effect of PCWI measurable rather than illustrative, we quantify how close the trained wavelet parameters remain to the priors of \eqref{eq:pcwi}. For channel group $c$ with prior $(\bar\mu_c, \bar\gamma_c)$,
+\begin{equation}
+\mathrm{PPR}_c = \max\!\left(0,\ 1 - \frac{1}{2}\!\left[
+\frac{\overline{|\mu_{j,k} - \bar\mu_c|}}{\Delta_\mu}
++ \frac{\overline{|\,|\gamma_{j,k}| - \bar\gamma_c|}}{\Delta_\gamma}
+\right]\right),
+\label{eq:ppr}
+\end{equation}
+where the overlines denote a mean of absolute per-edge deviations over all edges of group $c$, and $\Delta_\mu = 0.40$, $\Delta_\gamma = 0.20$ are fixed normalising spans chosen once as the plausible parameter ranges over all three components. The reported score is the unweighted mean of $\mathrm{PPR}_c$ over the three groups.
 
-\subsection{Inter-Patient Data Splitting Protocol}
-We follow the inter-patient paradigm of De Chazal et al. \cite{chazal_automatic_2004}. The MIT-BIH Arrhythmia Database is split into DS1 (train+validation) and DS2 (test), as in Table~\ref{tab:split_protocol}; DS1 is further split into training and validation subsets, following Takalo-Mattila et al. \cite{takalo-mattila_inter-patient_2018}, so that early stopping and model selection never touch DS2. All test results in \S\ref{sec:results} are computed exclusively on DS2.
+Two properties of \eqref{eq:ppr} must be stated for the resulting number to be interpretable, and both were established empirically rather than assumed (\S\ref{sec:results_ppr}). First, PPR is a \emph{retention} measure: since PCWI initialises at the prior, an untrained PCWI model scores near-maximally by construction, so PPR can only decrease during training and a high value cannot show that the model \emph{learned} physiological structure. Interpreting it requires the untrained value as a reference. Second, \eqref{eq:ppr} averages each individual edge's absolute deviation. Taking instead the deviation of each group's \emph{mean} parameter --- the more obvious construction --- is degenerate, because per-edge drift is close to symmetric and largely cancels: we measure a mean per-edge $|\Delta\mu|$ of $0.064$ against a group-mean $|\Delta\mu|$ of $0.002$, a factor of about 30. PPR is defined only for a PCWI-parameterised wavelet layer; it is not a general interpretability metric and does not apply to the comparators.
+
+%% DATA
+\section{Data and Evaluation Protocol}
+
+\subsection{Preprocessing}
+\label{sec:preprocessing}
+MIT-BIH \cite{moody_impact_2001, goldberger_physiobank_2000} lead II is band-pass filtered per record, and a 360-sample window is extracted around each annotated R-peak. Each beat is $z$-scored using \emph{its own} mean and standard deviation; no normalisation statistic is estimated across beats, records or splits, so no distributional information can cross the split boundary. Beats with degenerate variance are discarded. Inter-beat intervals are computed from annotation sample indices as described in \S\ref{sec:rhythm}.
+
+\subsection{Inter-Patient Split}
+We use the DS1/DS2 partition of de Chazal \emph{et al.} \cite{chazal_automatic_2004} (Table~\ref{tab:split_protocol}), splitting DS1 further into training and validation records following Takalo-Mattila \emph{et al.} \cite{takalo-mattila_inter-patient_2018}. The partition is by record, so no patient contributes beats to more than one of the three subsets; disjointness is asserted programmatically and covered by a regression test. Checkpoint selection, early stopping and all architecture and hyperparameter decisions use DS1 validation only. DS2 is used to report the results of \S\ref{sec:results_primary} onward.
 
 \begin{table*}[!t]
 \caption{Inter-Patient Data Splitting Protocol (DS1/DS2).}
@@ -165,14 +211,14 @@ We follow the inter-patient paradigm of De Chazal et al. \cite{chazal_automatic_
 \begin{tabular}{@{}l l p{6.5cm} l@{}}
 \toprule
 \textbf{Set} & \textbf{Role} & \textbf{Record IDs (MIT-BIH)} & \textbf{Function} \\ \midrule
-\multirow{2}{*}{\textbf{DS1}} & \textbf{Train} (18 rec.) & 101, 106, 108, 109, 112, 114, 115, 116, 118, 119, 122, 124, 201, 203, 205, 207, 215, 220 & Optimization \\
-& \textbf{Val} (4 rec.) & 208, 209, 223, 230 & Model Selection \\ \midrule
-\textbf{DS2} & \textbf{Test} (22 rec.) & 100, 103, 105, 111, 113, 117, 121, 123, 200, 202, 210, 212, 213, 214, 219, 221, 222, 228, 231, 232, 233, 234 & \textbf{Strictly Held-out} \\ \bottomrule
+\multirow{2}{*}{\textbf{DS1}} & \textbf{Train} (18 rec.) & 101, 106, 108, 109, 112, 114, 115, 116, 118, 119, 122, 124, 201, 203, 205, 207, 215, 220 & Optimisation \\
+& \textbf{Val} (4 rec.) & 208, 209, 223, 230 & All model and architecture selection \\ \midrule
+\textbf{DS2} & \textbf{Test} (22 rec.) & 100, 103, 105, 111, 113, 117, 121, 123, 200, 202, 210, 212, 213, 214, 219, 221, 222, 228, 231, 232, 233, 234 & \textbf{Held out} \\ \bottomrule
 \end{tabular}
 \end{table*}
 
 \subsection{Class Distribution and AAMI Mapping}
-Raw annotations were mapped to the five AAMI EC57 super-classes \cite{xiao_deep_2023, luz_survey_2016} (Table~\ref{tab:class_dist}); the Q class is retained for reporting completeness. Correcting an earlier draft's claim that Q is excluded from loss weighting: it is not special-cased and receives the same inverse-frequency weight formula as N, V, and F (only S additionally receives the $8\times$ heuristic boost of \S\ref{sec:results_curriculum}); given only 15 total Q beats across the entire dataset (7 in DS2), its practical effect on training is limited by how rarely it is sampled at all, independent of its assigned weight.
+Annotations are mapped to the five AAMI EC57 super-classes \cite{xiao_deep_2023, luz_survey_2016} (Table~\ref{tab:class_dist}). No class is excluded from the loss: every class receives the same inverse-frequency weight, with the single exception of the S-class multiplier of \S\ref{sec:rac}. The Q class is retained for completeness but there are only 15 Q beats in the entire database (7 in DS2), so no per-class conclusion can be drawn for it, and its contribution to any five-class macro average is dominated by sampling noise. We report Macro-F1 over all five classes for comparability with the protocol as conventionally applied, and report per-class recall separately so that this does not obscure where performance actually lies.
 
 \begin{table*}[!t]
 \caption{Class Distribution and AAMI Standard Mapping.}
@@ -191,311 +237,404 @@ Raw annotations were mapped to the five AAMI EC57 super-classes \cite{xiao_deep_
 \end{tabular}
 \end{table*}
 
-%% EXPERIMENTAL SETUP
-\section{Experimental Setup}
+\subsection{External Datasets}
+\label{sec:external_data}
+Cross-dataset evaluation uses the St Petersburg INCART 12-lead Arrhythmia Database \cite{goldberger_physiobank_2000} and the MIT-BIH Supraventricular Arrhythmia Database (SVDB) \cite{greenwald_improved_1990}. Both are processed by the identical pipeline described in \S\ref{sec:preprocessing} --- same window length, same per-beat $z$-scoring, same interval formula, same clipping, same AAMI mapping --- and both carry genuine expert per-beat annotations, so they are label-compatible with MIT-BIH at the granularity the model is trained on. SVDB was assembled specifically to enrich supraventricular ectopy and therefore functions as an S-class stress test. Neither dataset was used for any training, tuning or selection decision; both are evaluated forward-pass only from MIT-BIH-trained checkpoints.
 
-\subsection{Training Details}
-AdamW, initial learning rate $1\times10^{-3}$, weight decay $1\times10^{-4}$, cosine-annealed learning-rate schedule, up to 100 epochs, early stopping on validation Macro-F1 with patience 15, batch size 64. All checkpoint selection uses DS1-validation only.
+We also processed PTB-XL \cite{wagner_ptb-xl_2020} but \textbf{do not report it as a generalisation result}, because our own extraction pipeline for it is not distribution-compatible with the model's training inputs in three independent ways, each sufficient to confound the measurement. (i) The beats are not $z$-scored, so the model receives raw millivolt amplitudes where \eqref{eq:pcwi}'s priors and the trained dilations $\gamma\approx0.05$--$0.12$ are defined on the standardised scale; a narrow wavelet evaluated far from its translation contributes almost nothing, leaving the morphology branch not merely shifted but largely inactive. (ii) The interval features are divided by a local 10-beat running mean, making them dimensionless ratios near unity rather than the seconds the rhythm branch was trained on, which also compresses the prematurity contrast the branch depends on. (iii) PTB-XL's SCP labels are record-level and our extraction applies one label to every beat of a record, so beat-level recall against them does not measure beat-level correctness. A Macro-F1 of $0.200\pm0.005$ over 20 seeds was obtained, but it reflects an artefact of preprocessing rather than transfer, and we exclude it from all claims. Repeating the extraction under the pipeline of \S\ref{sec:preprocessing} and against beat-level annotations is the first item of \S\ref{sec:future}. We state the excluded result and its confounds explicitly, rather than simply omitting the dataset, so that the absence of a widely used benchmark is accounted for.
 
-\subsection{Baselines}
-Table~\ref{tab:baselines} lists the four standard architectures compared against WavKAN-v2 in \S\ref{sec:results}, trained under an identical protocol, split, and epoch budget (natural-distribution sampling, class-weighted loss --- weighted cross-entropy for three of the four, and gamma-only Focal Loss for the fourth, matching each method's own standard formulation rather than stacking two imbalance-correction mechanisms, which we found in preliminary runs to cause majority-class collapse when combined).
+\subsection{Baselines and What Is Matched}
+\label{sec:baselines}
+Four architectures spanning 29K--118K parameters are compared (Table~\ref{tab:baselines}). Because the phrase ``identical protocol'' is often used loosely, we state exactly what is and is not held constant.
 
-\begin{table*}[!t]
-\caption{Baseline Architectures (identical protocol/split/epoch budget as WavKAN-v2).}
+\emph{Held identical:} dataset, preprocessing, DS1/DS2 split, input representation (both the beat window and the interval vector, so no model sees features another does not), optimiser (AdamW, learning rate $10^{-3}$, weight decay $10^{-4}$), cosine-annealed schedule, epoch budget (100), early-stopping patience (15), batch size (64), gradient-norm clipping (1.0), the checkpoint-selection rule (best DS1-validation Macro-F1), the set of 20 random seeds, and the class-weight formula.
+
+\emph{Not held identical:} the imbalance-handling mechanism, deliberately, since RAC is a contribution under test rather than a nuisance variable. The baselines use natural-distribution sampling with class-weighted cross-entropy, except CNN+Focal which uses focal loss without static class weights, matching each method's own standard formulation. We tested applying one uniform imbalance mechanism to all five models and rejected it: stacking a class-balanced sampler with inverse-frequency weighting at this dataset's imbalance ratio drives the majority class's effective gradient contribution to near zero, and three of the four baselines then failed to predict class N at all. Degrading baselines with a mechanism chosen to suit the proposed model would not be a fair comparison. PC-WavKAN additionally applies minority-class signal augmentation; \S\ref{sec:results_augmentation} shows this does not account for its result, since removing it leaves Macro-F1 statistically unchanged.
+
+Table~\ref{tab:baseline_comparison} should therefore be read as comparing complete methods --- architecture together with its imbalance strategy --- under a common protocol and budget, not as isolating the architecture alone; the within-family ablation of \S\ref{sec:results_selection} is what isolates architectural components.
+
+\begin{table}[!t]
+\caption{Baseline Architectures. Protocol, split, input representation, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S\ref{sec:baselines}); imbalance handling differs by design.}
 \label{tab:baselines}
 \centering
 \footnotesize
-\begin{tabular}{@{}l l l l@{}}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}l l l@{}}
 \toprule
-\textbf{Model} & \textbf{Params} & \textbf{Description} & \textbf{Loss} \\ \midrule
-ResNet1D & 62,869 & 4-block 1D residual CNN, 32 channels & Weighted CE \\
-Transformer & 29,653 & $d_{model}{=}32$, 2 layers, 4 heads & Weighted CE \\
-CNN+Focal & 71,061 & 4-layer 1D CNN & Focal ($\gamma{=}2$, no static weight) \\
-B-Spline KAN & 118,229 & Same family as WavKAN-v2, B-spline basis, no PCWI/PWAM/RR-attention & Weighted CE \\
-\textbf{WavKAN-v2 (final)} & \textbf{153,045} & \textbf{Mexican Hat, PCWI+PWAM, plain-MLP RR (\S\ref{sec:results_ablation}), PCA curriculum} & \textbf{Focal + PCA} \\ \bottomrule
-\end{tabular}
-\end{table*}
+\textbf{Model} & \textbf{Params} & \textbf{Imbalance handling} \\ \midrule
+ResNet1D (4-block residual CNN, 32 ch.) & 62,869 & Weighted CE \\
+Transformer ($d_{\mathrm{model}}{=}32$, 2 layers, 4 heads) & 29,653 & Weighted CE \\
+CNN+Focal (4-layer 1D CNN) & 71,061 & Focal ($\gamma{=}2$) \\
+B-Spline KAN (B-spline basis; no PCWI/P-region) & 118,229 & Weighted CE \\
+\textbf{PC-WavKAN} (Mexican Hat KAN, PCWI, & \textbf{153,045} & \textbf{RAC (\S\ref{sec:rac})} \\
+\quad gated P-region fusion, MLP rhythm enc.) & & \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Statistical Methodology}
+\label{sec:stats}
+Every arm is trained with the same 20 random seeds, and every comparison is paired by seed: seed $s$ of one arm is compared with seed $s$ of the other, so the pairing corresponds to a shared initialisation and data-order stream. Twenty seeds were chosen to make a medium standardised effect detectable at conventional power under a non-parametric paired test while keeping the study's roughly 400 training runs tractable; the count was fixed before any comparison was run, and no arm was later extended or truncated.
+
+Significance is assessed by the two-sided Wilcoxon signed-rank test \cite{wilcoxon_individual_1945}, which does not assume normality of the per-seed differences. Because the study reports many metrics, we declare comparison families explicitly and apply Holm--Bonferroni correction \cite{holm_simple_1979} within each: the metrics of a single arm-vs-arm comparison form one family (five metrics for a per-class comparison, four where fusion recall is not estimable), and the set of comparisons against the four baselines on one metric forms one family. All $p$-values reported are Holm-adjusted within the stated family unless labelled raw. Effect sizes are Cohen's $d$ \cite{cohen_statistical_1988} for paired differences, $d = \bar{\delta}/s_\delta$, and we adopt one sign convention throughout: \textbf{positive $d$ favours PC-WavKAN, the adopted configuration, or the treatment arm}. We additionally report 95\% confidence intervals on the paired mean difference, because for the primary comparison the width of that interval is more informative than the non-significance of the test.
+
+We distinguish three levels of claim. The \emph{primary} outcome is Macro-F1 on DS2 for the adopted configuration against the four baselines (\S\ref{sec:results_primary}). \emph{Secondary}, pre-specified outcomes are the per-class recalls, on which the curriculum claim rests (\S\ref{sec:results_curriculum}). Everything else --- the rhythm-position ablation, the cross-dataset confusion analysis, the few-shot curves and the augmentation comparison --- is \emph{exploratory}: hypothesis-generating, corrected within its own family where a test is reported, and not to be read as confirmatory.
 
 %% RESULTS
 \section{Results}
 \label{sec:results}
 
-\subsection{Curriculum vs. Fair Baseline (Within-Model, 20 Seeds)}
-\label{sec:results_curriculum}
-Table~\ref{tab:curriculum_stats} reports the paired comparison between the PCA curriculum arm and the architecturally identical fair-baseline arm, across all five AAMI classes, with Holm-Bonferroni correction applied across the five metrics tested (correcting the family-wise error rate, since testing five metrics from one comparison without correction inflates the apparent significance rate).
+\subsection{Architecture Selection on Validation Data}
+\label{sec:results_selection}
+The configuration reported in the rest of this paper was chosen using DS1 validation only. Table~\ref{tab:family_ablation} gives the single-variable ablation: the base configuration is the wavelet KAN with PCWI, gated P-region fusion, the self-attention rhythm encoder and RAC, and each row changes exactly one component of that base. All 20 seeds are trained for every row, and the validation figure for each seed is taken at the epoch its own checkpoint was saved, so no additional training or test-set access was involved.
 
 \begin{table*}[!t]
-\caption{Curriculum vs. Fair Baseline, WavKAN-v2, 20 Seeds, DS2 Test Set. Only S-Recall survives Holm-Bonferroni correction.}
-\label{tab:curriculum_stats}
 \centering
+\caption{Single-variable component ablation on \textbf{DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm0.0201$. $\Delta$ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps.}
+\label{tab:family_ablation}
 \footnotesize
-\begin{tabular}{@{}l c c c c c@{}}
+\begin{tabular}{l c c c c l}
 \toprule
-\textbf{Metric} & \textbf{Baseline} & \textbf{Curriculum} & \textbf{Holm-adj. $p$} & \textbf{Cohen's $d$} & \textbf{Significant?} \\ \midrule
-Macro-F1 & $0.319\pm0.013$ & $0.323\pm0.018$ & $0.756$ & $-0.16$ (negl.) & No \\
-V-Recall & $0.879\pm0.019$ & $0.889\pm0.021$ & $0.461$ & $-0.41$ (small) & No \\
-\textbf{S-Recall} & $\mathbf{0.079\pm0.016}$ & $\mathbf{0.123\pm0.052}$ & $\mathbf{0.0016}$ & $\mathbf{-0.77}$ \textbf{(medium)} & \textbf{Yes} \\
-N-Recall & $0.882\pm0.024$ & $0.865\pm0.031$ & $0.086$ & $+0.53$ (medium) & No \\
-F-Recall & $0.0018\pm0.0025$ & $0.0034\pm0.0035$ & $0.461$ & $-0.32$ (small) & No \\ \bottomrule
+\textbf{Variant} & \textbf{Val.\ Macro-F1} & \textbf{$\Delta$ vs base} & \textbf{Cohen's $d$} & \textbf{Holm $p$} & \textbf{Interpretation} \\ \midrule
+No PCWI (random init.) & $0.3932\pm0.0129$ & $-0.0213$ & $-1.05$ (large) & $\mathbf{0.0001}$ & PCWI contributes \\
+No gated P-region fusion & $0.3976\pm0.0184$ & $-0.0169$ & $-0.54$ (medium) & $0.164$ & not resolved \\
+No RAC (natural sampling) & $0.4053\pm0.0173$ & $-0.0092$ & $-0.37$ (small) & $0.624$ & not resolved on Macro-F1 \\
+Basis: Morlet & $0.4219\pm0.0187$ & $+0.0074$ & $+0.31$ (small) & $0.568$ & basis interchangeable \\
+Basis: DOG & $0.4041\pm0.0123$ & $-0.0104$ & $-0.45$ (small) & $0.164$ & basis interchangeable \\
+Basis: B-spline & $0.4116\pm0.0151$ & $-0.0029$ & $-0.14$ (negl.) & $0.624$ & basis interchangeable \\
+\textbf{No self-attn.\ rhythm encoder} & $\mathbf{0.4397\pm0.0140}$ & $\mathbf{+0.0252}$ & $\mathbf{+1.15}$ \textbf{(large)} & $\mathbf{0.0008}$ & \textbf{adopted} \\ \bottomrule
 \end{tabular}
 \end{table*}
 
-\noindent The only conclusion that survives correction is that curriculum learning provides a real, medium-effect-size improvement in S-Recall, with no statistically robust cost to any other metric. S-Recall remains low in absolute terms (0.123, i.e., roughly 88\% of S beats still missed) --- the finding is a genuine, targeted improvement, not a solution to S-class detection. This comparison was run during initial architecture development, using the RR-self-attention configuration (154,325 params); \S\ref{sec:results_ablation} shows that configuration is not the one we ultimately adopt, but the curriculum-vs-fair-baseline finding itself concerns the training schedule, not the RR-fusion mechanism, and there is no reason to expect it to depend on which of the two RR-fusion variants is used. Fig.~\ref{fig:convergence} shows the underlying per-epoch training dynamics behind this comparison for a representative seed: the curriculum arm's warm-up phase reaches a competitive validation Macro-F1 within a handful of epochs and converges to a substantially lower training loss than the fair baseline, with generally higher S-Recall for most of training (though noisy epoch-to-epoch, with some crossover), consistent with the aggregated 20-seed result above.
+Three findings follow, and they revise the account of the architecture its initial design implied.
 
-\subsection{Comparison Against Standard Architectures (Cross-Model, 20 Seeds)}
-\label{sec:results_baselines}
-This comparison uses our final, adopted architecture (153,045 params, plain-MLP RR fusion --- \S\ref{sec:results_ablation} establishes why this configuration, not the RR-self-attention one, is the one we report headline numbers for) against the four baselines of Table~\ref{tab:baselines}, all under the identical protocol. Fig.~\ref{fig:seed_stability} shows the corresponding comparison for the earlier RR-self-attention configuration, from the same architecture-development stage as \S\ref{sec:results_curriculum}; Table~\ref{tab:baseline_comparison} below is the one that reflects what we actually propose.
+\emph{PCWI is the architecture's effective novel component.} Replacing \eqref{eq:pcwi} with isotropic random initialisation costs $0.021$ validation Macro-F1 with a large effect ($d=-1.05$, Holm $p=1\times10^{-4}$). This is the only positive contribution among the components we introduced that survives correction. Because every row of Table~\ref{tab:family_ablation} varies one component of the \emph{base} configuration, this establishes PCWI's contribution within that base; the adopted configuration differs from it only in the rhythm encoder, and the two components act on different branches of the network, so we expect the effect to carry over --- but we have not measured it there, and we do not present it as though we had. Re-running this single ablation on the adopted configuration is a well-defined experiment requiring no new methodology, and is the study's main outstanding item (\S\ref{sec:future}).
+
+\emph{The mother wavelet is interchangeable.} Substituting Morlet, DOG or a B-spline for the Mexican Hat changes validation Macro-F1 by at most $0.010$, and none of the three differences approaches significance; Morlet is in fact numerically higher than the base. The Mexican Hat is a reasonable choice on the standard argument that its shape matches a sharp biphasic transient \cite{addison_wavelet_2005}, but our own data do not support a claim that this choice is what makes the model work. What matters measurably is \emph{where the basis is initialised}, not \emph{which} basis it is --- which is consistent with PCWI being the component that carries the effect, and is a more specific conclusion than a general appeal to wavelet suitability.
+
+\emph{The self-attention rhythm encoder is harmful and is removed.} Replacing it with a plain MLP over the same five intervals \emph{improves} validation Macro-F1 by $0.025$ with a large effect ($d=+1.15$, Holm $p=8\times10^{-4}$), and is the best of all seven configurations on validation. We adopt this 153,045-parameter configuration. \S\ref{sec:discussion_rr} discusses why self-attention over five scalars is a poor inductive bias here.
+
+\subsubsection*{Disclosure regarding test-set exposure}
+Table~\ref{tab:family_ablation} is a validation-only analysis and its ranking is sufficient to select the adopted configuration without reference to DS2. We note for completeness that DS2 metrics for the non-adopted variants were also computed during development, and that the DS2 ranking agrees with the validation ranking (the adopted configuration is also highest on DS2, at $0.357\pm0.019$ against $0.323\pm0.018$ for the base). DS2 was therefore not literally untouched over the whole course of this study, and we do not describe it as such. What the design does guarantee is that the selection rule is fully determined by validation data, that no hyperparameter, threshold or checkpoint was ever chosen on DS2, and that the primary comparison of \S\ref{sec:results_primary} compares one pre-selected configuration against four baselines subjected to the same selection rule. Readers who prefer the most conservative reading may treat \S\ref{sec:results_primary} as a held-out estimate under a validation-determined selection procedure rather than as a single-shot test result; the conclusion of that section is a null result and is not the kind of finding that selection bias would manufacture.
+
+\subsection{Primary Comparison Against Standard Architectures}
+\label{sec:results_primary}
+Table~\ref{tab:baseline_comparison} reports the primary outcome: DS2 Macro-F1 for the adopted configuration against the four baselines, 20 paired seeds each, analysed as specified in \S\ref{sec:stats}.
 
 \begin{table}[!t]
 \centering
-\caption{Cross-Architecture Comparison, Final Architecture (Plain-MLP RR Fusion) vs. Four Standard Baselines, 20 Seeds Each, DS2 Test Set. None of the four comparisons survive Holm-Bonferroni correction.}
+\caption{\textbf{Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta$, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero.}
 \label{tab:baseline_comparison}
 \resizebox{\columnwidth}{!}{%
-\begin{tabular}{l c c c c}
+\begin{tabular}{l c c c c c}
 \toprule
-\textbf{Model} & \textbf{Params} & \textbf{Macro-F1} & \textbf{Cohen's $d$} & \textbf{Holm $p$} \\ \midrule
-ResNet1D & 62,869 & $0.351\pm0.019$ & $+0.19$ (negl.) & $1.00$ \\
-Transformer & 29,653 & $0.353\pm0.040$ & $+0.12$ (negl.) & $1.00$ \\
-CNN+Focal & 71,061 & $0.362\pm0.015$ & $-0.22$ (small) & $1.00$ \\
-B-Spline KAN & 118,229 & $0.371\pm0.024$ & $-0.43$ (small) & $0.36$ \\
-\textbf{WavKAN-v2 (final)} & \textbf{153,045} & $\mathbf{0.357\pm0.019}$ & --- & --- \\ \bottomrule
+\textbf{Model} & \textbf{Params} & \textbf{Macro-F1} & \textbf{$\Delta$} & \textbf{95\% CI of $\Delta$} & \textbf{$d$ / Holm $p$} \\ \midrule
+ResNet1D & 62,869 & $0.351\pm0.019$ & $+0.006$ & $[-0.008, +0.020]$ & $+0.19$ / $1.00$ \\
+Transformer & 29,653 & $0.353\pm0.040$ & $+0.004$ & $[-0.013, +0.022]$ & $+0.12$ / $1.00$ \\
+CNN+Focal & 71,061 & $0.362\pm0.015$ & $-0.005$ & $[-0.017, +0.006]$ & $-0.22$ / $1.00$ \\
+B-Spline KAN & 118,229 & $0.371\pm0.024$ & $-0.014$ & $[-0.029, +0.001]$ & $-0.43$ / $0.36$ \\ \midrule
+\textbf{PC-WavKAN} & \textbf{153,045} & $\mathbf{0.357\pm0.019}$ & --- & --- & --- \\ \bottomrule
 \end{tabular}
 }
 \end{table}
 
-\noindent \textbf{This is a materially different result from the RR-self-attention configuration}, and we report both plainly rather than presenting only the favorable one. With plain-MLP RR fusion, WavKAN-v2's Macro-F1 is statistically indistinguishable from all four standard baselines (all Holm-adjusted $p \geq 0.36$, all effect sizes negligible-to-small) --- it neither significantly wins nor significantly loses on this metric, despite being within the same parameter range as B-Spline KAN and larger than ResNet1D/Transformer. V-Recall remains close across all five models (0.88--0.92) as it was for the earlier configuration. We regard ``statistically indistinguishable from four standard architectures, using a structurally interpretable basis and with a proven curriculum-driven S-Recall benefit'' as a defensible, honestly-earned claim --- a materially different, and stronger, position than the RR-self-attention configuration's significant deficit reported for completeness in Fig.~\ref{fig:seed_stability}. Fig.~\ref{fig:confusion} shows the per-class confusion structure behind these numbers for this final configuration: strong N/V separation (each leaks $<$6\% into the other), substantial S-class confusion split primarily toward V (S$\to$V: 0.42) and secondarily toward N (S$\to$N: 0.30) --- correcting an earlier draft's claim that S$\to$N is the dominant pattern, when the real matrix shows S$\to$V is larger --- the main driver of the low absolute Macro-F1 shared with all five models in Table~\ref{tab:baseline_comparison}, and F beats predicted almost exclusively as N (0.87).
+PC-WavKAN's Macro-F1 is statistically indistinguishable from all four baselines. All Holm-adjusted $p \geq 0.36$, all effect sizes are negligible-to-small, and --- more informative than the $p$-values --- every 95\% confidence interval on the paired difference contains zero, with the widest bound $0.029$ in absolute Macro-F1. The data therefore exclude any large advantage in either direction, and we make no accuracy claim beyond parity. We emphasise that this is a null result at $n=20$ per arm, not a demonstration of equivalence: the intervals are compatible with differences of up to roughly $\pm0.03$ Macro-F1, and a formal equivalence claim would require a pre-specified margin, which we did not set.
+
+Two features of this comparison deserve note. It is not parameter-favourable to PC-WavKAN, which is the largest of the five models and yet does not outperform a Transformer with a fifth of its parameters. And the absolute values are low for all five models: Macro-F1 near $0.36$ under this protocol reflects the S- and F-class recalls that the inter-patient setting collapses, not a defect specific to one architecture. Fig.~\ref{fig:confusion} shows the structure behind this for PC-WavKAN. N and V separate well, each leaking under 6\% into the other, and V-recall is $0.905$. The Macro-F1 ceiling is set by the other classes: S beats are misassigned predominantly to V ($0.42$) and secondarily to N ($0.30$), and F beats are almost entirely predicted as N ($0.87$). The S$\rightarrow$V direction is the more diagnostically interesting of the two and recurs in the cross-dataset analysis of \S\ref{sec:results_crossdata}.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{final_confusion_matrix_main.pdf}
-\caption{Row-normalized confusion matrix, final architecture (153,045 params), seed 42, DS2 test set. Generated directly from this checkpoint's real predictions, not reused from an earlier configuration.}
+\caption{Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions.}
 \label{fig:confusion}
 \end{figure}
 
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=0.85\textwidth]{baseline_comparison_seed_stability.pdf}
-\caption{Cross-architecture Macro-F1 stability for the \emph{initial, RR-self-attention} configuration (154,325 params), 20 real seeds per model, DS2 test set --- superseded as our proposed architecture by the plain-MLP configuration of Table~\ref{tab:baseline_comparison} (\S\ref{sec:results_ablation}), shown here for completeness since it is part of the real architecture-development record. Significance markers denote paired Wilcoxon signed-rank tests against this earlier configuration with Holm-Bonferroni correction; effect sizes are Cohen's $d$.}
-\label{fig:seed_stability}
-\end{figure*}
+\subsection{Effect of the Rarity-Anchored Curriculum}
+\label{sec:results_curriculum}
+Table~\ref{tab:curriculum_stats} isolates RAC on the adopted architecture. Both arms are the same 153,045-parameter model with the same optimiser, budget and seeds, and augmentation is disabled in both, so the schedule of \S\ref{sec:rac} is the only variable.
 
-\begin{figure*}[!t]
+\begin{table}[!t]
+\caption{\textbf{Secondary outcome.} RAC vs.\ natural-distribution sampling, PC-WavKAN, 20 paired seeds, DS2. Augmentation disabled in both arms. $\Delta$ and $d$ are RAC minus no-RAC; $p$ is Holm-adjusted across the five metrics.}
+\label{tab:curriculum_stats}
 \centering
-\includegraphics[width=\textwidth]{training_convergence_curves.pdf}
-\caption{Training convergence, WavKAN-v2, fair-baseline vs.\ curriculum arm, \emph{initial} (RR-self-attention, 154,325-param) configuration (real training-history logs, seed 42, DS1 validation Macro-F1 per epoch) --- consistent with Table~\ref{tab:curriculum_stats}, which reports this same comparison's aggregated 20-seed statistics on this same initial configuration.}
-\label{fig:convergence}
-\end{figure*}
-
-\subsection{Internal Architectural Ablation}
-\label{sec:results_ablation}
-Table~\ref{tab:family_ablation} reports an ablation over wavelet basis and the PCWI/PWAM/RR-attention components, on both DS2 test and DS1 validation (20 seeds each; validation numbers were extracted directly from each seed's logged training history using the same selection rule used to save its checkpoint, so no additional training or test-set access was needed to obtain them).
-
-\begin{table*}[!t]
-\centering
-\caption{Internal Ablation, WavKAN-v2 Family, 20 Seeds Each. Removing the RR self-attention branch yields the best Macro-F1 in the family, on both splits.}
-\label{tab:family_ablation}
 \footnotesize
-\begin{tabular}{l c c c c c c}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}l c c c c@{}}
 \toprule
-& \multicolumn{3}{c}{\textbf{DS2 Test}} & \multicolumn{3}{c}{\textbf{DS1 Validation}} \\
-\textbf{Configuration} & \textbf{Macro-F1} & \textbf{V-Rec} & \textbf{S-Rec} & \textbf{Macro-F1} & \textbf{V-Rec} & \textbf{S-Rec} \\ \midrule
-\textbf{Full (mexican\_hat, curriculum)} & $0.323$ & $0.889$ & $0.123$ & $0.415\pm0.020$ & $0.879\pm0.039$ & $0.305\pm0.046$ \\
-No curriculum (fair baseline) & $0.319$ & $0.879$ & $0.079$ & $0.405\pm0.017$ & $0.864\pm0.041$ & $0.218\pm0.047$ \\
-No PCWI & $0.329$ & $0.900$ & $0.136$ & $0.393\pm0.013$ & $0.868\pm0.040$ & $0.244\pm0.043$ \\
-No PWAM & $0.310$ & $0.882$ & $0.113$ & $0.398\pm0.018$ & $0.876\pm0.031$ & $0.312\pm0.060$ \\
-\textbf{No RR self-attention} & $\mathbf{0.357}$ & $0.898$ & $0.198$ & $\mathbf{0.440\pm0.014}$ & $0.884\pm0.028$ & $0.352\pm0.065$ \\
-Wavelet: Morlet & $0.333$ & $0.917$ & $0.131$ & $0.422\pm0.018$ & $0.874\pm0.039$ & $0.404\pm0.066$ \\
-Wavelet: DOG & $0.334$ & $0.907$ & $0.163$ & $0.404\pm0.012$ & $0.885\pm0.036$ & $0.250\pm0.051$ \\
-Wavelet: B-Spline (within full config) & $0.341$ & $0.889$ & $0.273$ & $0.412\pm0.015$ & $0.863\pm0.047$ & $0.326\pm0.061$ \\ \bottomrule
-\end{tabular}
-\end{table*}
+\textbf{Metric} & \textbf{No RAC} & \textbf{RAC} & \textbf{Cohen's $d$} & \textbf{Holm $p$} \\ \midrule
+Macro-F1 & $0.351\pm0.014$ & $0.364\pm0.021$ & $+0.52$ (med.) & $0.098$ \\
+\textbf{S-Recall} & $\mathbf{0.137\pm0.037}$ & $\mathbf{0.222\pm0.057}$ & $\mathbf{+1.47}$ \textbf{(large)} & $\mathbf{2.9{\times}10^{-5}}$ \\
+\textbf{F-Recall} & $\mathbf{0.0003}$ & $\mathbf{0.0022}$ & $\mathbf{+0.88}$ \textbf{(large)} & $\mathbf{0.013}$ \\
+V-Recall & $0.880\pm0.024$ & $0.880\pm0.017$ & $-0.00$ (negl.) & $0.756$ \\
+N-Recall & $0.927\pm0.021$ & $0.917\pm0.024$ & $-0.32$ (small) & $0.228$ \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
 
-\noindent \textbf{Removing the RR self-attention branch improves Macro-F1 from 0.323 to 0.357 and S-Recall from 0.123 to 0.198} --- the RR self-attention module, one of the architecture's originally-proposed headline components, is measurably net-harmful in its current form on this task, a finding we take at face value rather than omit (\S\ref{sec:discussion}). This places the resulting Macro-F1 (0.357) within the four external baselines' range (0.351--0.371, Table~\ref{tab:baseline_comparison}), rather than below all of them as the original configuration was --- \textbf{we therefore adopt this plain-MLP-RR, 153,045-parameter configuration as our final architecture for all remaining sections of this paper}, and Table~\ref{tab:baseline_comparison} (\S\ref{sec:results_baselines}) reports its comparison against the four baselines with fresh, correctly-paired statistics computed specifically for this configuration. The validation-set columns are reported in the same table specifically so that the validation-test gap is visible directly: it is $\approx$0.09 for both the curriculum and no-curriculum arms, i.e., \emph{curriculum learning does not measurably reduce the generalization gap relative to the fair baseline} on this data --- we note this explicitly because an earlier internal draft of this analysis had claimed the opposite (a near-zero gap specific to curriculum learning), which we found, on directly re-deriving the validation numbers, not to be supported.
+RAC produces a large increase in S-recall, from $0.137$ to $0.222$ ($d=+1.47$ after correction across five metrics), with a 95\% confidence interval on the paired difference of $[+0.058,+0.112]$, well clear of zero. Fusion recall also improves significantly in relative terms ($d=+0.88$, CI $[+0.0009,+0.0030]$), though it remains negligible in absolute terms and we draw no practical conclusion from a recall of $0.002$. V-recall is unchanged and N-recall's small decrease does not survive correction. Macro-F1 trends upward with a medium effect ($+0.012$, CI $[+0.001,+0.023]$) but does not reach significance --- expected, since a five-class macro average dilutes a gain confined to one minority class.
 
-\subsection{RR-Interval Position Ablation}
+The defensible statement is therefore narrow and we keep it narrow: RAC improves supraventricular recall substantially and reliably, at no statistically robust cost to any other class, and it does not by itself materially move the aggregate metric. An S-recall of $0.222$ still misses roughly four in five supraventricular beats; this is a real improvement on a hard class, not a solution to it.
+
+The same effect replicates on the base configuration with the self-attention rhythm encoder and with augmentation enabled, where S-recall rises from $0.079\pm0.016$ to $0.123\pm0.052$ (Holm $p=0.0016$, $d=+0.77$, medium), and on DS1 validation, where it rises from $0.218\pm0.048$ to $0.305\pm0.047$ ($d=+1.36$, raw $p=2.4\times10^{-4}$). The effect is thus reproducible across two architectural variants, two training recipes and both data partitions, which is the basis on which we treat it as a property of the schedule rather than of a particular run. Fig.~\ref{fig:convergence} shows the per-epoch dynamics for a representative seed.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{training_convergence_curves.pdf}
+\caption{Per-epoch training dynamics, no-RAC vs.\ RAC arm (seed 42, DS1 validation Macro-F1), on the base configuration used for the replication in \S\ref{sec:results_curriculum}.}
+\label{fig:convergence}
+\end{figure}
+
+\subsection{Dependence on Rhythm Features and Non-Causality}
 \label{sec:results_rr}
-Table~\ref{tab:rr_ablation} reports a leave-one-out ablation over the 5-element RR history (20 seeds), masking one position at a time and measuring the S-Recall delta, with a two-sided significance test per position. \textbf{A labeling correction from an earlier draft}: the five positions were previously mislabeled $t\text{-}4, t\text{-}3, t\text{-}2, t\text{-}1, t$, which implicitly assumed the RR-history array is purely causal. It is not (\S\ref{sec:methods}): the real array is $[RR_{-2}, RR_{-1}, RR_{0}, RR_{+1}, RR_{+2}]$, where $RR_{+1}$ and $RR_{+2}$ are intervals \emph{following} the classified beat. The measured deltas below are unchanged from the earlier draft --- only the position labels are corrected, since the earlier labels described the wrong physical interval for each result.
+Table~\ref{tab:rr_ablation} reports an exploratory leave-one-out analysis over the five interval positions: each position is masked at inference and the change in S-recall measured across 20 seeds. Because the interval feature set is identical in both rhythm encoders, this analysis was run on the base configuration, which is the variant for which the 20 masked-inference passes were available; it characterises the feature set rather than the encoder.
 
 \begin{table}[!t]
 \centering
-\caption{RR-Interval Leave-One-Out Ablation, 20 Seeds, DS2 Test Set. Baseline S-Recall (RR history intact): $0.1225\pm0.0524$.}
+\caption{Leave-one-out interval ablation, 20 seeds, DS2, exploratory. Baseline S-recall with the full vector: $0.1225\pm0.0524$. $p$ is Holm-adjusted across the five positions.}
 \label{tab:rr_ablation}
 \begin{tabular}{l c c c}
 \toprule
-\textbf{Masked Position} & \textbf{$\Delta$S-Recall} & \textbf{$p$-value} & \textbf{Sig.?} \\ \midrule
-$RR_{-2}$ & $-0.0020\pm0.0077$ & $0.081$ & No \\
-$RR_{-1}$ & $-0.0016\pm0.0075$ & $0.074$ & No \\
-\textbf{$RR_{0}$ (Pre)} & $\mathbf{-0.0323\pm0.0492}$ & $\mathbf{6\times10^{-5}}$ & \textbf{Yes} \\
-$RR_{+1}$ (Post) & $+0.0022\pm0.0095$ & $0.358$ & No \\
-$RR_{+2}$ (Post) & $-0.0045\pm0.0103$ & $0.0035$ & Yes (small) \\ \bottomrule
+\textbf{Masked position} & \textbf{$\Delta$S-Recall} & \textbf{Holm $p$} & \textbf{Sig.?} \\ \midrule
+$RR_{-2}$ & $-0.0020\pm0.0077$ & $0.221$ & No \\
+$RR_{-1}$ & $-0.0016\pm0.0075$ & $0.221$ & No \\
+\textbf{$RR_{0}$ (pre-beat)} & $\mathbf{-0.0323\pm0.0492}$ & $\mathbf{3\times10^{-4}}$ & \textbf{Yes} \\
+$RR_{+1}$ (post-beat) & $+0.0022\pm0.0095$ & $0.358$ & No \\
+$RR_{+2}$ (post-beat) & $-0.0045\pm0.0103$ & $0.014$ & Yes (small) \\ \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent Masking $RR_{0}$ --- the interval immediately preceding the beat being classified --- causes by far the largest, most significant S-Recall degradation; $RR_{+2}$, an interval \emph{following} the classified beat, also reaches significance but with a much smaller effect. The raw V-Recall delta at $RR_0$ is also large ($-0.0745\pm0.1132$), though we did not compute a separate significance test for V-Recall in this ablation and report it as a raw effect only. The $RR_0$ finding is the expected, textbook result: a short pre-beat RR interval is the standard clinical signature of a premature/ectopic beat, so it is unsurprising this is the single most important element of the history. The $RR_{+2}$ finding is the more consequential one: it shows the model draws real, statistically significant diagnostic signal from an interval that has not yet occurred at the moment the classified beat would need to be labeled in a streaming setting --- direct evidence, not just an architectural technicality, that this model is not causal as trained (Fig.~\ref{fig:rr_ablation}, \S\ref{sec:methods}).
+Masking $RR_{0}$, the interval immediately preceding the classified beat, causes by far the largest degradation. This is the expected result and we present it as a sanity check rather than a discovery: a shortened pre-beat interval is the textbook signature of a premature ectopic beat, so it should be the single most important element of the vector, and the fact that the model's dependence structure recovers this is evidence that the rhythm branch is using the feature the way clinical reasoning would.
 
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=0.9\textwidth]{rr_interval_ablation.pdf}
-\caption{Leave-one-out RR-interval ablation, 20 real seeds, DS2 test set. $RR_0$ (the interval immediately preceding the classified beat) causes the largest, most significant S-Recall drop; $RR_{+2}$ (an interval following the classified beat, non-causal) is the second significant position.}
-\label{fig:rr_ablation}
-\end{figure*}
+The consequential row is $RR_{+2}$. Its effect is small but survives correction, which means the model draws real diagnostic signal from an interval that has not yet elapsed when beat $i$ would need to be labelled in a streaming deployment. Together with the record-level filtering noted in \S\ref{sec:methods}, this establishes the non-causality of \S\ref{sec:methods} as a substantive property rather than a formality: simply zeroing the two post-beat positions at inference would be expected to cost accuracy, not merely to remove an unused input. We report the corresponding V-recall change at $RR_0$ ($-0.0745\pm0.1132$) as a raw effect only, since we did not include V-recall in this analysis's test family.
 
-\subsection{Cross-Dataset Zero-Shot Generalization (PTB-XL, INCART, SVDB)}
-\label{sec:results_ptbxl}
-\textbf{A note on which configuration these results use}: this section was originally evaluated only against the \emph{initial}, RR-self-attention configuration (154,325 params) --- the same one used in \S\ref{sec:results_curriculum} and Fig.~\ref{fig:seed_stability} --- because that evaluation was run before \S\ref{sec:results_ablation}'s ablation identified the plain-MLP-RR configuration as the one we adopt going forward. It has since been re-run against the final, 153,045-parameter configuration (forward-pass evaluation only, using the same checkpoints as \S\ref{sec:results_ablation}, no new training). We report the final configuration as the headline result throughout this section and retain the initial configuration's numbers alongside it, consistent with our practice elsewhere of disclosing the architecture-development history rather than only the superseding result.
-
-Table~\ref{tab:ptbxl_zero_shot} reports zero-shot evaluation (no fine-tuning) of the MIT-BIH-trained WavKAN-v2 on 75,170 real PTB-XL beats, aggregated across all 20 real seeds, for both configurations.
+\subsection{Retention of the Physiological Prior}
+\label{sec:results_ppr}
+Table~\ref{tab:ppr} evaluates PPR (\S\ref{sec:ppr_def}, \eqref{eq:ppr}) on all 20 trained checkpoints against the two reference points that make the number interpretable: the same architecture untrained with PCWI active, and untrained with PCWI replaced by isotropic random initialisation.
 
 \begin{table}[!t]
 \centering
-\caption{PTB-XL Zero-Shot Generalization (20 Seeds, No Fine-Tuning). Macro-F1: final configuration $0.200\pm0.005$; initial configuration $0.198\pm0.006$.}
-\label{tab:ptbxl_zero_shot}
-\begin{tabular}{l c c r}
+\caption{Physiological Prior Retention \eqref{eq:ppr}, mean$\pm$std over 20 models, with the mean absolute per-edge parameter deviation from the prior. The untrained PCWI row is the null: PCWI initialises at the prior (up to its symmetry-breaking jitter), so it scores near-maximally by construction and PPR can only decrease with training.}
+\label{tab:ppr}
+\footnotesize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{l c c c}
 \toprule
-\textbf{Class} & \textbf{Recall, final} & \textbf{Recall, initial} & \textbf{Support} \\ \midrule
-N & $0.664\pm0.061$ & $0.640\pm0.067$ & $53{,}497$ \\
-S & $0.088\pm0.017$ & $0.091\pm0.028$ & $6{,}741$ \\
-V & $0.223\pm0.045$ & $0.263\pm0.069$ & $5{,}889$ \\
-F & --- (0 support) & --- (0 support) & $0$ \\
-Q & $0.040\pm0.018$ & $0.044\pm0.019$ & $9{,}043$ \\ \bottomrule
-\end{tabular}
+\textbf{Model state} & \textbf{PPR} & $\overline{|\Delta\mu|}$ & $\overline{|\Delta\gamma|}$ \\ \midrule
+Untrained, PCWI (\emph{null}) & $0.9729\pm0.0001$ & $0.013$ & $0.004$ \\
+\textbf{Trained, PCWI (PC-WavKAN)} & $\mathbf{0.7826\pm0.0351}$ & $0.064$ & $0.055$ \\
+Untrained, random init.\ (\emph{floor}) & $0.6698\pm0.0008$ & $0.161$ & $0.051$ \\ \bottomrule
+\end{tabular}%
+}
 \end{table}
 
-\noindent Cross-dataset transfer to PTB-XL is weak for both configurations: Macro-F1 drops from 0.357 (final configuration's DS2, in-distribution result) to $0.200\pm0.005$ (PTB-XL, zero-shot, 20 seeds) --- a materially similar drop to the initial configuration's (0.323 $\to$ 0.198). No Fusion-labeled beats were present in this PTB-XL extraction. We report this without softening --- it is a genuine, unresolved limitation shared by both configurations.
+The result is best stated as what it does and does not support. Training moves the wavelet parameters substantially: PPR falls from its near-maximal initial value of $0.973$ to $0.783$, and the mean absolute per-edge translation deviation grows from the $0.013$ contributed by PCWI's own symmetry-breaking jitter to $0.064$, a factor of five, on a normalising span of $0.40$. The trained basis nonetheless remains far closer to the ECG priors than a randomly initialised basis of the same architecture ($0.783$ vs $0.698$; Mann--Whitney $U$, $p=3\times10^{-8}$, standardised difference $+4.6$), and the gap is highly consistent across seeds. The QRS group retains the most structure ($\mathrm{PPR}=0.814$), the P and T groups slightly less ($0.764$, $0.770$). This ordering is by absolute parameter deviation and is deliberately not an ordering by visual similarity of the resulting functions: in Fig.~\ref{fig:wavelets} the P group's curves appear to sit almost on their prior while the QRS group's are visibly wider, because a wavelet initialised narrow ($\bar\gamma=0.05$) changes shape far more conspicuously than a wide one ($\bar\gamma=0.12$) for the same absolute change in $\gamma$. PPR measures the parameters, and we report it that way rather than substituting an impression of the plotted curves.
 
-Table~\ref{tab:multidataset} extends this to INCART and SVDB, alongside all four baselines and both WavKAN-v2 configurations, also 20 seeds each. We additionally computed paired Wilcoxon signed-rank tests, Holm-Bonferroni correction, and Cohen's $d$ (Macro-F1, final configuration vs.\ each baseline, per dataset; \texttt{results/multidataset\_final\_stats.json}) so the comparisons below are not read off means alone.
+So the defensible claim is that the physiologically structured function space established by \eqref{eq:pcwi} is \emph{retained}, not discarded, under gradient descent, while still being refined by it --- and \S\ref{sec:results_selection} independently shows this initialisation is the component that measurably improves validation performance. The two findings together support a specific and modest interpretation: constraining where the basis starts is useful, and the useful structure persists. They do not support the stronger claim that the model learned physiological alignment, which the null in Table~\ref{tab:ppr} directly refutes, since a high PPR is available to an untrained network. Nor is PPR a measure of interpretability in the sense of explaining a prediction: it is computed entirely from parameters and never observes a model output, so it says nothing about whether an individual classification is attributable to the component a channel group is named for. We report it as a transparency property of the parameterisation, and we regard publishing its null as inseparable from reporting the score at all. Fig.~\ref{fig:wavelets} shows the trained bases against their priors.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{final_learned_wavelets.pdf}
+\caption{\textbf{Trained wavelet bases per channel group}, against the PCWI prior each group was initialised from (dashed). Curves are read from one checkpoint (seed 42), so annotated retention differs slightly from Table~\ref{tab:ppr}'s 20-seed means. Parameters move from initialisation while the group structure of \eqref{eq:pcwi} persists.}
+\label{fig:wavelets}
+\end{figure}
+
+\subsection{Cross-Dataset Generalisation}
+\label{sec:results_crossdata}
+Table~\ref{tab:multidataset} evaluates all five MIT-BIH-trained models on INCART and SVDB, forward-pass only, 20 seeds each. Both datasets pass through the identical pipeline as the training data (\S\ref{sec:external_data}), so these are dataset-shift measurements rather than preprocessing artefacts.
 
 \begin{table*}[!t]
 \centering
-\caption{Cross-Dataset Zero-Shot Generalization, INCART and SVDB, 20 Seeds Each. Final configuration (adopted, plain-MLP RR fusion) is the headline result; initial (RR-self-attention) configuration retained for the architecture-development record.}
+\caption{Zero-shot cross-dataset evaluation, 20 seeds per model. Significance is PC-WavKAN vs.\ each baseline on Macro-F1, Holm-adjusted within each dataset; positive $d$ favours PC-WavKAN. Boldface marks the numerically highest value per column, which for Macro-F1 on INCART is not a significant win over B-Spline KAN.}
 \label{tab:multidataset}
 \footnotesize
-\begin{tabular}{l c c c c c c}
+\begin{tabular}{l c c c c c c c c}
 \toprule
-& \multicolumn{3}{c}{\textbf{INCART}} & \multicolumn{3}{c}{\textbf{SVDB (S-class stress test)}} \\
-\textbf{Model} & \textbf{Macro-F1} & \textbf{V-Recall} & \textbf{S-Recall} & \textbf{Macro-F1} & \textbf{V-Recall} & \textbf{S-Recall} \\ \midrule
-WavKAN-v2 (final) & $\mathbf{0.374\pm0.009}$ (highest) & $0.709\pm0.047$ & $0.500\pm0.104$ & $0.281\pm0.013$ & $0.794\pm0.025$ & $0.135\pm0.021$ \\
-WavKAN-v2 (initial) & $0.338\pm0.019$ & $0.640\pm0.057$ & $0.360\pm0.160$ & $0.255\pm0.020$ (lowest) & $0.769\pm0.022$ & $0.115\pm0.026$ \\
-ResNet1D & $0.344\pm0.018$ & $0.489\pm0.098$ & $0.505\pm0.138$ & $0.370\pm0.023$ & $0.733\pm0.047$ & $0.324\pm0.105$ \\
-Transformer & $0.335\pm0.031$ & $0.626\pm0.105$ & $0.682\pm0.206$ & $0.335\pm0.035$ & $0.786\pm0.060$ & $0.377\pm0.111$ \\
-CNN+Focal & $0.316\pm0.024$ & $0.346\pm0.079$ & $0.449\pm0.113$ & $0.367\pm0.013$ & $0.642\pm0.057$ & $0.247\pm0.089$ \\
-B-Spline KAN & $0.365\pm0.017$ & $\mathbf{0.732\pm0.050}$ (highest) & $0.386\pm0.149$ & $0.276\pm0.018$ & $0.789\pm0.034$ & $0.125\pm0.038$ \\ \bottomrule
+& \multicolumn{4}{c}{\textbf{INCART}} & \multicolumn{4}{c}{\textbf{SVDB} (S-class stress test)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+\textbf{Model} & \textbf{Macro-F1} & \textbf{$d$ / Holm $p$} & \textbf{V-Rec} & \textbf{S-Rec} & \textbf{Macro-F1} & \textbf{$d$ / Holm $p$} & \textbf{V-Rec} & \textbf{S-Rec} \\ \midrule
+\textbf{PC-WavKAN} & $\mathbf{0.374\pm0.009}$ & --- & $0.709$ & $0.500$ & $0.281\pm0.013$ & --- & $\mathbf{0.794}$ & $0.135$ \\
+ResNet1D & $0.344\pm0.018$ & $+1.62$ / $<0.001$ & $0.489$ & $0.505$ & $\mathbf{0.370\pm0.023}$ & $-3.26$ / $<0.001$ & $0.733$ & $0.324$ \\
+Transformer & $0.335\pm0.031$ & $+1.27$ / $<0.001$ & $0.626$ & $\mathbf{0.682}$ & $0.335\pm0.035$ & $-1.52$ / $<0.001$ & $0.786$ & $\mathbf{0.377}$ \\
+CNN+Focal & $0.316\pm0.024$ & $+2.02$ / $<0.001$ & $0.346$ & $0.449$ & $0.367\pm0.013$ & $-4.29$ / $<0.001$ & $0.642$ & $0.247$ \\
+B-Spline KAN & $0.365\pm0.017$ & $+0.45$ / $0.083$ & $\mathbf{0.732}$ & $0.386$ & $0.276\pm0.018$ & $+0.19$ / $0.648$ & $0.789$ & $0.125$ \\ \bottomrule
 \end{tabular}
 \end{table*}
 
-\noindent \textbf{On INCART}, the final configuration is the numerically highest of all five models on Macro-F1 (0.374) and is significantly better than three of the four baselines (ResNet1D: $d=+1.62$, Holm $p<0.001$; Transformer: $d=+1.27$, Holm $p<0.001$; CNN+Focal: $d=+2.02$, Holm $p<0.001$), though not significantly different from its same-family B-Spline KAN ($d=+0.45$, Holm $p=0.083$) --- a genuine improvement over the initial configuration's middling result, not merely a relabeling. \textbf{On SVDB}, specifically constructed as a supraventricular-ectopy stress test, the final configuration is significantly \emph{worse} than three of the four baselines (ResNet1D: $d=-3.26$; Transformer: $d=-1.52$; CNN+Focal: $d=-4.29$; all Holm $p<0.001$), but statistically indistinguishable from its same-family B-Spline KAN sibling ($d=+0.19$, Holm $p=0.648$) --- essentially tied for the weakest of the five. We report this plainly: adopting the final architecture converts INCART from a middling result into the best of five models, but does not resolve the SVDB weakness, which now reads as specific to the wavelet-KAN family's shared structure (both configurations statistically tied with or worse than B-Spline KAN there) rather than to the RR-fusion mechanism that differs between the two WavKAN-v2 configurations. F-Recall was omitted from this table: SVDB's F-class support is negligible for this extraction and recall estimates there are not meaningful.
+The pattern is dataset-dependent and we do not summarise it as a single verdict. On INCART, PC-WavKAN has the highest Macro-F1 of the five models and is significantly better than three of the four baselines with large effects, but it is \emph{not} significantly better than B-Spline KAN ($d=+0.45$, Holm $p=0.083$); the honest reading is that the two KAN models lead this dataset and the numerical ordering between them is unresolved. On SVDB, PC-WavKAN is significantly worse than the same three baselines, again with large effects, and again statistically tied with B-Spline KAN.
 
-\subsection{Quantified Interpretability (WAS)}
-\label{sec:results_was}
-To move beyond a qualitative interpretability claim, we introduce the Wavelet--ECG Alignment Score (WAS): for each learned wavelet, we compare its translation ($\mu$) and dilation ($\gamma$) parameters against literature-derived priors for QRS, P-wave, and T-wave morphology, and report a normalized alignment score per fiducial and a macro-average. An earlier version of this analysis reported WAS from a single checkpoint per configuration (final: 0.9569; initial: 0.9837) --- since this drew an apparent 0.027 gap between the two configurations from a single seed each, we recomputed WAS across all 20 independently-trained seeds for both configurations, matching this paper's own statistical standard everywhere else. The 20-seed result shows the two configurations are in fact materially indistinguishable: final configuration (153,045 params, plain-MLP RR fusion) $\text{WAS}_{\text{macro}} = 0.9578\pm0.0128$ (QRS: $0.9401\pm0.0229$, P-wave: $0.9756\pm0.0050$, T-wave: $0.9578\pm0.0128$; Fig.~\ref{fig:wavelets}); initial RR-self-attention configuration $\text{WAS}_{\text{macro}} = 0.9573\pm0.0138$ (QRS: $0.9412\pm0.0248$, P-wave: $0.9731\pm0.0045$, T-wave: $0.9575\pm0.0135$). The single-checkpoint gap reported earlier reflects ordinary seed-to-seed variance, not a real architectural difference in how well either configuration preserves physiologically-motivated wavelet priors after training. Both configurations show high, plausible, post-training alignment with the physiological priors, not merely their initialization values. This metric is, by construction, unavailable to any of the four comparator architectures in Table~\ref{tab:baseline_comparison}, none of which expose an inspectable basis function.
+That the two KAN models track each other on both datasets --- leading together on one, trailing together on the other --- points to shared KAN structure rather than anything specific to PC-WavKAN. A per-class analysis over summed confusion matrices localises the mechanism. On SVDB both KAN models misassign supraventricular beats to V at a nearly identical, elevated rate (PC-WavKAN $0.408$, B-Spline KAN $0.412$) that the non-KAN baselines do not approach (ResNet1D $0.173$, CNN+Focal $0.118$, Transformer $0.319$). Both also over-predict V there ($17.8\%$ and $18.9\%$ of all predictions, against $8.3\%$ and $5.5\%$ for ResNet1D and CNN+Focal) and correspondingly attain the two highest V-recalls of the five models. The bias that helps ventricular detection is what costs supraventricular detection, and on a dataset enriched for supraventricular ectopy that trade is unfavourable. The same signature is far weaker on INCART, where PC-WavKAN's S$\rightarrow$V rate ($0.280$) exceeds the highest non-KAN baseline ($0.253$) by only $0.027$, against a gap of $0.089$ on SVDB. This localises the failure mode --- a systematic S$\rightarrow$V confusion tied to V over-prediction, shared across the wavelet- and B-spline-basis KANs, and expressed most strongly where supraventricular beats are most prevalent --- without yet explaining why the KAN parameterisation induces it (\S\ref{sec:future}).
 
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{final_learned_wavelets.pdf}
-\caption{\textbf{Learned Wavelet Bases.} WavKAN-v2 learns adaptive Mexican Hat wavelets (blue curves) whose translation/dilation parameters align with QRS/P/T-wave priors (WAS $=0.9578\pm0.0128$ across 20 seeds on the final, adopted configuration).}
-\label{fig:wavelets}
-\end{figure*}
-
-\subsection{Deployment Efficiency and Quantization}
-\label{sec:results_deploy}
-Table~\ref{tab:deployment} reports real, measured CPU inference behavior (Intel x86, single-thread, no GPU) for the seed-42 checkpoint of the initial (RR-self-attention) configuration; re-measuring on the final, 153,045-parameter configuration is expected to change these numbers negligibly (a $<$1\% parameter-count difference) and is not treated as a priority re-run.
+\subsection{Few-Shot Domain Adaptation}
+\label{sec:results_fewshot}
+The results above are zero-shot. We next ask, as an exploratory analysis, how much a small amount of labelled target-domain data changes them. For each dataset we fine-tune from the zero-shot checkpoint on $k \in \{0,10,50,100,500\}$ beats per class, drawn from a record-disjoint adaptation pool fixed by a constant split seed before any model sees the data and held out from the evaluation pool used for every number reported. Each $k$ is fine-tuned independently from a fresh copy of the original checkpoint, and where a class has fewer than $k$ beats we use the real smaller count rather than resampling (this affects only F and Q shots at $k\geq50$). As a consistency check, the $k=0$ recomputation on the held-out pool lands close to Table~\ref{tab:multidataset} (INCART $0.392$ vs $0.374$; SVDB $0.271$ vs $0.281$), the difference reflecting the smaller pool.
 
 \begin{table}[!t]
 \centering
-\caption{Real Measured Deployment Metrics (CPU, FP32 vs.\ INT8 Dynamic Quantization).}
-\label{tab:deployment}
-\begin{tabular}{l c c}
+\caption{Few-shot adaptation, PC-WavKAN, 20 seeds per cell, exploratory. Full curves for $k=10,50,100$ are in the released results; $^{*}$ marks Holm-adjusted $p<0.05$ within each dataset's four-metric family.}
+\label{tab:fewshot}
+\footnotesize
+\begin{tabular}{l l c c c c}
 \toprule
-\textbf{Metric} & \textbf{FP32} & \textbf{INT8 (dynamic)} \\ \midrule
-Model size & $0.603$ MB & $0.558$ MB ($1.08\times$) \\
-Latency (batch=1, mean) & $3.18\pm1.22$ ms & $4.43\pm3.51$ ms \\
-Latency (batch=64, mean) & $2.80$ ms & --- \\
-Speedup vs.\ FP32 & $1.00\times$ & $0.72\times$ (\emph{slower}) \\ \bottomrule
+\textbf{Dataset} & \textbf{$k$} & \textbf{Macro-F1} & \textbf{V-Rec} & \textbf{S-Rec} & \textbf{N-Rec} \\ \midrule
+\multirow{2}{*}{INCART} & $0$ & $0.392$ & $0.726$ & $0.571$ & $0.954$ \\
+ & $500$ & $0.396$ & $0.850^{*}$ & $0.295^{*}$ & $0.958$ \\ \midrule
+\multirow{2}{*}{SVDB} & $0$ & $0.271$ & $0.774$ & $0.107$ & $0.788$ \\
+ & $500$ & $\mathbf{0.331^{*}}$ & $0.707^{*}$ & $\mathbf{0.506^{*}}$ & $0.782$ \\ \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent We report an honest negative result: post-training dynamic INT8 quantization provides essentially no benefit for this architecture, and makes inference \emph{slower}. This is because \texttt{torch.quantize\_dynamic} only quantizes \texttt{nn.Linear} layers, while this model's parameter mass sits in the custom KAN wavelet layer and the bidirectional GRU, neither of which that method touches. A ``lightweight'' claim for this architecture should therefore rest on its real parameter count and measured FP32 latency, not on an unverified quantization benefit. We note our measured $3.18$~ms/beat is on CPU, versus MAK-Net's reported $24$~ms/beat on a GPU \cite{zhao_mak-net_2025} --- not a same-hardware comparison, and one that if anything favors us conservatively (CPU inference is typically slower than GPU for the same model), but we disclose the hardware mismatch explicitly rather than present it as an apples-to-apples benchmark.
+Table~\ref{tab:fewshot} shows adaptation is not a general fix: it reallocates recall between classes, and whether that helps the aggregate is dataset-dependent. On SVDB it works clearly --- S-recall rises almost fivefold ($0.107\rightarrow0.506$, $d=+7.07$) and Macro-F1 improves significantly ($0.271\rightarrow0.331$, $d=+4.58$) even as V-recall falls. On INCART Macro-F1 does not change significantly: V-recall improves substantially ($d=+2.96$) but S-recall \emph{halves} ($0.571\rightarrow0.295$, $d=-1.90$), and the two cancel in the macro average. The curve is also non-monotonic, which we report rather than reduce to its endpoint: INCART's S-recall peaks at $k=50$ ($0.643\pm0.095$) and falls below its own zero-shot value by $k=500$. Choosing $k$ for this architecture therefore requires the whole curve and the class of interest, not a single favourable operating point.
+
+\subsection{Augmentation}
+\label{sec:results_augmentation}
+Because PC-WavKAN's training recipe applies minority-class signal augmentation while the baselines do not (\S\ref{sec:baselines}), we quantify what that asymmetry is worth. Table~\ref{tab:augmentation} compares four augmentation strategies against none, 20 seeds each, under an isolated recipe (60 epochs, no RAC) chosen so that augmentation is the only active mechanism; its baseline is therefore not comparable to Table~\ref{tab:curriculum_stats}.
+
+\begin{table}[!t]
+\centering
+\caption{Augmentation strategies, PC-WavKAN, 20 seeds, DS2, isolated recipe (60 epochs, no RAC), exploratory. $p$ is Holm-adjusted across the four augmented arms.}
+\label{tab:augmentation}
+\footnotesize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{l c c c}
+\toprule
+\textbf{Strategy} & \textbf{Macro-F1} & \textbf{V-Recall} & \textbf{S-Recall} \\ \midrule
+None & $0.336\pm0.031$ & $0.884\pm0.017$ & $0.316\pm0.050$ \\
+Gaussian noise & $0.303\pm0.010$ & $0.914\pm0.016$ & $0.333\pm0.038$ \\
+Baseline wander & $0.320\pm0.009$ & $0.917\pm0.010$ & $0.339\pm0.051$ \\
+Combined & $0.293\pm0.018$ & $\mathbf{0.922\pm0.030}$ & $0.337\pm0.048$ \\
+SMOTE & $0.201\pm0.026$ & $0.869\pm0.062$ & $\mathbf{0.648\pm0.105}$ \\ \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Under this isolated recipe all three noise-based strategies significantly improve V-recall (Holm $p<0.002$, $d\geq+1.16$) and significantly \emph{reduce} Macro-F1 (Holm $p\leq0.033$, $d\in[-1.08,-0.50]$), while none reaches significance on S-recall ($p\geq0.16$). SMOTE is the clearest trade: the largest S-recall gain measured anywhere in this study ($0.316\rightarrow0.648$, $d=+3.01$) at the largest Macro-F1 cost ($d=-4.58$), by interpolating beats that push the decision boundary into the S region at every other class's expense. We do not recommend it, consistent with Bae and Shin \cite{bae_handling_2025}.
+
+This Macro-F1 cost does \emph{not} carry over to the full recipe, which is what matters for interpreting Table~\ref{tab:baseline_comparison}. Tested under the actual training configuration (100 epochs, RAC, 20 seeds), removing augmentation leaves Macro-F1 statistically unchanged ($0.357\rightarrow0.364$, Holm $p=0.46$, $d=+0.25$) while significantly reducing F-recall ($0.0061\rightarrow0.0022$, Holm $p=0.043$) and trending toward lower V-recall ($d=-0.70$, Holm $p=0.083$). Two conclusions follow. The augmentation asymmetry with the baselines does not explain PC-WavKAN's parity result, since removing it does not reduce Macro-F1. And the isolated recipe's penalty is masked once RAC and the full budget are present, so short single-mechanism ablations of this kind should not be extrapolated to full recipes; which factor is responsible is left open (\S\ref{sec:future}).
+
+
+\subsection{Efficiency and Quantisation}
+\label{sec:results_deploy}
+Table~\ref{tab:deployment} reports measured inference behaviour on x86 CPU, single-threaded, for the seed-42 checkpoint. Each figure is the mean of three independently repeated runs of 1000 timed trials after a 20-iteration warm-up: a single run can carry a heavy right tail from transient host load (we observed one with a threefold mean-to-median gap that vanished on repetition). We therefore also report the median, and quote the spread \emph{across} runs rather than the within-run per-trial standard deviation, which describes the timing tail rather than the uncertainty of the estimate.
+
+\begin{table}[!t]
+\centering
+\caption{Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm$ is the spread across runs.}
+\label{tab:deployment}
+\footnotesize
+\begin{tabular}{l c}
+\toprule
+\textbf{Metric} & \textbf{PC-WavKAN (153,045 params)} \\ \midrule
+Model size, FP32 & $0.596$ MB \\
+Model size, INT8 dynamic & $0.551$ MB \\
+Size reduction & $1.08\times$ \\
+Latency, batch 1, FP32 & $2.93\pm0.38$ ms/beat (median $2.78$) \\
+Latency, batch 1, INT8 & $4.00\pm0.35$ ms/beat \\
+INT8 vs.\ FP32 speedup & $0.73\times$ (\emph{slower}) \\
+Latency, batch 64, FP32 & $0.429$ ms/beat \\
+Peak resident memory & $235$ MB \\ \bottomrule
+\end{tabular}
+\end{table}
+
+Post-training dynamic INT8 quantisation gives essentially nothing here and makes inference slower. This is explicable rather than anomalous: PyTorch's dynamic quantisation converts \texttt{nn.Linear} modules only, whereas this model's parameters sit almost entirely in the custom wavelet-KAN layer and the bidirectional GRU, so the pass adds dequantisation overhead without accelerating the dominant part of the graph. An efficiency claim for a KAN-based architecture should therefore rest on measured FP32 latency and parameter count, not an assumed quantisation benefit; realising one would require a quantised wavelet-layer implementation.
+
+At $2.93$ ms per beat single-threaded and $0.429$ ms batched, throughput far exceeds the 1--2 beats per second of a resting adult, so the model is compatible with continuous processing on a general-purpose CPU. That is not evidence of wearable deployability: these are x86 measurements, and we have not benchmarked on the ARM Cortex-class microcontrollers on-device Holter analysis would use, where the absent quantisation path and the GRU's sequential dependency are both likely to matter more. We therefore describe the model as resource-efficient with measured x86 CPU inference, and no more, and we do not tabulate it against MAK-Net's reported 24 ms/beat GPU figure \cite{zhao_mak-net_2025}: the hardware classes differ and no conclusion should be drawn in either direction.
 
 %% DISCUSSION
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Statistical Parity with Standard Architectures, Plus Two Real Additional Properties}
-The central finding of this paper's final architecture (\S\ref{sec:results_baselines}) is statistical parity, not superiority or inferiority: none of the four Holm-corrected comparisons against ResNet1D, Transformer, CNN+Focal, or B-Spline KAN reach significance on Macro-F1. This is itself a meaningfully different outcome from where architecture development started --- the initial, RR-self-attention configuration lost significantly to all four (Fig.~\ref{fig:seed_stability}) --- and we report that starting point rather than erase it, because the ablation that motivated the change (\S\ref{sec:discussion_rr}) is itself part of the paper's evidence. We attribute the initial configuration's deficit, tentatively, to the RR self-attention branch specifically adding noise rather than signal; removing it was sufficient to close the gap to statistical non-significance without any other change to the architecture, training recipe, or protocol. Beyond parity, the final architecture retains two properties none of the four comparators have: the quantified interpretability result of \S\ref{sec:results_was} (WAS $=0.9578\pm0.0128$ across 20 seeds) and the targeted, Holm-significant S-Recall benefit from curriculum learning (\S\ref{sec:results_curriculum}). We consider ``statistically indistinguishable on the field's standard headline metric, plus a real quantified-interpretability property and a real targeted minority-class benefit'' to be a legitimate, honestly-earned contribution, distinct from and more defensible than either an unqualified superiority claim or the disclosed-deficit framing the initial architecture would have required.
+\subsection{What This Study Establishes}
+Three findings are supported at the level of rigour the protocol was built for. First, physiology-constrained initialisation of a wavelet-KAN basis measurably improves validation performance within the configuration it was ablated in, is the only novel component of the architecture with a corrected large effect there, and its structure is substantially retained through training on the adopted model. Second, a rarity-anchored curriculum produces a large, reproducible improvement in supraventricular recall at no robust cost elsewhere, replicated across two architectural variants, two recipes and both partitions. Third, under a matched protocol with multiplicity control, this architecture is statistically indistinguishable from four standard baselines on Macro-F1, with all paired confidence intervals containing zero.
 
-\subsection{Why the RR Self-Attention Branch Underperforms}
+The third finding constrains how the first two should be read. PC-WavKAN is not more accurate than a 30K-parameter Transformer here, and we do not present the wavelet-KAN basis as an accuracy mechanism. What it offers is a parameterisation in which the learned function space is expressible in morphological terms, can be initialised from physiological knowledge, and can be measured against that knowledge after training --- obtained, on this evidence, at no accuracy cost relative to standard architectures. Whether that is worth the parameter budget depends on how much an application values inspectability of the basis; that is an argument about design priorities, and we keep it separate from the accuracy evidence. On protocol rather than performance, the study satisfies all four criteria of Silva \emph{et al.}'s E3C framework \cite{silva_systematic_2025} --- inter-patient evaluation, class-specific metrics under imbalance, AAMI conformance and consideration of computational cost --- which is compatible with, and independent of, the parity finding.
+
+An unexpected consequence of the ablation is that it narrows our own architectural claim. The specific mother wavelet turns out not to matter measurably (Table~\ref{tab:family_ablation}), so the appeal to the Mexican Hat's suitability for sharp QRS transients \cite{addison_wavelet_2005} --- which motivated the design --- is not what the data support. The transferable insight is about \emph{initialisation} in a parameterisation whose parameters have physiological units, and it should transfer to any wavelet basis, which is a broader claim than one tied to a particular function.
+
+\subsection{Why Self-Attention Over Interval Features Fails}
 \label{sec:discussion_rr}
-Table~\ref{tab:family_ablation} shows that removing the RR self-attention branch entirely \emph{improves} both Macro-F1 (0.323$\to$0.357) and S-Recall (0.123$\to$0.198) within the WavKAN-v2 family --- the branch is, in its current form, net-harmful. This is not inconsistent with \S\ref{sec:results_rr}'s finding that the $RR_0$ position (the interval immediately preceding the classified beat) carries real, significant diagnostic signal for S-detection: the information is present in the raw RR history, but self-attention over a 5-element vector may dilute a sharply localized positional signal (the $RR_0$ interval specifically) into an order-invariant pairwise representation, effectively discarding the one inductive bias --- ``this specific position matters most'' --- that the raw ablation shows to be real. Concretely, WavKAN-v2's RR branch supports a \texttt{use\_rr\_attn} flag that switches between the self-attention fusion and a plain MLP over the same 5-element vector; Table~\ref{tab:family_ablation}'s ``No RR self-attention'' row \emph{is} this plain-MLP variant, already trained and evaluated across the same 20 seeds, not an untested proposal. Given that it outperforms the self-attention configuration on every metric reported, we recommend the plain-MLP RR encoding as the new default for this architecture going forward, and report the self-attention variant here as the configuration that was originally proposed and is now shown, by direct ablation, not to be the better choice.
+Removing self-attention from the rhythm encoder improved validation Macro-F1 with a large effect (Table~\ref{tab:family_ablation}), and this is not in tension with \S\ref{sec:results_rr}'s finding that the interval features carry real signal. The two results together indicate that the problem is the encoder, not the features.
 
-\subsection{Augmentation Strategies for S-Class Detection}
-\label{sec:results_augmentation}
-We separately evaluated four augmentation strategies (Gaussian noise, baseline wander, a Combined strategy, and SMOTE temporal interpolation) against a no-augmentation baseline, with full per-seed logging across 20 real seeds, now completed on \emph{both} WavKAN-v2 configurations (Table~\ref{tab:augmentation}, Fig.~\ref{fig:augmentation}). This study uses its own training recipe (60 epochs, no PCA curriculum) to isolate the effect of augmentation alone, so its baseline Macro-F1 is not directly comparable to Table~\ref{tab:curriculum_stats}'s curriculum-arm number. Table~\ref{tab:augmentation} reports the final (\texttt{use\_rr\_attn=False}) configuration, since it is the one adopted throughout \S\ref{sec:results_ablation} onward; the initial-configuration numbers from an earlier pass of this same study ($0.288\pm0.013$ Macro-F1, $0.118\pm0.033$ S-Recall baseline) are referenced below for a direct before/after comparison, because the change between the two is itself part of the finding.
+Self-attention computes content-based pairwise interactions over a set and is, by construction, close to permutation-equivariant absent positional information. That is well matched to long sequences whose informative structure is relational. The interval vector is the opposite case: it has five elements, and \S\ref{sec:results_rr} shows its information is sharply concentrated in one \emph{position} --- $RR_0$, the pre-beat interval --- whose diagnostic meaning derives entirely from which position it occupies. An encoder whose inductive bias is order-insensitive relational mixing must expend capacity relearning the positional distinction that a plain MLP over the fixed-length vector has for free, on 20 seeds' worth of a minority class. The negative result is therefore informative rather than incidental: it suggests attention is the wrong primitive for short fixed-length physiological feature vectors with strong positional semantics, and that this should be checked rather than assumed whenever an attention block is added to such a branch.
 
-\begin{table}[!t]
-\centering
-\caption{Augmentation Strategy Comparison, 20 Seeds, DS2 Test Set, Final Configuration.}
-\label{tab:augmentation}
-\footnotesize
-\begin{tabular}{l c c c}
-\toprule
-\textbf{Strategy} & \textbf{Macro-F1} & \textbf{V-Recall} & \textbf{S-Recall} \\ \midrule
-None (baseline) & $0.336\pm0.031$ & $0.884\pm0.017$ & $0.316\pm0.050$ \\
-Gaussian noise & $0.303\pm0.011$ & $0.914\pm0.016$ & $0.333\pm0.038$ \\
-Baseline wander & $0.320\pm0.009$ & $0.917\pm0.010$ & $0.339\pm0.051$ \\
-Combined & $0.293\pm0.018$ & $\mathbf{0.922\pm0.030}$ & $0.337\pm0.048$ \\
-SMOTE & $\mathbf{0.201\pm0.026}$ (lowest) & $\mathbf{0.869\pm0.062}$ (lowest) & $\mathbf{0.648\pm0.105}$ (highest) \\ \bottomrule
-\end{tabular}
-\end{table}
+\subsection{The Cross-Dataset Pattern}
+The INCART and SVDB results (\S\ref{sec:results_crossdata}) are not a single generalisation verdict, and the informative structure is that the two KAN models move together: both lead on INCART, both trail on SVDB, and the per-class analysis attributes the SVDB deficit to an S$\rightarrow$V confusion tied to V over-prediction that both share and the non-KAN baselines do not. Since the signature is common to a wavelet and a B-spline basis, it is unlikely to be specific to the wavelet parameterisation. The more plausible reading is that the KAN edge parameterisation, in which each input sample is transformed by its own univariate function before summation, favours localised amplitude-morphology evidence over the broader contextual cues that separate supraventricular from ventricular ectopy when the two are morphologically close, as in SVDB's population. This is a hypothesis consistent with the diagnostic rather than a demonstrated mechanism, and is testable by ablating the KAN layer's locality with the rest of the architecture fixed.
 
-\noindent Paired statistics against the no-augmentation baseline (Wilcoxon signed-rank, Holm-Bonferroni-corrected across the four augmented arms, Cohen's $d$) change this study's conclusion from what the initial configuration suggested. All three noise-based strategies (Gaussian, baseline wander, Combined) now produce a real, Holm-significant \emph{cost} to Macro-F1 (Holm $p \leq 0.033$, $d \in [-1.08,-0.50]$) and a significant V-Recall gain (Holm $p<0.002$, $d \geq +1.16$), but \emph{none} reach significance on S-Recall (all $p \geq 0.16$, small effect sizes $d \leq +0.36$) --- unlike the initial configuration, where the same strategies visibly raised S-Recall (e.g., Combined: $0.118\to0.219$). This is not because augmentation stopped helping S-Recall in absolute terms; it is that the final configuration's own unaugmented baseline S-Recall ($0.316\pm0.050$) already sits close to where augmentation used to be needed to bring the initial configuration, leaving little further gap for augmentation to close. SMOTE remains the strategy we do not recommend: it still produces the largest S-Recall gain of any strategy here ($0.316\to0.648$, Holm $p<0.0001$, $d=+3.01$) but now the single largest Macro-F1 cost measured anywhere in this study ($d=-4.58$), with V-Recall no longer significantly different from baseline ($p=0.81$) --- a different statistical profile from the initial configuration's SMOTE result, but the same practical conclusion, consistent with Bae \& Shin's \cite{bae_handling_2025} finding that naive interpolation-based augmentation can degrade performance on imbalanced medical data.
-
-This reframes, rather than resolves, the open question of \emph{why} noise-based augmentation costs Macro-F1 (Future Work, item iii): the cost is Holm-significant on \emph{both} WavKAN-v2 configurations under this non-curriculum recipe, so it is not specific to the RR self-attention branch identified as net-harmful in \S\ref{sec:discussion_rr}. One direct, testable, and not-yet-run consequence: \texttt{train\_pca.py}'s default training recipe applies this same Combined-family augmentation to every result reported elsewhere in this paper, including the final-configuration headline number itself --- Table~\ref{tab:family_ablation}'s ``No RR self-attention'' row (Macro-F1 $=0.357$, the number this paper adopts and compares against baselines in Table~\ref{tab:baseline_comparison}) --- whether removing augmentation there recovers some of the Macro-F1 cost this isolated study measures, without eroding the curriculum's own Holm-significant S-Recall gain established on the initial configuration (\S\ref{sec:results_curriculum}, Table~\ref{tab:curriculum_stats}), is a cheap, high-value ablation we have not yet run (Future Work, item vi).
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=\columnwidth]{fig12_augmentation.pdf}
-\caption{Augmentation strategy comparison, DS2 test set, final (\texttt{use\_rr\_attn=False}) configuration. SMOTE substantially raises S-Recall but at the largest Macro-F1 cost measured in this study; the three noise-based strategies significantly improve V-Recall but none reach significance on S-Recall under this configuration (\S\ref{sec:discussion}.3).}
-\label{fig:augmentation}
-\end{figure}
-
-\subsection{E3C Compliance}
-Following the four-criterion E3C evaluation framework of Silva et al. \cite{silva_systematic_2025} (strict inter-patient evaluation; class-specific metrics under imbalance; AAMI protocol adherence; consideration of computational complexity), WavKAN-v2 satisfies all four criteria, as demonstrated directly by this paper's own reported content: the DS1/DS2 inter-patient split (Table~\ref{tab:split_protocol}), per-class recall under severe imbalance throughout \S\ref{sec:results}, the AAMI EC57 mapping (Table~\ref{tab:class_dist}), and the measured parameter count and latency (\S\ref{sec:results_deploy}) --- placing it among the reported 4.1\% of reviewed ECG classification studies meeting these standards \cite{silva_systematic_2025}. We note this is a protocol-adherence claim, not an accuracy claim --- it is compatible with \S\ref{sec:discussion}.1's statistical-parity (not superiority) framing.
+The finding also cautions against reporting a single external dataset: on INCART alone PC-WavKAN would appear the best of five models at transfer, on SVDB alone among the worst, and either conclusion would have been backed by 20 seeds and corrected statistics.
 
 \subsection{Limitations}
 \label{sec:limitations}
-(1) Macro-F1 for the final architecture (0.357) is statistically indistinguishable from four standard baselines (\S\ref{sec:results_baselines}) --- parity, not a demonstrated advantage; a reviewer expecting an accuracy win from a novel architecture will not find one here, and we do not claim one. (2) F-class recall remains low across all configurations tested ($\approx$0.006 mean across 20 seeds for the final architecture), reflecting extreme sample scarcity (388 test beats). (3) On SVDB specifically, the final configuration is significantly below three of four baselines on Macro-F1 (\S\ref{sec:results_ptbxl}, all Holm $p<0.001$, large effect sizes) and only statistically tied with its same-family B-Spline KAN sibling --- an unresolved, dataset- and class-specific weakness shared across the wavelet-KAN family rather than fixed by the RR-fusion ablation. (4) Post-training INT8 dynamic quantization provides no benefit for this architecture (\S\ref{sec:results_deploy}); real on-device (e.g., ARM Cortex-M) latency benchmarking, as opposed to the x86 CPU measurement reported here, has not been performed, and that measurement itself was taken on the initial rather than final configuration (expected to differ negligibly given a $<$1\% parameter-count difference, but not yet re-verified). (5) The augmentation study (\S\ref{sec:results_augmentation}) uses its own training recipe (no PCA curriculum), so its baseline is not directly comparable to Table~\ref{tab:curriculum_stats}; now completed on both configurations, it shows the same Holm-significant Macro-F1 cost from noise-based augmentation on the final configuration as it did on the initial one, and none of the three noise-based strategies reach significance on S-Recall under the final configuration (\S\ref{sec:results_augmentation}) --- the mechanism behind the Macro-F1 cost is still not understood, and whether \texttt{train\_pca.py}'s own default use of this same augmentation is costing the headline numbers reported elsewhere in this paper has not yet been tested (Future Work, item vi). (6) The 5-element RR-interval history (\S\ref{sec:methods}) is \emph{not} strictly causal: it includes two intervals following the beat being classified, so this architecture as trained and evaluated requires a two-beat lookahead buffer and is not compatible with true streaming/real-time inference without modification. The RR-position ablation (\S\ref{sec:results_rr}) shows this is not a theoretical concern only --- one of the two following intervals ($RR_{+2}$) carries statistically significant diagnostic signal the model actually relies on, so simply discarding the non-causal positions at inference time would be expected to cost real accuracy, not just violate a technicality.
+\noindent\textbf{(1) Parity, not advantage.} Macro-F1 is statistically indistinguishable from four baselines (\S\ref{sec:results_primary}); a reader expecting an accuracy gain from a new architecture will not find one. The intervals bound any true difference at roughly $\pm0.03$ but do not establish equivalence, for which we set no margin.
+
+\noindent\textbf{(2) Absolute minority-class performance.} F-recall is negligible ($\approx0.006$) for all configurations, reflecting 388 test beats and 399 training beats; the significant relative improvement in Table~\ref{tab:curriculum_stats} has no practical clinical reading at that absolute level. Q, with 15 beats in the database, supports no per-class conclusion at all and inflates the variance of any five-class macro average. S-recall, at $0.222$, still misses about four in five supraventricular beats.
+
+\noindent\textbf{(3) Selection history of the test set.} The adopted configuration is fully determined by validation data (\S\ref{sec:results_selection}), but DS2 metrics for non-adopted variants were computed during development, so DS2 is not a never-inspected partition and we do not describe it as one.
+
+\noindent\textbf{(4) Non-causal inputs.} The interval vector includes two post-beat intervals and the filter is applied per record (\S\ref{sec:methods}), so the model performs offline classification and would need a two-beat lookahead buffer and a causal filter to run in a streaming setting. \S\ref{sec:results_rr} shows the lookahead carries significant signal, so the cost of removing it is real and, as yet, unquantified.
+
+\noindent\textbf{(5) SVDB weakness.} PC-WavKAN is significantly below three of four baselines on SVDB (\S\ref{sec:results_crossdata}). The failure mode is localised to an S$\rightarrow$V bias shared with B-Spline KAN, but its cause in the KAN parameterisation is a hypothesis, not a result.
+
+\noindent\textbf{(6) PTB-XL not evaluated.} Our PTB-XL extraction is confounded by three independent preprocessing and labelling mismatches (\S\ref{sec:external_data}), so we report no transfer result for it. Cross-dataset evidence in this paper rests on two external databases, both of which share MIT-BIH's annotation granularity and were processed identically; generalisation to 12-lead clinical recordings with record-level diagnostic labels is untested here.
+
+\noindent\textbf{(7) Adaptation trades classes rather than closing gaps.} Few-shot adaptation improves the classes it is given data for at other classes' expense, non-monotonically in $k$ on INCART (\S\ref{sec:results_fewshot}); we have not characterised which target-domain distributions make the trade favourable.
+
+\noindent\textbf{(8) Hardware scope.} Latency is x86 CPU only; no ARM-class or on-device measurement was made, and dynamic INT8 quantisation does not benefit this architecture (\S\ref{sec:results_deploy}).
+
+\noindent\textbf{(9) The component ablation is on the base configuration, not the adopted one.} Every row of Table~\ref{tab:family_ablation} varies one component of the base configuration, which is the correct design for the selection that table performs, but it means PCWI --- the component this paper's architectural contribution rests on --- has been ablated only there and not on the model we finally adopt. The two differ solely in the rhythm encoder, and PCWI acts on the morphology branch, so we expect the effect to transfer; that expectation is reasoning, not measurement, and we mark it as the study's principal outstanding experiment (\S\ref{sec:future}) rather than assume it. The same applies to the P-region pathway and the basis comparison, whose effects were in any case not resolved after correction.
 
 \subsection{Future Work}
-Future work will pursue: (i) investigating why the wavelet-KAN family specifically underperforms on SVDB's S-class stress test relative to standard architectures, since this pattern does not appear on INCART and persists across both WavKAN-v2 configurations; (ii) real on-device latency and quantization benchmarking on the final configuration and on ARM-class hardware, neither of which has yet been performed; (iii) understanding why all three noise-based augmentation strategies reduce Macro-F1 under the non-curriculum training recipe despite improving V-Recall individually --- now confirmed to hold on both WavKAN-v2 configurations (\S\ref{sec:results_augmentation}), ruling out the RR self-attention branch as the cause but not yet identifying the actual mechanism; (iv) evaluating an Adaptive-Logit-Adjustment-style calibration \cite{dai_angular_2026} as a beat-level alternative to Progressive Curriculum Anchoring, testing whether a purely logit-level correction reproduces or exceeds the S-Recall benefit reported in \S\ref{sec:results_curriculum} without the sampler/loss-schedule machinery PCA currently requires; (v) retraining with a strictly causal RR-interval history (dropping $RR_{+1}$ and $RR_{+2}$, or replacing them with additional preceding intervals) and re-measuring the resulting Macro-F1/S-Recall cost, to quantify what true streaming-compatibility would actually cost this architecture rather than leaving it as an unquantified limitation; and (vi) re-running \texttt{train\_pca.py}'s headline final-configuration curriculum and baseline arms with augmentation disabled (\texttt{--no-augment}), since \S\ref{sec:results_augmentation}'s isolated study shows this same augmentation family costs Macro-F1 with no significant S-Recall benefit under the final configuration --- a cheap, direct test of whether the paper's own headline Macro-F1 number is currently being held down by a default training-recipe choice rather than an architectural limit.
+\label{sec:future}
+The first item is to re-run the PCWI ablation on the adopted configuration (\S\ref{sec:limitations}, item 9): 20 seeds, one variant, no new methodology, and it converts the paper's central architectural claim from one established on the base configuration into one measured on the model actually proposed. Second is to repeat the PTB-XL evaluation under the pipeline of \S\ref{sec:preprocessing} and against beat-level annotations, which would convert an excluded, confounded result into a real test of transfer to 12-lead clinical recordings. Beyond those we prioritise: identifying the mechanism behind the shared KAN S$\rightarrow$V bias by ablating the edge parameterisation's locality while holding the rest of the architecture fixed; strengthening the prior-retention analysis from a parameter-space measurement into one linked to model outputs, for instance by testing whether perturbing a channel group's wavelets selectively degrades the class whose morphology that group is initialised for, which would let a transparency claim rest on behaviour rather than on parameters alone; retraining with a strictly causal interval vector and a causal filter to quantify what streaming compatibility costs; evaluating adaptive logit adjustment \cite{dai_angular_2026} as a beat-level alternative to RAC; and benchmarking on ARM-class hardware with a quantised wavelet-layer implementation.
 
 %% CONCLUSION
 \section{Conclusion}
 \label{sec:conclusion}
-This paper introduced WavKAN-v2, a structurally interpretable wavelet-KAN architecture for inter-patient ECG arrhythmia classification, evaluated with 20-seed, Holm-Bonferroni-corrected statistics against four standard baselines and its own architectural variants. Architecture development itself is part of the reported evidence: an initial, 154,325-parameter configuration with RR self-attention lost significantly to all four baselines on Macro-F1, but our own ablation identified this branch as net-harmful, and a 153,045-parameter configuration with a plain-MLP RR fusion instead closes this gap to statistical parity (all Holm-adjusted $p \geq 0.36$) --- we adopt this as our final architecture and report it as such, rather than presenting only the more favorable result without the ablation that produced it. Beyond parity, this final architecture retains a real, statistically robust, targeted improvement in Supraventricular recall from Progressive Curriculum Anchoring (0.079$\to$0.123, Holm $p=0.0016$, established during initial architecture development) and a quantified interpretability metric (WAS $=0.9578\pm0.0128$ across 20 seeds) unavailable to any of its comparators, alongside real measured deployment latency and an honestly reported negative quantization result. Cross-dataset generalization, re-verified on this final configuration, is real but uneven: on INCART, it is the numerically best of all five models and significantly better than three of four baselines; on SVDB's S-class stress test, it is significantly worse than three of four baselines and only tied with its same-family B-Spline KAN sibling; on PTB-XL, Macro-F1 remains weak. We disclose this mixed picture on the actual adopted architecture rather than on a superseded one. We believe this level of disclosed, statistically corrected reporting --- including the architecture-development history, the results that do not favor the proposed model, and the gaps not yet closed --- is itself a needed contribution to a literature in which inter-patient comparisons are frequently reported without correction for multiple comparisons, a matched training recipe across baselines, or disclosure of which configuration among several tried is actually being reported.
+We presented PC-WavKAN, a 153,045-parameter wavelet Kolmogorov--Arnold network for inter-patient ECG beat classification whose distinguishing component is physiology-constrained initialisation of the wavelet basis. Evaluated under the de Chazal DS1/DS2 protocol with 20 seeds, paired tests, multiplicity correction, effect sizes and confidence intervals, and with the architecture selected on validation data alone, the model reaches a Macro-F1 of $0.357\pm0.019$ that is statistically indistinguishable from four standard baselines spanning 29K--118K parameters.
+
+The contribution is therefore not accuracy. It is that a physiologically constrained, inspectable basis costs nothing in accuracy relative to standard architectures, that the constraint measurably helps and is substantially retained through training, and that a rarity-anchored curriculum delivers a large and reproducible gain on the supraventricular class that the inter-patient protocol makes hardest. The same protocol also produced findings that a less rigorous one would have missed: that self-attention over a five-element interval vector is actively harmful, that the choice of mother wavelet within the wavelet-KAN family is not consequential, that the wavelet- and B-spline-basis KANs share a specific supraventricular-to-ventricular bias on supraventricular-enriched data, and that the model's rhythm features depend significantly on information from beats that have not yet occurred. We report the negative and diagnostic results alongside the positive ones because, on this evidence, they are the more transferable half of what the study established.
 
 \section*{Acknowledgment}
-The authors acknowledge the Vellore Institute of Technology (VIT) for funding the Article Processing Charge (APC) of this manuscript. The authors declare no competing financial interests.
+The authors acknowledge the Vellore Institute of Technology (VIT) for funding the Article Processing Charge of this manuscript.
+
+\textbf{Ethics:} This study uses only publicly available, fully de-identified ECG databases distributed by PhysioNet \cite{goldberger_physiobank_2000}. No new human-subject data were collected and no institutional review board approval was required.
+
+\textbf{Conflict of Interest:} The authors declare no competing financial or non-financial interests.
 
 \textbf{CRediT Author Statement:}
 \textbf{Venkateramanan Manivannan:} Conceptualization, Methodology, Software, Validation, Formal Analysis, Investigation, Data Curation, Writing -- Original Draft, Visualization.
 \textbf{Ramanathan Lakshmanan:} Conceptualization, Resources, Validation, Supervision, Project Administration, Funding Acquisition, Writing -- Review \& Editing.
 
-\textbf{Data Availability:} The datasets analyzed during the current study (MIT-BIH Arrhythmia Database) are publicly available in the PhysioNet repository: \url{https://physionet.org/content/mitdb/1.0.0/} \cite{moody_mit-bih_1992}.
+\textbf{Data Availability:} All datasets analysed are publicly available from PhysioNet \cite{goldberger_physiobank_2000}: the MIT-BIH Arrhythmia Database \cite{moody_impact_2001} (\url{https://physionet.org/content/mitdb/1.0.0/}), the St Petersburg INCART 12-lead Arrhythmia Database (\url{https://physionet.org/content/incartdb/1.0.0/}), the MIT-BIH Supraventricular Arrhythmia Database \cite{greenwald_improved_1990} (\url{https://physionet.org/content/svdb/1.0.0/}), and PTB-XL \cite{wagner_ptb-xl_2020} (\url{https://physionet.org/content/ptb-xl/1.0.3/}).
 
-\textbf{Code Availability:} Source code and pre-trained weights are available at: \url{https://github.com/vrhsr/WavKAN-CL}.
+\textbf{Code Availability:} Source code, preprocessing scripts, per-seed result files and trained weights are available at \url{https://github.com/vrhsr/WavKAN-CL}.
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 
+\ifphotobios
 \begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{venkateramanan.jpg}}]{Venkateramanan Manivannan}
-received the B.E. degree in Computer Science and Engineering and is currently pursuing the M.Tech degree in Computer Science and Engineering at the School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore, India.
+received the B.E. degree in Computer Science and Engineering and is currently pursuing the M.Tech degree at the School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore, India.
 
-His research interests include machine learning, deep learning, artificial intelligence, neural network architectures, explainable AI, natural language processing, computer vision, biomedical signal processing, and computationally efficient models for edge deployment. His current work focuses on developing interpretable and resource-efficient deep learning frameworks for healthcare and safety-critical applications.
+His research interests include deep learning, neural network architectures, explainable AI, biomedical signal processing, and computationally efficient models for edge deployment, with a current focus on interpretable and resource-efficient frameworks for healthcare applications.
 \end{IEEEbiography}
+\else
+\begin{IEEEbiographynophoto}{Venkateramanan Manivannan}
+received the B.E. degree in Computer Science and Engineering and is currently pursuing the M.Tech degree at the School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology (VIT), Vellore, India.
 
+His research interests include deep learning, neural network architectures, explainable AI, biomedical signal processing, and computationally efficient models for edge deployment, with a current focus on interpretable and resource-efficient frameworks for healthcare applications.
+\end{IEEEbiographynophoto}
+\fi
+
+\ifphotobios
 \begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{ramanathan.jpg}}]{Ramanathan Lakshmanan}
-received the B.E. degree in Computer Science and Engineering from Bharathidasan University, Tiruchirappalli, India, the M.E. degree in Computer Science from Sathyabama University, Chennai, India, and the Ph.D. degree in Computer Science and Engineering from VIT University, Vellore, India. He is currently a Professor with the Department of IoT, School of Computer Science and Engineering, VIT, Vellore, India, where he has over 18 years of teaching and research experience.
+received the B.E. degree from Bharathidasan University, Tiruchirappalli, India, the M.E. degree from Sathyabama University, Chennai, India, and the Ph.D. degree from VIT University, Vellore, India, all in Computer Science and Engineering. He is currently a Professor with the Department of IoT, School of Computer Science and Engineering, VIT, Vellore, India, with over 18 years of teaching and research experience.
 
-His research interests include data science, cyber-physical systems, fog and edge computing, cloud computing, big data classification, IoT, artificial intelligence, and machine learning. His ongoing research focuses on predictive analytics, classification, clustering, and optimization. He serves as an Associate Editor for the Journal of Network: Computation in Neural Systems, and is an Editorial Advisory Board Member for the Journal of Integrated Science and Technology. He is an active member of IACSIT, CSI, ACM, IEEE (WIE), and ACEEE.
+His research interests include data science, cyber-physical systems, fog and edge computing, IoT, and machine learning. He serves as an Associate Editor for Network: Computation in Neural Systems.
 \end{IEEEbiography}
+\else
+\begin{IEEEbiographynophoto}{Ramanathan Lakshmanan}
+received the B.E. degree from Bharathidasan University, Tiruchirappalli, India, the M.E. degree from Sathyabama University, Chennai, India, and the Ph.D. degree from VIT University, Vellore, India, all in Computer Science and Engineering. He is currently a Professor with the Department of IoT, School of Computer Science and Engineering, VIT, Vellore, India, with over 18 years of teaching and research experience.
+
+His research interests include data science, cyber-physical systems, fog and edge computing, IoT, and machine learning. He serves as an Associate Editor for Network: Computation in Neural Systems.
+\end{IEEEbiographynophoto}
+\fi
 
 \end{document}

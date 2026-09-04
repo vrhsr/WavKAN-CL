@@ -1,5 +1,7 @@
 """
-generate_workflow_diagram.py -- WavKAN-v2 methodology/workflow figure.
+generate_workflow_diagram.py -- PC-WavKAN methodology/workflow figure.
+Method name updated 2026-09-03 (AUDIT_FINDINGS.md H43): the paper no longer
+uses "WavKAN-v2", which read as a second version of Bozorgasl & Chen's Wav-KAN.
 
 Publication-format pass (2026-09-02): restyled for a submission-grade IEEE
 figure (serif typography matching body text, a restrained/desaturated
@@ -161,7 +163,7 @@ def generate_workflow_figure(output_path):
     ax.text(lx + 0.68, ly - 0.32, "training-only signal", fontsize=8.3, va="center", color="#333333")
 
     # ── Title & framing box ─────────────────────────────────────────────
-    fig.suptitle("WavKAN-v2 Architecture  (153,045 params, plain-MLP RR fusion)",
+    fig.suptitle("PC-WavKAN Architecture  (153,045 params, MLP rhythm encoder)",
                  fontsize=15.5, y=0.975, fontweight="bold")
 
     rect = patches.FancyBboxPatch(

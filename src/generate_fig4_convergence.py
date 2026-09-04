@@ -71,13 +71,20 @@ def plot_convergence(baseline_history: list, curriculum_history: list, seed: int
         "mathtext.fontset": "stix",
     })
 
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7.6))
+    # Sized for a single IEEE column (the paper's page budget); the previous
+    # 11x7.6 landscape layout became illegible when scaled into one column.
+    # Terminology updated 2026-09-03 to the manuscript's own names (AUDIT_FINDINGS.md
+    # H43): the schedule is the Rarity-Anchored Curriculum (RAC), not "PCA", and the
+    # model is PC-WavKAN, not "WavKAN-v2". "Initial configuration" was internal
+    # development language; the figure now states the architecture it actually used
+    # (the self-attention rhythm encoder, 154,325 params) as a plain fact.
+    fig, axes = plt.subplots(2, 2, figsize=(7.0, 5.2))
     fig.suptitle(
-        f"Training Convergence: Baseline vs. Curriculum, Initial (RR-Self-Attention) "
-        f"Configuration, 154,325 Params (seed={seed}, real run)\n"
-        f"Baseline ran {len(baseline_history)} epochs, Curriculum ran {len(curriculum_history)} "
-        f"epochs (independent early stopping, patience=15)",
-        fontsize=11, fontweight="bold", y=0.99,
+        f"PC-WavKAN training dynamics: no-RAC vs. RAC (seed {seed})\n"
+        f"self-attention rhythm encoder, 154,325 params; "
+        f"{len(baseline_history)} vs. {len(curriculum_history)} epochs "
+        f"(independent early stopping, patience 15)",
+        fontsize=10, fontweight="bold", y=0.995,
     )
 
     panels = [
@@ -95,19 +102,19 @@ def plot_convergence(baseline_history: list, curriculum_history: list, seed: int
         c_epochs = [h["epoch"] for h in curriculum_history]
         c_vals = [h[key] for h in curriculum_history]
 
-        ax.plot(b_epochs, b_vals, color="#4e79a7", lw=2, label="Baseline (no curriculum)")
-        ax.plot(c_epochs, c_vals, color="#e15759", lw=2, label="Curriculum (PCA)")
+        ax.plot(b_epochs, b_vals, color="#4e79a7", lw=2, label="no RAC (natural sampling)")
+        ax.plot(c_epochs, c_vals, color="#e15759", lw=2, label="RAC")
         if transition_epoch is not None:
             ax.axvline(transition_epoch, color="grey", lw=1, ls="--",
-                       label="Curriculum warmup->anneal transition" if key == "loss" else None)
-        ax.set_title(title, fontsize=11.5, fontweight="bold")
-        ax.set_xlabel("Epoch", fontsize=10.5)
+                       label="RAC warm-up to anneal transition" if key == "loss" else None)
+        ax.set_title(title, fontsize=9.5, fontweight="bold")
+        ax.set_xlabel("Epoch", fontsize=8.5)
         ax.grid(alpha=0.3)
         for spine in ax.spines.values():
             spine.set_color("#333333")
             spine.set_linewidth(0.8)
 
-    axes[0, 0].legend(fontsize=8.5, loc="best")
+    axes[0, 0].legend(fontsize=7.2, loc="best")
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path, dpi=400, bbox_inches="tight")

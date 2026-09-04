@@ -50,6 +50,37 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
+import sys
+
+# ---------------------------------------------------------------------------
+# Console-encoding guard (added 2026-09-03, AUDIT_FINDINGS.md H48).
+#
+# This file prints non-ASCII characters in several places -- box-drawing rules,
+# Greek letters in the schedule description, and status glyphs at lines that
+# report resume, early stopping and completion. On a Windows console using the
+# cp1252 code page every one of those raises UnicodeEncodeError, which killed
+# the run. Two of them sit in the crash-resume handler, so the failure mode was
+# the worst possible one: the very code path that exists to make a long
+# multi-seed run survive an interruption was itself guaranteed to crash on that
+# console, turning a recoverable resume into a dead seed.
+#
+# This is the third instance of the same bug class in this repository
+# (wavelet_alignment_score.py -- C19 and H30 -- and export_quantize.py), and it
+# is fixed the same way: reconfigure stdout/stderr to UTF-8 when the console
+# reports anything else, before any output is produced. Kept as a guard rather
+# than by stripping the characters, so the informative output is preserved on
+# consoles that can render it.
+# ---------------------------------------------------------------------------
+if sys.stdout.encoding is not None and sys.stdout.encoding.lower() != "utf-8":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        # Very old Python or an exotic stream: fall back to dropping unencodable
+        # characters rather than letting a status message abort training.
+        pass
+
+
 from sklearn.metrics import (
     f1_score, recall_score, precision_score,
     classification_report, confusion_matrix
