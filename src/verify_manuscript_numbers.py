@@ -387,7 +387,7 @@ print("This script recomputes every statistic independently rather than reading 
 print("from a summary. That independence is only useful if it agrees with the canonical")
 print("implementation the project's own analysis scripts use, so we check that here:")
 print("a disagreement means one of the two is wrong and no number below can be trusted.")
-from src.paired_stats import paired_compare, holm  # noqa: E402
+from src.paired_stats import paired_compare, holm, holm_family  # noqa: E402
 
 _ref = load("results/ablation_no_rr_attn", "macro_f1")
 _cmp = {
@@ -421,6 +421,104 @@ for _m, _d_expect, _ci_lo, _ci_hi in [("s_recall", 1.47, 0.058, 0.112),
     chk("xcheck RAC " + _m + " CI low via paired_stats", _ci_lo, _r["ci_low"], 0.0006)
     chk("xcheck RAC " + _m + " CI high via paired_stats", _ci_hi, _r["ci_high"], 0.0006)
     chk("xcheck RAC " + _m + " two-sided", 1, 1 if _r["alternative"] == "two-sided" else 0, 0)
+
+
+# ---------------------------------------------------------------------------
+# Per-class operating points (Table: tab:perclass) and the S-class comparison.
+# Recomputed here from results/per_class_metrics.json, which itself is derived
+# from the stored per-seed prediction arrays by src/per_class_metrics.py.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 100)
+print("TABLE: per-class precision / recall / F1")
+print("=" * 100)
+
+_pc_path = "results/per_class_metrics.json"
+if os.path.exists(_pc_path):
+    _pc = json.load(open(_pc_path))["arms"]
+
+    # (a) PC-WavKAN per class, as printed in the manuscript
+    for _c, _p, _r, _f in [("N", 0.971, 0.905, 0.936),
+                           ("S", 0.175, 0.198, 0.180),
+                           ("V", 0.528, 0.898, 0.663),
+                           ("F", 0.005, 0.006, 0.005),
+                           ("Q", 0.000, 0.000, 0.000)]:
+        _g = _pc["PC-WavKAN"]["aggregate"][_c]
+        chk("perclass %s precision" % _c, _p, _g["precision"]["mean"], 0.0006)
+        chk("perclass %s recall" % _c, _r, _g["recall"]["mean"], 0.0006)
+        chk("perclass %s f1" % _c, _f, _g["f1"]["mean"], 0.0006)
+
+    # The per-class F1 values must average to the published Macro-F1: an
+    # independent route to the headline number, so a per-class error cannot
+    # pass unnoticed.
+    for _name, _macro in [("PC-WavKAN", 0.357), ("ResNet1D", 0.351),
+                          ("Transformer", 0.353), ("CNN+Focal", 0.362),
+                          ("B-Spline KAN", 0.371)]:
+        _f1s = [_pc[_name]["aggregate"][_c]["f1"]["mean"] for _c in "NSVFQ"]
+        chk("perclass %s F1 -> Macro-F1" % _name, _macro,
+            float(np.mean([0.0 if not np.isfinite(x) else x for x in _f1s])), 0.0006)
+
+    # (b) S-class F1 across models, and the paired comparison against ours
+    for _name, _sf1 in [("ResNet1D", 0.124), ("Transformer", 0.207),
+                        ("CNN+Focal", 0.115), ("B-Spline KAN", 0.244)]:
+        chk("S-F1 %s" % _name, _sf1,
+            _pc[_name]["aggregate"]["S"]["f1"]["mean"], 0.0006)
+
+    def _sf1_by_seed(_n):
+        return {s: _pc[_n]["per_seed"][s]["S"]["f1"] for s in _pc[_n]["seeds"]}
+
+    _comps = {b: paired_compare(_sf1_by_seed("PC-WavKAN"), _sf1_by_seed(b),
+                                metric_name="s_f1")
+              for b in ["ResNet1D", "Transformer", "CNN+Focal", "B-Spline KAN"]}
+    _fam = holm_family(_comps)
+    for _b, _d, _p in [("ResNet1D", 0.77, 0.004), ("Transformer", -0.35, 0.312),
+                       ("CNN+Focal", 0.85, 0.002), ("B-Spline KAN", -0.66, 0.027)]:
+        chk("S-F1 %s d" % _b, _d, _fam[_b]["cohens_d"], 0.006)
+        chk("S-F1 %s holm p" % _b, _p, _fam[_b]["holm_p"], max(0.0006, _p * 0.06))
+else:
+    print("  results/per_class_metrics.json absent -- run src/per_class_metrics.py")
+
+# ---------------------------------------------------------------------------
+# Abstract: "outperformed all seven alternatives (Holm-adjusted p <= 0.0032)".
+# This is a DIFFERENT family from Table tab:family_ablation (which compares each
+# variant against the BASE). Registering it here because an earlier draft quoted
+# the base-comparison p-value for this claim, which no check would have caught.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 100)
+print("ABSTRACT: adopted configuration vs every alternative (validation)")
+print("=" * 100)
+
+_adopted = pv("results/ablation_no_rr_attn")
+_alts = {"base": "results/wavkan_v2_curriculum",
+         "no_pcwi": "results/ablation_no_pcwi",
+         "no_pwam": "results/ablation_no_pwam",
+         "no_rac": "results/wavkan_v2_baseline",
+         "morlet": "results/ablation_wavelet_morlet",
+         "dog": "results/ablation_wavelet_dog",
+         "bspline": "results/ablation_wavelet_bspline"}
+chk("abstract: number of alternatives", 7, len(_alts), 0)
+_ac = {k: paired_compare(_adopted, pv(v), metric_name="val_macro_f1")
+       for k, v in _alts.items()}
+_af = holm_family(_ac)
+_worst = max(r["holm_p"] for r in _af.values())
+_all_better = all(r["mean_diff"] > 0 for r in _af.values())
+chk("abstract: adopted beats every alternative", 1, 1 if _all_better else 0, 0)
+chk("abstract: weakest Holm p <= 0.0032", 0.0032, _worst, 0.0004)
+
+# ---------------------------------------------------------------------------
+# Method: parameter counts asserted in prose.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 100)
+print("METHOD: parameter counts")
+print("=" * 100)
+try:
+    import torch.nn as _nn
+    _gru = _nn.GRU(64, 32, batch_first=True, bidirectional=True)
+    chk("BiGRU parameter count", 18816,
+        sum(p.numel() for p in _gru.parameters()), 0)
+    chk("BiGRU share of model (%)", 12.3,
+        100.0 * 18816 / 153045, 0.06)
+except Exception as _e:
+    print("  (torch unavailable: %s)" % _e)
 
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))

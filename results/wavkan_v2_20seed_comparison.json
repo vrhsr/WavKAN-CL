@@ -1,0 +1,93 @@
+{
+  "n_baseline_seeds_found": 20,
+  "n_curriculum_seeds_found": 20,
+  "n_paired_seeds": 20,
+  "paired_seeds": [
+    7,
+    11,
+    13,
+    42,
+    99,
+    101,
+    333,
+    555,
+    777,
+    888,
+    1001,
+    1234,
+    1998,
+    2024,
+    2026,
+    5050,
+    8080,
+    9999,
+    27182,
+    31415
+  ],
+  "baseline_seeds_missing_from_curriculum": [],
+  "curriculum_seeds_missing_from_baseline": [],
+  "baseline_dirs_with_no_result_file": [],
+  "curriculum_dirs_with_no_result_file": [],
+  "metrics": {
+    "macro_f1": {
+      "baseline_mean": 0.31903884825838785,
+      "baseline_std": 0.013119773323241298,
+      "curriculum_mean": 0.3228099175546917,
+      "curriculum_std": 0.018405249687370347,
+      "n": 20,
+      "wilcoxon_p_two_sided": 0.7561664581298828,
+      "cohens_d": -0.16074756767690926,
+      "effect_size": "negligible",
+      "holm_adjusted_p": 0.7561664581298828,
+      "significant_after_holm_correction": false
+    },
+    "v_recall": {
+      "baseline_mean": 0.8788664596273291,
+      "baseline_std": 0.01926479897265505,
+      "curriculum_mean": 0.8891459627329192,
+      "curriculum_std": 0.021378286438058527,
+      "n": 20,
+      "wilcoxon_p_two_sided": 0.20244979858398438,
+      "cohens_d": -0.40630716587576404,
+      "effect_size": "small",
+      "holm_adjusted_p": 0.4613993090441396,
+      "significant_after_holm_correction": false
+    },
+    "s_recall": {
+      "baseline_mean": 0.07879695155144258,
+      "baseline_std": 0.015697812983488674,
+      "curriculum_mean": 0.12245508982035928,
+      "curriculum_std": 0.05240440122670279,
+      "n": 20,
+      "wilcoxon_p_two_sided": 0.0003223419189453125,
+      "cohens_d": -0.7675187704816128,
+      "effect_size": "medium",
+      "holm_adjusted_p": 0.0016117095947265625,
+      "significant_after_holm_correction": true
+    },
+    "n_recall": {
+      "baseline_mean": 0.8822978838849702,
+      "baseline_std": 0.024315504670126584,
+      "curriculum_mean": 0.864453336950624,
+      "curriculum_std": 0.03139556878396796,
+      "n": 20,
+      "wilcoxon_p_two_sided": 0.021484375,
+      "cohens_d": 0.527651262797905,
+      "effect_size": "medium",
+      "holm_adjusted_p": 0.0859375,
+      "significant_after_holm_correction": false
+    },
+    "f_recall": {
+      "baseline_mean": 0.001804123711340206,
+      "baseline_std": 0.0025224767264412007,
+      "curriculum_mean": 0.0033505154639175256,
+      "curriculum_std": 0.003457837078607922,
+      "n": 20,
+      "wilcoxon_p_two_sided": 0.15379976968137987,
+      "cohens_d": -0.3248931380010397,
+      "effect_size": "small",
+      "holm_adjusted_p": 0.4613993090441396,
+      "significant_after_holm_correction": false
+    }
+  }
+}

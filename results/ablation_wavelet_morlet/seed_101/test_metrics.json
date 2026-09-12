@@ -1,0 +1,16 @@
+{
+  "seed": 101,
+  "epochs_run": 38,
+  "macro_f1": 0.3240984741862058,
+  "v_recall": 0.9015527950310559,
+  "s_recall": 0.14207947740881874,
+  "f_recall": 0.002577319587628866,
+  "n_recall": 0.8559413998914813,
+  "model_params": 154325,
+  "config": {
+    "use_pcwi": true,
+    "use_pwam": true,
+    "use_rr_attn": true,
+    "wavelet_type": "morlet"
+  }
+}

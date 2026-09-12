@@ -1,0 +1,32 @@
+{
+  "configuration": "final (use_rr_attn=False, 153045 params, results/ablation_no_rr_attn checkpoints)",
+  "n_seeds": 20,
+  "macro_f1": {
+    "mean": 0.1997473212864881,
+    "std": 0.005154771590749837,
+    "n": 20
+  },
+  "per_class_recall": {
+    "N": {
+      "mean": 0.6642783707497617,
+      "std": 0.06105794528614216,
+      "n": 20
+    },
+    "S": {
+      "mean": 0.08791722296395194,
+      "std": 0.01680696269212445,
+      "n": 20
+    },
+    "V": {
+      "mean": 0.22273730684326712,
+      "std": 0.04505215653251669,
+      "n": 20
+    },
+    "Q": {
+      "mean": 0.040329536658188656,
+      "std": 0.017879853520472395,
+      "n": 20
+    }
+  },
+  "note": "A class is omitted from per_class_recall above if every seed reported it as null (e.g. zero support in this PTB-XL extraction)."
+}

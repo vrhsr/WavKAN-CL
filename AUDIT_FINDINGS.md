@@ -204,3 +204,161 @@ The repository's single most safety-critical guarantee — the inter-patient DS1
 1. Which of the 6 duplicate manuscript `.tex` files and 2 duplicate `.bib` files should be treated as authoritative going forward, and should the others be deleted or clearly marked historical? (Confirmed canonical for this audit: `Submission_JBHI/ieee_manuscript.tex`.)
 2. ~~Is "WavKAN-CL" (95,189 params, `HybridWavKAN_RR`) or "WavKAN-v2" (154,325 params, PCWI+PWAM) the actual model being submitted?~~ **DECIDED 2026-08-12: WavKAN_v2.** See C3.
 3. Given C1 (figure/caption mismatch) and C5 (missing training code for the headline checkpoints), can the 20-seed headline statistics be re-derived at all from what currently exists, or does this require new training runs? **Answered by the model-identity decision: new training runs, since the decided model (WavKAN_v2) never had a matching 20-seed baseline arm in the first place.** See `PHASE5_SCOPE_PLAN.md` for the concrete plan.
+
+---
+
+## Phase 11 — pre-submission execution pass (2026-09-11/12)
+
+Findings from the final integrity audit, all **RESOLVED** in the manuscript or the
+code unless marked otherwise.
+
+### C24 — The word "physiology" is not isolated by the experimental design — NOT RESOLVED, disclosed
+
+PCWI's only control is `use_pcwi=False`, i.e. a single isotropic distribution.
+That comparison cannot separate **(A)** the priors carrying genuine ECG
+morphology information from **(B)** a generic benefit of initialising three
+channel groups at three *different* scales, for which any three distinct
+(mu, gamma) pairs would do. Since "physiology-constrained" is load-bearing in
+the title, the method name and Introduction contribution 1, the paper was
+claiming (A) on evidence that only supports (B)-or-(A).
+
+**Action taken.** The claim is downgraded wherever it appears (Abstract,
+Introduction contribution 1, Method Sec. III-B3, Results Sec. V-A, Limitations
+item 7, Conclusion) to "structured, physiologically-derived multi-scale
+initialisation helps", with an explicit statement that the morphological
+assignment is *not* shown to be the operative ingredient. The decisive control
+was **implemented and tested** but not run: `--prior-assignment {swap_pt,cyclic}`
+in `src/train_pca.py`, `PRIOR_ASSIGNMENTS` in `src/wavkan_pcwi.py`, 9 regression
+tests in `tests/test_prior_assignment.py`, and an `essential`-priority arm in
+`configs/final_component_ablation.yaml`. `swap_pt` is the primary control
+because the P and T blocks are both 16 channels, so block size is exactly
+preserved and only the mapping varies. **If the permuted assignment matches the
+physiological one, the method must be renamed.**
+
+### H49 — The "BiGRU (Temporal Context)" integrates no temporal context — RESOLVED
+
+Instrumenting the forward pass shows `models/wavkan_v2.py` unsqueezes the KAN
+output to `(B, 1, 64)`, so the bidirectional GRU runs on a **length-1 sequence**:
+one step in each direction from a zero hidden state, with output exactly
+`concat(h_fwd, h_bwd)` (verified to `allclose`). It is a gated affine transform
+of the channel vector and costs **18,816 of 153,045 parameters (12.3%)**.
+Figure 1 asserted "Temporal Context"; the Method described it only as a
+bidirectional GRU. This is the **third** degenerate-mechanism finding in this
+architecture, after the PWAM softmax and the RR self-attention encoder — the
+first two the paper identifies itself, this one it did not.
+**Fixed**: Method states the length-1 sequence, its consequence and its
+parameter cost; Figure 1 relabelled "BiGRU (single timestep)"; substituting a
+gated feed-forward block added to Future Work. No reported number changes.
+
+### H50 — A stray lone carriage return printed garbage into the compiled PDF — RESOLVED
+
+`ieee_manuscript_v2.tex` contained a single **bare CR (0x0D, not CRLF)** between
+`\S` and `ef{sec:results}`. TeX treats a lone CR as an end-of-line, so `\ref`
+was split and the PDF printed, in the body of Section II, the literal string
+`S-efsec:results`. **LaTeX reported zero errors**, `check_manuscript.py`
+reported every reference resolved, and grep could not match across it. The file
+had 641 CR against 640 LF — the only signal available.
+**Fixed** at byte level; `tests/test_manuscript_integrity.py` (6 tests) now
+guards the whole class — lone CRs, CR/LF count parity, control bytes, and
+orphaned reference arguments — and was verified to fail (4 of 6) against the
+reintroduced defect.
+
+### H51 — No precision, positive predictivity or per-class F1 was reported — RESOLVED
+
+The manuscript reported per-class **recall** and Macro-F1 only, in a protocol
+whose convention (AAMI EC57, and de Chazal's own reporting) is sensitivity
+paired with positive predictivity. Consequences: the S-recall claim had no
+operating-point context, and no comparison with any published result was
+possible.
+**Fixed** by `src/per_class_metrics.py` (new), which recomputes precision,
+recall and F1 for all five models over all 20 seeds from the stored per-seed
+predictions — no retraining. Validation: the per-class F1 values average to the
+published Macro-F1 for all five models to three decimals.
+**This weakened the paper, and the paper now says so.** S-recall 0.198 comes at
+precision 0.175. On S-F1 PC-WavKAN is significantly better than ResNet1D
+(d=+0.77) and CNN+Focal (d=+0.85), indistinguishable from the Transformer, and
+significantly **worse** than B-Spline KAN (d=-0.66, Holm p=0.027). Reporting
+recall alone had concealed that. Also recorded: **Q scores exactly zero for all
+five models**, so a five-class macro average is capped at 0.8 by construction.
+
+### H52 — Abstract quoted a p-value from the wrong comparison family — RESOLVED
+
+The Abstract claimed the adopted configuration "outperformed all six
+alternatives tested (Holm-adjusted p <= 0.0008)". Recomputed from per-seed
+validation data: there are **seven** alternatives, the adopted configuration
+does beat all of them, but the weakest Holm-adjusted p is **0.0032** (Morlet).
+0.0008 belongs to Table III's variant-vs-*base* family and was imported into a
+claim about a different set. `verify_manuscript_numbers.py` reported
+"285 verified, 0 mismatched" throughout, because the claim had never been
+registered with it.
+**Fixed** in the Abstract and **registered** with the verifier, which now checks
+the family size, that every comparison favours the adopted configuration, and
+the bound.
+
+### H53 — The Data/Code Availability statement was false — RESOLVED
+
+The paper promised "per-seed result files and trained weights". The repository
+tracked **zero** `test_metrics.json` anywhere and 229 `.pth` files belonging to
+**superseded** pre-audit experiments (`ensemble/`, `cascade_model/`,
+`fair_fight_*/`, ...), none of which the paper references.
+**Fixed**: 714 artifacts (13.4 MB) added — all per-seed test metrics, training
+histories and confusion matrices, the derived per-class counts, and the 20
+checkpoints of the adopted configuration. Raw prediction arrays (215 MB) are
+deliberately excluded and the paper says so; the published confusion matrices
+and per-seed TP/FP/FN are a sufficient statistic for every per-class number.
+`results/README.md` (new) separates **Current** from **Superseded** without
+deleting anything, and flags that `was_multiseed_summary.json` holds the
+superseded group-mean metric (0.958), not the paper's PPR (0.783).
+
+### H54 — The stated statistical power was wrong — RESOLVED
+
+Sec. IV-G asserted that 20 seeds make "a medium standardised effect detectable
+at conventional power". Computed: at n=20, alpha=0.05 two-sided, a paired test
+has **0.565** power against Cohen's medium d_z=0.50 and reaches 0.80 only at
+**d_z >= 0.66**; detecting a medium effect at 80% would need n≈32.
+**Fixed**: the section now states the sensitivity rather than asserting
+adequacy, notes Wilcoxon is marginally less efficient, and says the study is
+powered for large effects — which is why its null results are reported with
+confidence intervals.
+
+### H55 — Citation did not match the implementation — RESOLVED
+
+Sec. III-B3 said the edge coefficients "keep the standard variance-preserving
+initialisation \cite{rigas_initialization_2025}". The code uses
+`nn.init.kaiming_uniform_(a=sqrt(5))` — PyTorch's stock `nn.Linear` default,
+not the Rigas scheme (which postdates the implementation).
+**Fixed**: the text names the actual initialiser and cites Rigas as a
+purpose-designed alternative that was not evaluated.
+
+### H56 — "We publish a randomised null" was framed as a distinguishing practice — RESOLVED
+
+The PPR section presented evaluation against an untrained model as setting it
+apart from "interpretability scores reported without a reference point". This
+is established practice: Heap et al. (arXiv:2501.17727, verified) show
+automated interpretability metrics score randomly initialised transformers as
+highly as trained ones and argue for routine randomised baselines.
+**Fixed**: cited, with the contribution restated as supplying such baselines for
+a parameter-space measure on a KAN, not as proposing the practice.
+
+### H57 — The de Chazal comparison was avoided, not addressed — RESOLVED
+
+The paper declined to tabulate published accuracies (a defensible general
+position) while its headline minority-class claim sat far below the protocol's
+own source. de Chazal et al. 2004 (verified) report **SVEB sensitivity 0.759 at
+positive predictivity 0.385**; PC-WavKAN reports S-recall 0.198 at precision
+0.175 — **lower on both axes**, so no operating-point argument rescues it.
+**Fixed**: Sec. V-C states the comparison explicitly, notes the real
+methodological differences (two leads, fiducial-point morphology features,
+record-level interval normalisation) without implying they close the gap, and
+identifies it as the clearest evidence that beat-level supraventricular
+detection under this protocol is unsolved by architectural work of this kind.
+
+### Also corrected
+Abstract "recipe-matched" -> "protocol-matched" (Sec. IV-F states the imbalance
+mechanism is deliberately *not* matched); PPR prose "0.698" -> "0.670"
+(contradicted its own table's 0.6698); F-recall "approx 0.006 for all
+configurations" -> the measured 0.0003-0.0061 range; "the non-KAN baselines do
+not approach" -> "markedly above" (Transformer is 0.319 against 0.408);
+Limitations item 2 attributed S-recall 0.222 to the augmentation-free arm and
+gives the adopted model's 0.198; the PCWI scope caveat carried into the
+Conclusion; Limitations renumbered after an earlier merge left a gap.

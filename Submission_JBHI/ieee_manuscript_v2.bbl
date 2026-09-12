@@ -177,4 +177,9 @@ J.~Cohen, \emph{Statistical Power Analysis for the Behavioral Sciences},
   2nd~ed.\hskip 1em plus 0.5em minus 0.4em\relax Hillsdale, NJ: Lawrence
   Erlbaum Associates, 1988.
 
+\bibitem{heap_automated_2025}
+T.~Heap, T.~Lawson, L.~Farnik, and L.~Aitchison, ``Automated interpretability
+  metrics do not distinguish trained and random transformers,'' \emph{arXiv
+  preprint arXiv:2501.17727}, 2025.
+
 \end{thebibliography}

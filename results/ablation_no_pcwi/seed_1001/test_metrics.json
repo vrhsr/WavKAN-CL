@@ -1,0 +1,16 @@
+{
+  "seed": 1001,
+  "epochs_run": 38,
+  "macro_f1": 0.33296703839884195,
+  "v_recall": 0.9232919254658385,
+  "s_recall": 0.19216113228089277,
+  "f_recall": 0.0,
+  "n_recall": 0.8663637185747874,
+  "model_params": 154325,
+  "config": {
+    "use_pcwi": false,
+    "use_pwam": true,
+    "use_rr_attn": true,
+    "wavelet_type": "mexican_hat"
+  }
+}

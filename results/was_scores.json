@@ -1,0 +1,30 @@
+{
+  "QRS": {
+    "was": 0.9865,
+    "mu_prior": 0.0,
+    "mu_learned": 0.0013,
+    "mu_drift": 0.0013,
+    "gamma_prior": 0.05,
+    "gamma_learned": 0.0547,
+    "gamma_drift": 0.0047
+  },
+  "P": {
+    "was": 0.9629,
+    "mu_prior": -0.1,
+    "mu_learned": -0.1022,
+    "mu_drift": 0.0022,
+    "gamma_prior": 0.12,
+    "gamma_learned": 0.1337,
+    "gamma_drift": 0.0137
+  },
+  "T": {
+    "was": 0.9644,
+    "mu_prior": 0.1,
+    "mu_learned": 0.1089,
+    "mu_drift": 0.0089,
+    "gamma_prior": 0.1,
+    "gamma_learned": 0.1098,
+    "gamma_drift": 0.0098
+  },
+  "macro_was": 0.9713
+}

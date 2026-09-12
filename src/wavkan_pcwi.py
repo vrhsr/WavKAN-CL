@@ -65,6 +65,41 @@ ECG_PRIORS = {
 
 
 # ---------------------------------------------------------------------------
+# Prior-assignment controls
+# ---------------------------------------------------------------------------
+# Removing PCWI entirely (use_pcwi=False) compares a structured, three-group,
+# multi-scale initialisation against a single isotropic one.  That comparison
+# cannot separate two explanations of any benefit:
+#
+#   (A) the priors carry genuine ECG morphology information, or
+#   (B) three groups initialised at three *different* scales simply beat one
+#       isotropic scale, for which any three distinct (mu, gamma) pairs would do.
+#
+# These controls isolate (A).  Each keeps the channel partition, the exact set
+# of prior values, and every other training detail identical, and changes only
+# *which* group receives *which* prior.  If the physiological assignment is not
+# better than a permuted one, the benefit is structural, not morphological, and
+# the wording in the manuscript must say so.
+#
+#   physiological : QRS->QRS, P->P, T->T          (the proposed assignment)
+#   swap_pt       : QRS->QRS, P->T,   T->P        (cleanest: P and T blocks are
+#                                                  both 16 channels, so block
+#                                                  size is exactly preserved)
+#   cyclic        : QRS->P,   P->T,   T->QRS      (permutes all three; note the
+#                                                  32/16/16 block sizes mean the
+#                                                  number of channels receiving
+#                                                  each prior changes)
+#
+# swap_pt is the primary control because it is size-preserving and therefore
+# varies nothing but the morphology-to-group mapping.
+PRIOR_ASSIGNMENTS = {
+    "physiological": {"QRS": "QRS", "P": "P",   "T": "T"},
+    "swap_pt":       {"QRS": "QRS", "P": "T",   "T": "P"},
+    "cyclic":        {"QRS": "P",   "P": "T",   "T": "QRS"},
+}
+
+
+# ---------------------------------------------------------------------------
 # Core Layer
 # ---------------------------------------------------------------------------
 
@@ -94,6 +129,7 @@ class PCWIWavKANLinear(nn.Module):
         wavelet_type: str = "mexican_hat",
         use_pcwi: bool = True,
         residual_w: float = 0.1,
+        prior_assignment: str = "physiological",
     ):
         super().__init__()
         self.in_features  = in_features
@@ -101,6 +137,11 @@ class PCWIWavKANLinear(nn.Module):
         self.wavelet_type = wavelet_type
         self.use_pcwi     = use_pcwi
         self.residual_w   = residual_w
+        if prior_assignment not in PRIOR_ASSIGNMENTS:
+            raise ValueError(
+                f"prior_assignment must be one of {sorted(PRIOR_ASSIGNMENTS)}, "
+                f"got {prior_assignment!r}")
+        self.prior_assignment = prior_assignment
 
         # Wavelet edge parameters  (out_features, in_features)
         self.weights     = nn.Parameter(torch.empty(out_features, in_features))
@@ -141,9 +182,14 @@ class PCWIWavKANLinear(nn.Module):
           2. γ  initialised to the physiologically appropriate sharpness;
              jitter breaks edge symmetry without losing the prior.
         """
+        mapping = PRIOR_ASSIGNMENTS[self.prior_assignment]
         with torch.no_grad():
-            for _, prior in ECG_PRIORS.items():
-                c0, c1 = prior["channels"]
+            for group, _ in ECG_PRIORS.items():
+                # Channel block always comes from the group; the prior *values*
+                # come from whichever group the assignment maps it to.  With
+                # "physiological" these are the same, so behaviour is unchanged.
+                c0, c1 = ECG_PRIORS[group]["channels"]
+                prior  = ECG_PRIORS[mapping[group]]
                 nc     = c1 - c0
 
                 # Translation (μ): centre + noise

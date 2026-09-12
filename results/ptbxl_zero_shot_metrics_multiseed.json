@@ -1,0 +1,31 @@
+{
+  "n_seeds": 20,
+  "macro_f1": {
+    "mean": 0.1981116145026194,
+    "std": 0.006417242268858902,
+    "n": 20
+  },
+  "per_class_recall": {
+    "N": {
+      "mean": 0.6398910219264632,
+      "std": 0.06722741220340997,
+      "n": 20
+    },
+    "S": {
+      "mean": 0.09059486723038127,
+      "std": 0.027844651794076157,
+      "n": 20
+    },
+    "V": {
+      "mean": 0.26272711835625745,
+      "std": 0.0688446984505204,
+      "n": 20
+    },
+    "Q": {
+      "mean": 0.04356408271591287,
+      "std": 0.019438196319786417,
+      "n": 20
+    }
+  },
+  "note": "A class is omitted from per_class_recall above if every seed reported it as null (e.g. zero support in this PTB-XL extraction)."
+}

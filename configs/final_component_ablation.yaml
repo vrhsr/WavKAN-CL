@@ -55,6 +55,24 @@ arms:
       large positive effect" -- Introduction contribution 1, Results Sec. V-A,
       Discussion Sec. VI-A. Currently measured on the base configuration only.
 
+  - name: prior_swap_pt
+    priority: essential
+    flags: ["--prior-assignment", "swap_pt", "--no-rr-attn"]
+    expect_params: 153045          # identical shape; only the mapping changes
+    protects_claim: >
+      The word "physiology" in the method name, the title and Introduction
+      contribution 1. Removing PCWI entirely compares a structured three-group
+      multi-scale initialisation against one isotropic scale, which cannot
+      separate (A) genuine morphology information in the priors from (B) a
+      generic benefit of heterogeneous multi-scale initialisation. This arm
+      keeps the channel groups, the exact set of prior values and every
+      training detail, and permutes only which group receives which prior
+      (P and T are both 16-channel blocks, so block size is exactly preserved).
+      If the physiological assignment is not better than the permuted one, the
+      benefit is structural and the manuscript must not attribute it to
+      morphology. Until this runs, the manuscript states the limitation
+      explicitly (Limitations item 9) rather than assuming the answer.
+
   - name: no_pwam
     priority: high
     flags: ["--no-pwam", "--no-rr-attn"]

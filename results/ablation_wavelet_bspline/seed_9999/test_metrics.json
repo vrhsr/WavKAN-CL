@@ -1,0 +1,16 @@
+{
+  "seed": 9999,
+  "epochs_run": 38,
+  "macro_f1": 0.3746978990490127,
+  "v_recall": 0.9133540372670808,
+  "s_recall": 0.33097441480675016,
+  "f_recall": 0.0,
+  "n_recall": 0.888293543136191,
+  "model_params": 154325,
+  "config": {
+    "use_pcwi": true,
+    "use_pwam": true,
+    "use_rr_attn": true,
+    "wavelet_type": "b_spline"
+  }
+}

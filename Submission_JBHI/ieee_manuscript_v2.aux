@@ -47,20 +47,18 @@
 \newlabel{sec:pcwi}{{III-B.2}{3}{Physiology-Constrained Wavelet Initialisation (PCWI)}{subsubsection.3.2.2}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.2}Physiology-Constrained Wavelet Initialisation (PCWI)}{3}{subsubsection.3.2.2}\protected@file@percent }
 \newlabel{eq:pcwi}{{2}{3}{Physiology-Constrained Wavelet Initialisation (PCWI)}{equation.2}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.3}Gated P-Region Fusion}{3}{subsubsection.3.2.3}\protected@file@percent }
 \citation{zhao_mak-net_2025}
 \citation{guo_inter-patient_2019}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {PC-WavKAN.} The morphology branch (PCWI wavelet-KAN layer $\rightarrow $ BiGRU temporal context $\rightarrow $ gated P-region fusion, which takes the raw beat as a second input alongside the BiGRU output) is concatenated with the rhythm branch before classification. The curriculum scheduler acts on training only.}}{4}{figure.1}\protected@file@percent }
 \newlabel{fig:arch}{{1}{4}{\textbf {PC-WavKAN.} The morphology branch (PCWI wavelet-KAN layer $\rightarrow $ BiGRU temporal context $\rightarrow $ gated P-region fusion, which takes the raw beat as a second input alongside the BiGRU output) is concatenated with the rhythm branch before classification. The curriculum scheduler acts on training only}{figure.1}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Wavelet-KAN edge parameterisation.} Learnable wavelets $\psi (t;\mu ,\gamma )$ replace fixed node activations; every edge of the $j\times k$ grid carries its own translation and dilation, as in \eqref  {eq:kan}.}}{4}{figure.2}\protected@file@percent }
 \newlabel{fig:wavkan_micro}{{2}{4}{\textbf {Wavelet-KAN edge parameterisation.} Learnable wavelets $\psi (t;\mu ,\gamma )$ replace fixed node activations; every edge of the $j\times k$ grid carries its own translation and dilation, as in \eqref {eq:kan}}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.3}Gated P-Region Fusion}{4}{subsubsection.3.2.3}\protected@file@percent }
 \newlabel{sec:rhythm}{{III-B.4}{4}{Rhythm Branch}{subsubsection.3.2.4}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.4}Rhythm Branch}{4}{subsubsection.3.2.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {III-B.5}Fusion and Classification}{4}{subsubsection.3.2.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {III-C}Rarity-Anchored Curriculum (RAC)}{4}{subsection.3.3}\protected@file@percent }
 \newlabel{sec:rac}{{III-C}{4}{Rarity-Anchored Curriculum (RAC)}{subsection.3.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {III-D}Physiological Prior Retention (PPR)}{4}{subsection.3.4}\protected@file@percent }
-\newlabel{sec:ppr_def}{{III-D}{4}{Physiological Prior Retention (PPR)}{subsection.3.4}{}}
 \citation{moody_impact_2001,goldberger_physiobank_2000}
 \citation{chazal_automatic_2004}
 \citation{takalo-mattila_inter-patient_2018}
@@ -70,6 +68,8 @@
 \citation{wagner_ptb-xl_2020}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Rarity-Anchored Curriculum (RAC)}}{5}{algorithm.1}\protected@file@percent }
 \newlabel{alg:curriculum}{{1}{5}{Rarity-Anchored Curriculum (RAC)}{algorithm.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {III-D}Physiological Prior Retention (PPR)}{5}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:ppr_def}{{III-D}{5}{Physiological Prior Retention (PPR)}{subsection.3.4}{}}
 \newlabel{eq:ppr}{{4}{5}{Physiological Prior Retention (PPR)}{equation.4}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Data and Evaluation Protocol}{5}{section.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-A}Preprocessing}{5}{subsection.4.1}\protected@file@percent }
@@ -81,14 +81,12 @@
 \citation{wilcoxon_individual_1945}
 \citation{holm_simple_1979}
 \citation{cohen_statistical_1988}
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Inter-Patient Data Splitting Protocol (DS1/DS2).}}{6}{table.1}\protected@file@percent }
-\newlabel{tab:split_protocol}{{I}{6}{Inter-Patient Data Splitting Protocol (DS1/DS2)}{table.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Class Distribution and AAMI Standard Mapping.}}{6}{table.2}\protected@file@percent }
-\newlabel{tab:class_dist}{{II}{6}{Class Distribution and AAMI Standard Mapping}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Class Distribution and AAMI Standard Mapping.}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:class_dist}{{I}{6}{Class Distribution and AAMI Standard Mapping}{table.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-E}Baselines and What Is Matched}{6}{subsection.4.5}\protected@file@percent }
 \newlabel{sec:baselines}{{IV-E}{6}{Baselines and What Is Matched}{subsection.4.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Baseline Architectures. Protocol, split, input representation, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S  \ref {sec:baselines}); imbalance handling differs by design.}}{6}{table.3}\protected@file@percent }
-\newlabel{tab:baselines}{{III}{6}{Baseline Architectures. Protocol, split, input representation, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S \ref {sec:baselines}); imbalance handling differs by design}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Baseline Architectures. Protocol, split, input representation, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S  \ref {sec:baselines}); imbalance handling differs by design.}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:baselines}{{II}{6}{Baseline Architectures. Protocol, split, input representation, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S \ref {sec:baselines}); imbalance handling differs by design}{table.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-F}Statistical Methodology}{6}{subsection.4.6}\protected@file@percent }
 \newlabel{sec:stats}{{IV-F}{6}{Statistical Methodology}{subsection.4.6}{}}
 \citation{addison_wavelet_2005}
@@ -98,46 +96,46 @@
 \newlabel{sec:results_selection}{{V-A}{7}{Architecture Selection on Validation Data}{subsection.5.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {V-B}Primary Comparison Against Standard Architectures}{7}{subsection.5.2}\protected@file@percent }
 \newlabel{sec:results_primary}{{V-B}{7}{Primary Comparison Against Standard Architectures}{subsection.5.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Single-variable component ablation on \textbf  {DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm 0.0201$. $\Delta $ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps.}}{8}{table.4}\protected@file@percent }
-\newlabel{tab:family_ablation}{{IV}{8}{Single-variable component ablation on \textbf {DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm 0.0201$. $\Delta $ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps}{table.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces \textbf  {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero.}}{8}{table.5}\protected@file@percent }
-\newlabel{tab:baseline_comparison}{{V}{8}{\textbf {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Single-variable component ablation on \textbf  {DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm 0.0201$. $\Delta $ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps.}}{8}{table.3}\protected@file@percent }
+\newlabel{tab:family_ablation}{{III}{8}{Single-variable component ablation on \textbf {DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm 0.0201$. $\Delta $ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces \textbf  {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero.}}{8}{table.4}\protected@file@percent }
+\newlabel{tab:baseline_comparison}{{IV}{8}{\textbf {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero}{table.4}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions.}}{8}{figure.3}\protected@file@percent }
 \newlabel{fig:confusion}{{3}{8}{Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-C}Effect of the Rarity-Anchored Curriculum}{8}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:results_curriculum}{{V-C}{8}{Effect of the Rarity-Anchored Curriculum}{subsection.5.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces \textbf  {Secondary outcome.} RAC vs.\ natural-distribution sampling, PC-WavKAN, 20 paired seeds, DS2. Augmentation disabled in both arms. $\Delta $ and $d$ are RAC minus no-RAC; $p$ is Holm-adjusted across the five metrics.}}{8}{table.6}\protected@file@percent }
-\newlabel{tab:curriculum_stats}{{VI}{8}{\textbf {Secondary outcome.} RAC vs.\ natural-distribution sampling, PC-WavKAN, 20 paired seeds, DS2. Augmentation disabled in both arms. $\Delta $ and $d$ are RAC minus no-RAC; $p$ is Holm-adjusted across the five metrics}{table.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-D}Dependence on Rhythm Features and Non-Causality}{8}{subsection.5.4}\protected@file@percent }
-\newlabel{sec:results_rr}{{V-D}{8}{Dependence on Rhythm Features and Non-Causality}{subsection.5.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Per-epoch training dynamics, no-RAC vs.\ RAC arm (seed 42, DS1 validation Macro-F1), on the base configuration used for the replication in \S  \ref {sec:results_curriculum}.}}{9}{figure.4}\protected@file@percent }
-\newlabel{fig:convergence}{{4}{9}{Per-epoch training dynamics, no-RAC vs.\ RAC arm (seed 42, DS1 validation Macro-F1), on the base configuration used for the replication in \S \ref {sec:results_curriculum}}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-C}Per-Class Operating Points}{8}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:results_perclass}{{V-C}{8}{Per-Class Operating Points}{subsection.5.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Per-class precision/recall/F1, 20 seeds, DS2. \textbf  {(a)} PC-WavKAN, all classes. \textbf  {(b)} S class across all five models, with the Holm-adjusted paired comparison of S-F1 against PC-WavKAN (positive $d$ favours PC-WavKAN). Q is unlearnable at 8 training beats and scores exactly zero for every model.}}{8}{table.5}\protected@file@percent }
+\newlabel{tab:perclass}{{V}{8}{Per-class precision/recall/F1, 20 seeds, DS2. \textbf {(a)} PC-WavKAN, all classes. \textbf {(b)} S class across all five models, with the Holm-adjusted paired comparison of S-F1 against PC-WavKAN (positive $d$ favours PC-WavKAN). Q is unlearnable at 8 training beats and scores exactly zero for every model}{table.5}{}}
+\citation{chazal_automatic_2004}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces \textbf  {Secondary outcome.} RAC vs.\ natural-distribution sampling, PC-WavKAN, 20 paired seeds, DS2. Augmentation disabled in both arms. $\Delta $ and $d$ are RAC minus no-RAC; $p$ is Holm-adjusted across the five metrics.}}{9}{table.6}\protected@file@percent }
+\newlabel{tab:curriculum_stats}{{VI}{9}{\textbf {Secondary outcome.} RAC vs.\ natural-distribution sampling, PC-WavKAN, 20 paired seeds, DS2. Augmentation disabled in both arms. $\Delta $ and $d$ are RAC minus no-RAC; $p$ is Holm-adjusted across the five metrics}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-D}Effect of the Rarity-Anchored Curriculum}{9}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:results_curriculum}{{V-D}{9}{Effect of the Rarity-Anchored Curriculum}{subsection.5.4}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Leave-one-out interval ablation, 20 seeds, DS2, exploratory. Baseline S-recall with the full vector: $0.1225\pm 0.0524$. $p$ is Holm-adjusted across the five positions.}}{9}{table.7}\protected@file@percent }
 \newlabel{tab:rr_ablation}{{VII}{9}{Leave-one-out interval ablation, 20 seeds, DS2, exploratory. Baseline S-recall with the full vector: $0.1225\pm 0.0524$. $p$ is Holm-adjusted across the five positions}{table.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-E}Retention of the Physiological Prior}{9}{subsection.5.5}\protected@file@percent }
-\newlabel{sec:results_ppr}{{V-E}{9}{Retention of the Physiological Prior}{subsection.5.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Physiological Prior Retention \eqref  {eq:ppr}, mean$\pm $std over 20 models, with the mean absolute per-edge parameter deviation from the prior. The untrained PCWI row is the null: PCWI initialises at the prior (up to its symmetry-breaking jitter), so it scores near-maximally by construction and PPR can only decrease with training.}}{9}{table.8}\protected@file@percent }
-\newlabel{tab:ppr}{{VIII}{9}{Physiological Prior Retention \eqref {eq:ppr}, mean$\pm $std over 20 models, with the mean absolute per-edge parameter deviation from the prior. The untrained PCWI row is the null: PCWI initialises at the prior (up to its symmetry-breaking jitter), so it scores near-maximally by construction and PPR can only decrease with training}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-E}Dependence on Rhythm Features and Non-Causality}{9}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:results_rr}{{V-E}{9}{Dependence on Rhythm Features and Non-Causality}{subsection.5.5}{}}
+\citation{heap_automated_2025}
+\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Physiological Prior Retention \eqref  {eq:ppr}, mean$\pm $std over 20 models, with the mean absolute per-edge parameter deviation from the prior. The untrained PCWI row is the null: PCWI initialises at the prior (up to its symmetry-breaking jitter), so it scores near-maximally by construction and PPR can only decrease with training.}}{10}{table.8}\protected@file@percent }
+\newlabel{tab:ppr}{{VIII}{10}{Physiological Prior Retention \eqref {eq:ppr}, mean$\pm $std over 20 models, with the mean absolute per-edge parameter deviation from the prior. The untrained PCWI row is the null: PCWI initialises at the prior (up to its symmetry-breaking jitter), so it scores near-maximally by construction and PPR can only decrease with training}{table.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-F}Retention of the Physiological Prior}{10}{subsection.5.6}\protected@file@percent }
+\newlabel{sec:results_ppr}{{V-F}{10}{Retention of the Physiological Prior}{subsection.5.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {Trained wavelet bases per channel group}, against the PCWI prior each group was initialised from (dashed). Curves are read from one checkpoint (seed 42), so annotated retention differs slightly from Table~\ref {tab:ppr}'s 20-seed means. Parameters move from initialisation while the group structure of \eqref  {eq:pcwi} persists.}}{10}{figure.4}\protected@file@percent }
+\newlabel{fig:wavelets}{{4}{10}{\textbf {Trained wavelet bases per channel group}, against the PCWI prior each group was initialised from (dashed). Curves are read from one checkpoint (seed 42), so annotated retention differs slightly from Table~\ref {tab:ppr}'s 20-seed means. Parameters move from initialisation while the group structure of \eqref {eq:pcwi} persists}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-G}Cross-Dataset Generalisation}{10}{subsection.5.7}\protected@file@percent }
+\newlabel{sec:results_crossdata}{{V-G}{10}{Cross-Dataset Generalisation}{subsection.5.7}{}}
 \citation{bae_handling_2025}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces \textbf  {Trained wavelet bases per channel group}, against the PCWI prior each group was initialised from (dashed). Curves are read from one checkpoint (seed 42), so annotated retention differs slightly from Table~\ref {tab:ppr}'s 20-seed means. Parameters move from initialisation while the group structure of \eqref  {eq:pcwi} persists.}}{10}{figure.5}\protected@file@percent }
-\newlabel{fig:wavelets}{{5}{10}{\textbf {Trained wavelet bases per channel group}, against the PCWI prior each group was initialised from (dashed). Curves are read from one checkpoint (seed 42), so annotated retention differs slightly from Table~\ref {tab:ppr}'s 20-seed means. Parameters move from initialisation while the group structure of \eqref {eq:pcwi} persists}{figure.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-F}Cross-Dataset Generalisation}{10}{subsection.5.6}\protected@file@percent }
-\newlabel{sec:results_crossdata}{{V-F}{10}{Cross-Dataset Generalisation}{subsection.5.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-G}Few-Shot Domain Adaptation}{10}{subsection.5.7}\protected@file@percent }
-\newlabel{sec:results_fewshot}{{V-G}{10}{Few-Shot Domain Adaptation}{subsection.5.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-H}Augmentation}{10}{subsection.5.8}\protected@file@percent }
-\newlabel{sec:results_augmentation}{{V-H}{10}{Augmentation}{subsection.5.8}{}}
 \citation{zhao_mak-net_2025}
 \@writefile{lot}{\contentsline {table}{\numberline {IX}{\ignorespaces Zero-shot cross-dataset evaluation, 20 seeds per model. Significance is PC-WavKAN vs.\ each baseline on Macro-F1, Holm-adjusted within each dataset; positive $d$ favours PC-WavKAN. Boldface marks the numerically highest value per column, which for Macro-F1 on INCART is not a significant win over B-Spline KAN.}}{11}{table.9}\protected@file@percent }
 \newlabel{tab:multidataset}{{IX}{11}{Zero-shot cross-dataset evaluation, 20 seeds per model. Significance is PC-WavKAN vs.\ each baseline on Macro-F1, Holm-adjusted within each dataset; positive $d$ favours PC-WavKAN. Boldface marks the numerically highest value per column, which for Macro-F1 on INCART is not a significant win over B-Spline KAN}{table.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {X}{\ignorespaces Few-shot adaptation, PC-WavKAN, 20 seeds per cell, exploratory. Full curves for $k=10,50,100$ are in the released results; $^{*}$ marks Holm-adjusted $p<0.05$ within each dataset's four-metric family.}}{11}{table.10}\protected@file@percent }
-\newlabel{tab:fewshot}{{X}{11}{Few-shot adaptation, PC-WavKAN, 20 seeds per cell, exploratory. Full curves for $k=10,50,100$ are in the released results; $^{*}$ marks Holm-adjusted $p<0.05$ within each dataset's four-metric family}{table.10}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {XI}{\ignorespaces Augmentation strategies, PC-WavKAN, 20 seeds, DS2, isolated recipe (60 epochs, no RAC), exploratory. $p$ is Holm-adjusted across the four augmented arms.}}{11}{table.11}\protected@file@percent }
-\newlabel{tab:augmentation}{{XI}{11}{Augmentation strategies, PC-WavKAN, 20 seeds, DS2, isolated recipe (60 epochs, no RAC), exploratory. $p$ is Holm-adjusted across the four augmented arms}{table.11}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {XII}{\ignorespaces Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm $ is the spread across runs.}}{11}{table.12}\protected@file@percent }
-\newlabel{tab:deployment}{{XII}{11}{Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm $ is the spread across runs}{table.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {V-I}Efficiency and Quantisation}{11}{subsection.5.9}\protected@file@percent }
-\newlabel{sec:results_deploy}{{V-I}{11}{Efficiency and Quantisation}{subsection.5.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-H}Few-Shot Domain Adaptation}{11}{subsection.5.8}\protected@file@percent }
+\newlabel{sec:results_fewshot}{{V-H}{11}{Few-Shot Domain Adaptation}{subsection.5.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-I}Augmentation}{11}{subsection.5.9}\protected@file@percent }
+\newlabel{sec:results_augmentation}{{V-I}{11}{Augmentation}{subsection.5.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {X}{\ignorespaces Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm $ is the spread across runs.}}{11}{table.10}\protected@file@percent }
+\newlabel{tab:deployment}{{X}{11}{Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm $ is the spread across runs}{table.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {V-J}Efficiency and Quantisation}{11}{subsection.5.10}\protected@file@percent }
+\newlabel{sec:results_deploy}{{V-J}{11}{Efficiency and Quantisation}{subsection.5.10}{}}
 \citation{silva_systematic_2025}
 \citation{addison_wavelet_2005}
 \@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{12}{section.6}\protected@file@percent }
@@ -189,7 +187,5 @@
 \bibcite{wilcoxon_individual_1945}{27}
 \bibcite{holm_simple_1979}{28}
 \bibcite{cohen_statistical_1988}{29}
-\@writefile{toc}{\contentsline {section}{Biographies}{14}{biography.0}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{Venkateramanan Manivannan}{14}{biography.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{Ramanathan Lakshmanan}{14}{biography.2}\protected@file@percent }
+\bibcite{heap_automated_2025}{30}
 \gdef \@abspage@last{14}

@@ -119,8 +119,8 @@ def generate_workflow_figure(output_path):
 
     # ── 2. Morphology branch: WavKAN -> BiGRU -> PWAM ───────────────────
     draw_box(ax, (3.75, TOP_Y), 2.05, 0.8, "WavKAN Backbone\n(PCWI-init., Mexican Hat)", "morph", fontsize=9.5)
-    draw_box(ax, (6.15, TOP_Y), 1.85, 0.8, "BiGRU\n(Temporal Context)", "morph", fontsize=9.5)
-    draw_box(ax, (8.55, TOP_Y), 2.0, 0.8, "PWAM\n(P-Wave Attention)", "morph", fontsize=9.5)
+    draw_box(ax, (6.15, TOP_Y), 1.85, 0.8, "BiGRU\n(single timestep)", "morph", fontsize=9.5)
+    draw_box(ax, (8.55, TOP_Y), 2.0, 0.8, "Gated P-Region\nFusion", "morph", fontsize=9.5)
 
     draw_arrow(ax, (2.23, TOP_Y), (2.72, TOP_Y))
     draw_arrow(ax, (4.78, TOP_Y), (5.22, TOP_Y))

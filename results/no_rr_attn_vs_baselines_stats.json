@@ -1,0 +1,64 @@
+{
+  "no_rr_attn_macro_f1": {
+    "mean": 0.35688228334491373,
+    "n": 20
+  },
+  "comparisons": {
+    "resnet1d": {
+      "metric": "macro_f1",
+      "mean_a": 0.3568822833449138,
+      "std_a": 0.018607631520868275,
+      "mean_b": 0.3511585466186532,
+      "std_b": 0.01869690419421371,
+      "mean_diff": 0.005723736726260603,
+      "wilcoxon_stat": 89.0,
+      "p_value": 0.5705966949462891,
+      "cohens_d": 0.19344014728547645,
+      "significant": false,
+      "effect_size": "negligible",
+      "holm_p": 1.0
+    },
+    "transformer": {
+      "metric": "macro_f1",
+      "mean_a": 0.3568822833449138,
+      "std_a": 0.018607631520868275,
+      "mean_b": 0.35255294013322935,
+      "std_b": 0.03990948613088248,
+      "mean_diff": 0.004329343211684311,
+      "wilcoxon_stat": 100.0,
+      "p_value": 0.8694877624511719,
+      "cohens_d": 0.11752525169472915,
+      "significant": false,
+      "effect_size": "negligible",
+      "holm_p": 1.0
+    },
+    "cnn_focal": {
+      "metric": "macro_f1",
+      "mean_a": 0.3568822833449138,
+      "std_a": 0.018607631520868275,
+      "mean_b": 0.36218522396864394,
+      "std_b": 0.015020885288450643,
+      "mean_diff": -0.005302940623730201,
+      "wilcoxon_stat": 84.0,
+      "p_value": 0.4523754119873047,
+      "cohens_d": -0.22121848918104492,
+      "significant": false,
+      "effect_size": "small",
+      "holm_p": 1.0
+    },
+    "bspline_kan": {
+      "metric": "macro_f1",
+      "mean_a": 0.3568822833449138,
+      "std_a": 0.018607631520868275,
+      "mean_b": 0.37073618875649844,
+      "std_b": 0.023624598745409855,
+      "mean_diff": -0.013853905411584728,
+      "wilcoxon_stat": 59.0,
+      "p_value": 0.08969497680664062,
+      "cohens_d": -0.4273474618597339,
+      "significant": false,
+      "effect_size": "small",
+      "holm_p": 0.3587799072265625
+    }
+  }
+}

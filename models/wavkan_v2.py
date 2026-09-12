@@ -120,11 +120,13 @@ class WavKAN_v2(nn.Module):
         rr_len:       int   = 5,
         gru_hidden:   int   = 32,
         dropout:      float = 0.2,
+        prior_assignment: str = "physiological",
     ):
         super().__init__()
         self.use_pwam      = use_pwam
         self.wavelet_type  = wavelet_type
         self.use_pcwi      = use_pcwi
+        self.prior_assignment = prior_assignment
 
         # ── 1. WavKAN Backbone ────────────────────────────────────────────────
         self.kan = PCWIWavKANLinear(
@@ -133,6 +135,7 @@ class WavKAN_v2(nn.Module):
             wavelet_type = wavelet_type,
             use_pcwi     = use_pcwi,
             residual_w   = 0.1,
+            prior_assignment = prior_assignment,
         )
         self.kan_norm = nn.LayerNorm(64)
         self.kan_drop = nn.Dropout(dropout)

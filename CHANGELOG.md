@@ -872,3 +872,105 @@ who has to run the job. Fixed, plus the transport path documented end to end.
   `CONFIG=` would have been silently ignored when resolving the output path.
 
 No result, statistic or manuscript number is affected by any of the above.
+
+## 2026-09-11/12 — Pre-submission execution pass: all audit blockers cleared, the physiology claim downgraded to what was tested, and the isolating control built (`AUDIT_FINDINGS.md` C24, H49–H57)
+
+Manuscript: **14 pages** (JBHI limit 14), **abstract 238 words** (limit 250),
+**0 LaTeX errors, 0 undefined references, 0 undefined citations**,
+**322/322 reported numbers verified** (was 285), **100 tests pass** (was 85).
+
+### The scientific decision: the paper's central adjective is now bounded by its evidence
+
+PCWI had only ever been ablated against isotropic initialisation, which cannot
+distinguish morphological prior information from a generic benefit of
+three-group multi-scale initialisation. "Physiology-constrained" was therefore
+claiming more than the design isolates. Since the machine has no data and no
+CUDA, the control could not be run here, so the **claim was downgraded rather
+than defended**: the Abstract, Introduction contribution 1, Method, Results,
+Limitations item 7 and the Conclusion now say that structured,
+physiologically-derived initialisation helps and that the morphological
+assignment is *not* shown to be the operative ingredient.
+
+The control itself was **built and regression-tested**: `--prior-assignment
+{physiological,swap_pt,cyclic}` keeps the channel groups, the exact prior
+values and every training detail, permuting only which group receives which
+prior. `swap_pt` is primary because P and T are both 16-channel blocks, so block
+size is exactly preserved. It is an `essential` arm in
+`configs/final_component_ablation.yaml`, so `bash run_remote_experiment.sh` now
+runs it alongside the pending PCWI-on-adopted ablation. Nine tests pin the
+semantics, including that the controls do not change the parameter count and do
+not silently equal the default (either would yield a false null).
+
+### New evidence that weakened the paper, reported as such
+
+`src/per_class_metrics.py` (new) recomputes precision/recall/F1 for all five
+models across 20 seeds from stored predictions — no retraining. Cross-check: the
+per-class F1 values average to each model's published Macro-F1 to three
+decimals. What it exposed:
+
+- S-recall 0.198 is obtained at precision **0.175**.
+- On S-F1, PC-WavKAN significantly beats ResNet1D (d=+0.77) and CNN+Focal
+  (d=+0.85), ties the Transformer, and is significantly **worse** than B-Spline
+  KAN (d=-0.66, Holm p=0.027). Recall-only reporting had concealed this.
+- **Q scores exactly zero for all five models**, capping a five-class macro
+  average at 0.8 by construction.
+- Against de Chazal et al. 2004 (SVEB sensitivity 0.759 at PPV 0.385) the model
+  is lower on *both* axes, so no operating-point argument rescues the gap. The
+  paper now states this instead of relying on a general "not comparable" policy.
+
+### Defects that reached the compiled PDF
+
+A **lone carriage return** (0x0D, not CRLF) between `\S` and `ef{sec:results}`
+split `\ref`, so the PDF printed `S-efsec:results` in the body of Section II
+while LaTeX reported zero errors and every reference "resolved". Found only by
+reading text extracted from the rendered PDF. Fixed at byte level;
+`tests/test_manuscript_integrity.py` now guards the class and was verified to
+fail against the reintroduced defect.
+
+The **"BiGRU (Temporal Context)"** receives a length-1 sequence: one step per
+direction from a zero state, output exactly `concat(h_fwd, h_bwd)`. It
+integrates no temporal context and costs 12.3% of the parameters. The Method now
+says so and Figure 1 reads "BiGRU (single timestep)". Figure 1's **"PWAM
+(P-Wave Attention)"** likewise contradicted the Method's own argument that the
+block is not attention; relabelled "Gated P-Region Fusion". Both figures
+regenerated from code.
+
+### Corrections to reported claims
+
+- Abstract: "six alternatives, Holm p <= 0.0008" was a p-value borrowed from a
+  different comparison family. Recomputed: **seven** alternatives, all beaten,
+  weakest Holm **p = 0.0032**. Now registered with the verifier, which had
+  reported "0 mismatched" only because the claim was never registered.
+- Statistical power: "20 seeds detect a medium effect at conventional power" is
+  false (0.565 power at d_z=0.50; 80% needs d_z>=0.66). Replaced with the stated
+  sensitivity.
+- Rigas attribution: the code uses `kaiming_uniform_`, PyTorch's default, not
+  the cited scheme. Text corrected; Rigas cited as an unevaluated alternative.
+- Heap et al. (arXiv:2501.17727) added: randomised interpretability nulls are
+  established practice, so supplying one is not itself a contribution.
+- "recipe-matched" -> "protocol-matched"; PPR prose 0.698 -> 0.670; F-recall
+  "approx 0.006 for all configurations" -> the real 0.0003-0.0061 range; "do not
+  approach" -> "markedly above"; PCWI scope carried into the Conclusion.
+
+### Reproducibility
+
+The Code Availability statement was false: zero per-seed result files were
+tracked, and the 229 tracked checkpoints belonged to superseded experiments.
+**714 artifacts (13.4 MB)** are now published — every per-seed test metric,
+training history and confusion matrix, the derived per-class counts, and the 20
+adopted-configuration checkpoints. Raw prediction arrays (215 MB) are excluded
+and the paper says so; the published confusion matrices and per-seed TP/FP/FN
+reproduce every per-class number. `results/README.md` (new) separates Current
+from Superseded without deleting anything, and warns that
+`was_multiseed_summary.json` holds the superseded group-mean metric, not PPR.
+The 20 seed values are now listed in the paper.
+
+### Page budget
+
+The additions cost ~2 pages against a hard 14. Recovered without dropping a
+result: four floats converted to prose retaining every value (split protocol,
+few-shot, augmentation, and the superseded-configuration convergence figure
+removed outright), Discussion compressed where it restated Results, two tall
+figures scaled, biographies placed behind an `\ifbios` switch (default off for
+review, as IEEE requests them at camera-ready), and the title's `\vspace`
+reduced from 15mm to 8mm.

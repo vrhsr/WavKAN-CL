@@ -1,0 +1,397 @@
+{
+  "phase": "0-validation-backfill",
+  "ds2_test_set_accessed": false,
+  "wavkan_v2_family": {
+    "wavkan_v2_curriculum": {
+      "description": "mexican_hat, PCWI+PWAM+RR-attn, curriculum (the proposed/default full config)",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.41453214196160093,
+        "std": 0.01958258156141558,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8787321063394684,
+        "std": 0.038956861390480636,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.30491266375545856,
+        "std": 0.04552951492049229,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "wavkan_v2_baseline": {
+      "description": "mexican_hat, PCWI+PWAM+RR-attn, no-curriculum (fair-baseline arm)",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.4053281099967349,
+        "std": 0.016854678702509642,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8635991820040901,
+        "std": 0.04101149255871875,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.2180131004366812,
+        "std": 0.04702326375675806,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_no_pcwi": {
+      "description": "mexican_hat, PWAM+RR-attn only (PCWI off)",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.39319467504658856,
+        "std": 0.012566219725054385,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8675869120654399,
+        "std": 0.039574573814810235,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.24377729257641922,
+        "std": 0.042547157114840785,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_no_pwam": {
+      "description": "mexican_hat, PCWI+RR-attn only (PWAM off)",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.3976310322552041,
+        "std": 0.0179347986252059,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8755964553510566,
+        "std": 0.0312507478109614,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.3116812227074236,
+        "std": 0.059614884228189176,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_no_rr_attn": {
+      "description": "mexican_hat, PCWI+PWAM only (RR self-attention off)",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.43974220730501673,
+        "std": 0.013687787024369909,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8843899113837763,
+        "std": 0.027888609236105574,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.35229257641921397,
+        "std": 0.06510166853358867,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_wavelet_bspline": {
+      "description": "b_spline wavelet, PCWI+PWAM+RR-attn on",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.41161047314973337,
+        "std": 0.014733171072551853,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8633265167007498,
+        "std": 0.04714848487324499,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.3255458515283842,
+        "std": 0.06099836488528306,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_wavelet_dog": {
+      "description": "dog wavelet, PCWI+PWAM+RR-attn on",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.4041278811231591,
+        "std": 0.01196126924689002,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8852079072937968,
+        "std": 0.035538394828285844,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.25,
+        "std": 0.051212394305340664,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    },
+    "ablation_wavelet_morlet": {
+      "description": "morlet wavelet, PCWI+PWAM+RR-attn on",
+      "source": "training_history.json (val_macro_f1-selected best epoch per seed)",
+      "n_seeds": 20,
+      "seeds": [
+        "seed_1001",
+        "seed_101",
+        "seed_11",
+        "seed_1234",
+        "seed_13",
+        "seed_1998",
+        "seed_2024",
+        "seed_2026",
+        "seed_27182",
+        "seed_31415",
+        "seed_333",
+        "seed_42",
+        "seed_5050",
+        "seed_555",
+        "seed_7",
+        "seed_777",
+        "seed_8080",
+        "seed_888",
+        "seed_99",
+        "seed_9999"
+      ],
+      "macro_f1": {
+        "mean": 0.4219477056527928,
+        "std": 0.018228137833426507,
+        "n": 20
+      },
+      "v_recall": {
+        "mean": 0.8739263803680982,
+        "std": 0.03855616283619504,
+        "n": 20
+      },
+      "s_recall": {
+        "mean": 0.4034934497816594,
+        "std": 0.06589257752470674,
+        "n": 20
+      },
+      "f_recall": "unavailable -- not logged per-epoch in training_history.json; would require a forward pass over X_val.npy, which requires data/processed_rr_history/ (absent from this checkout)"
+    }
+  },
+  "external_baselines": {
+    "resnet1d": {
+      "status": "blocked_no_data",
+      "reason": "E:\\study-buddy\\WavKAN-CL-main\\data\\processed_rr_history does not contain X_val.npy/X_rr_val.npy/y_val.npy in this checkout (data/ is gitignored per CLAUDE.md sec 2/9). No number is reported -- per project rule 1, never present placeholder data as measured. Re-run this script unmodified once the data directory exists (e.g. on the GPU box).",
+      "n_seed_checkpoints_found": 20,
+      "macro_f1": null,
+      "v_recall": null,
+      "s_recall": null,
+      "f_recall": null,
+      "n_recall": null
+    },
+    "transformer": {
+      "status": "blocked_no_data",
+      "reason": "E:\\study-buddy\\WavKAN-CL-main\\data\\processed_rr_history does not contain X_val.npy/X_rr_val.npy/y_val.npy in this checkout (data/ is gitignored per CLAUDE.md sec 2/9). No number is reported -- per project rule 1, never present placeholder data as measured. Re-run this script unmodified once the data directory exists (e.g. on the GPU box).",
+      "n_seed_checkpoints_found": 20,
+      "macro_f1": null,
+      "v_recall": null,
+      "s_recall": null,
+      "f_recall": null,
+      "n_recall": null
+    },
+    "cnn_focal": {
+      "status": "blocked_no_data",
+      "reason": "E:\\study-buddy\\WavKAN-CL-main\\data\\processed_rr_history does not contain X_val.npy/X_rr_val.npy/y_val.npy in this checkout (data/ is gitignored per CLAUDE.md sec 2/9). No number is reported -- per project rule 1, never present placeholder data as measured. Re-run this script unmodified once the data directory exists (e.g. on the GPU box).",
+      "n_seed_checkpoints_found": 20,
+      "macro_f1": null,
+      "v_recall": null,
+      "s_recall": null,
+      "f_recall": null,
+      "n_recall": null
+    },
+    "bspline_kan": {
+      "status": "blocked_no_data",
+      "reason": "E:\\study-buddy\\WavKAN-CL-main\\data\\processed_rr_history does not contain X_val.npy/X_rr_val.npy/y_val.npy in this checkout (data/ is gitignored per CLAUDE.md sec 2/9). No number is reported -- per project rule 1, never present placeholder data as measured. Re-run this script unmodified once the data directory exists (e.g. on the GPU box).",
+      "n_seed_checkpoints_found": 20,
+      "macro_f1": null,
+      "v_recall": null,
+      "s_recall": null,
+      "f_recall": null,
+      "n_recall": null
+    }
+  },
+  "strongest_validation_baseline": {
+    "among_wavkan_v2_family": "ablation_no_rr_attn",
+    "among_all_candidates": "ablation_no_rr_attn",
+    "caveat": "External baselines (ResNet1D/Transformer/CNN+Focal/B-Spline-KAN standalone) could not be evaluated on DS1 validation in this checkout -- data/processed_rr_history/ is absent. The DS2-test-set ranking previously reported (external baselines 0.351-0.371 > WavKAN-v2 0.323-0.357) must NOT be assumed to hold on validation data until Part B is actually run where the data exists."
+  }
+}

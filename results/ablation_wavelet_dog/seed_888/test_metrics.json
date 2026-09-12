@@ -1,0 +1,16 @@
+{
+  "seed": 888,
+  "epochs_run": 23,
+  "macro_f1": 0.3272763054668445,
+  "v_recall": 0.915527950310559,
+  "s_recall": 0.09907457811649428,
+  "f_recall": 0.002577319587628866,
+  "n_recall": 0.8869822752758184,
+  "model_params": 154325,
+  "config": {
+    "use_pcwi": true,
+    "use_pwam": true,
+    "use_rr_attn": true,
+    "wavelet_type": "dog"
+  }
+}

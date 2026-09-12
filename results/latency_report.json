@@ -1,0 +1,19 @@
+{
+    "device": "cpu",
+    "model_path": "results/wavkan_v2_curriculum/seed_42/best_model.pth",
+    "n_parameters": 154325,
+    "size_kb": 616.33,
+    "latency": {
+        "mean_ms": 2.8022405998635804,
+        "median_ms": 2.682750011445023,
+        "std_ms": 1.8901494022572183,
+        "p95_ms": 3.9140400011092424,
+        "min_ms": 1.6196999931707978,
+        "max_ms": 58.61090001417324
+    },
+    "throughput_bps": 2576.1,
+    "batch_size": 64,
+    "macs_info": {
+        "note": "Install thop for MACs: pip install thop"
+    }
+}

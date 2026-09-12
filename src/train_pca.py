@@ -252,6 +252,7 @@ def train_pca(
     data_dir: str   = "data/processed_rr_history",
     output_dir: str = "results/pca_model",
     use_pcwi: bool  = True,
+    prior_assignment: str = "physiological",
     use_pwam: bool  = True,
     use_rr_attn: bool = True,
     use_augment: bool = True,
@@ -283,6 +284,9 @@ def train_pca(
     print(f"\n{'='*60}")
     print(f"{'Progressive Curriculum Anchoring' if use_curriculum else 'Fair Baseline (no curriculum)'} | seed={seed} | {DEVICE}")
     print(f"  PCWI={use_pcwi}  PWAM={use_pwam}  RR-Attn={use_rr_attn}")
+    if prior_assignment != "physiological":
+        print(f"  !! PRIOR-ASSIGNMENT CONTROL: {prior_assignment} "
+              f"(morphology-to-group mapping permuted)")
     print(f"  Wavelet={wavelet_type}  Epochs={epochs}" + (f"  Warmup={warmup:.0%}" if use_curriculum else "  (natural sampling, weighted CE, all epochs)"))
     print(f"{'='*60}\n")
 
@@ -317,6 +321,7 @@ def train_pca(
         use_pcwi     = use_pcwi,
         use_pwam     = use_pwam,
         use_rr_attn  = use_rr_attn,
+        prior_assignment = prior_assignment,
     ).to(DEVICE)
     print(f"Model parameters: {model.count_parameters():,}")
 
@@ -504,6 +509,7 @@ def train_pca(
             "wavelet_type": wavelet_type,
             "use_augment": use_augment,
             "use_curriculum": use_curriculum,
+            "prior_assignment": prior_assignment,
         },
     }
 
@@ -558,6 +564,13 @@ if __name__ == "__main__":
     parser.add_argument("--wavelet",     type=str,   default="mexican_hat",
                         choices=["mexican_hat", "morlet", "dog", "b_spline"])
     parser.add_argument("--no-pcwi",       action="store_true")
+    parser.add_argument("--prior-assignment", default="physiological",
+                        choices=["physiological", "swap_pt", "cyclic"],
+                        help="permuted-prior control: keeps the channel groups "
+                             "and the exact prior values, changing only which "
+                             "group receives which prior. Isolates whether the "
+                             "benefit of PCWI is morphological or merely "
+                             "structural multi-scale heterogeneity.")
     parser.add_argument("--no-pwam",       action="store_true")
     parser.add_argument("--no-rr-attn",    action="store_true")
     parser.add_argument("--no-augment",    action="store_true")
@@ -582,6 +595,7 @@ if __name__ == "__main__":
         output_dir     = args.output_dir,
         wavelet_type   = args.wavelet,
         use_pcwi       = not args.no_pcwi,
+        prior_assignment = args.prior_assignment,
         use_pwam       = not args.no_pwam,
         use_rr_attn    = not args.no_rr_attn,
         use_augment    = not args.no_augment,
