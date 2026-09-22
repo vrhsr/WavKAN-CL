@@ -239,9 +239,26 @@ def check_environment(cfg) -> dict:
     say("  packages  : numpy, scipy, scikit-learn present")
 
     info["git"] = git_revision()
+    if not info["git"]["commit"]:
+        die(EXIT_PREFLIGHT,
+            "could not determine the git commit checked out at this path "
+            f"({REPO}).\n"
+            "       This run compares against results/ablation_no_rr_attn, and "
+            "without a known\n"
+            "       commit there is no way to confirm this checkout's "
+            "src/process_data.py / src/split.py\n"
+            "       is the same code that produced that reference data -- which "
+            "is exactly the class of\n"
+            "       mismatch preflight 2 (data integrity) exists to catch. Likely "
+            "causes:\n"
+            "         1. `git` is not installed or not on PATH here.\n"
+            "         2. This path is not a git checkout (e.g. code was rsync'd "
+            "over, not cloned).\n"
+            "       Fix: `cd " + str(REPO) + " && git status` and confirm it "
+            "reports a branch/commit;\n"
+            "       if not, re-clone rather than proceeding blind.")
     say(f"  git       : {info['git']['describe'] or 'n/a'} "
-        f"(branch {info['git']['branch'] or '?'}"
-        f"{', DIRTY' if info['git']['dirty'] else ''})")
+        f"(branch {info['git']['branch'] or '?'})")
     if info["git"]["dirty"]:
         say("  NOTE: working tree is dirty. The exact code state is recorded in "
             "provenance.json, but a clean checkout is preferable for a published run.")
