@@ -1026,3 +1026,7 @@ So the published models used exactly the split the paper's prose states; **the p
 ### Required next
 
 One GPU job: `bash run_remote_experiment.sh` on **unmodified** data (expected train 40,177 · val 10,815 · test 49,684). Preflight 2b will refuse to train otherwise.
+
+### 2026-09-28 (later) — resume guard
+
+On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00000 over the 20 published checkpoints), then preflight 5 stopped on the old invalid run still at `results/final_component_ablation/` — and its message suggested `--allow-resume`, which would have counted the 60 wrong-split seeds as finished and trained only the replicate. The runner now writes `.run_fingerprint.json` (data sha256, seeds, arm flags) before the first seed; `--allow-resume` is refused unless it matches (`resume_verdict()`), and for a run without a fingerprint the abort message says to move it aside and not to resume. Tested in `tests/test_comparability_gates.py` (5 new tests, including the exact box state).

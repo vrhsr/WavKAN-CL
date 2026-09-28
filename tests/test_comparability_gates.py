@@ -192,3 +192,49 @@ def test_trainer_imports_with_the_runner_tee_as_stdout(tmp_path):
                        timeout=300, env=env, cwd=str(REPO))
     assert r.returncode == 0, r.stderr[-2000:]
     assert "AttributeError" not in r.stderr
+
+
+# --------------------------------------------------------------- resume guard
+_FP = {"data_sha256": {"train": {"X": "a"}, "val": {"X": "b"}, "test": {"X": "c"}},
+       "seeds": [42, 101], "arms": {"no_pcwi": ["--no-pcwi", "--no-rr-attn"]}}
+
+
+def test_resume_refused_onto_a_run_without_fingerprint():
+    """The 2026-09-28 box state: the invalid run's seeds were complete and it
+    had no fingerprint. --allow-resume would have counted them as done."""
+    import run_remote_experiment as R
+    assert "predates" in R.resume_verdict(None, _FP)
+
+
+def test_resume_refused_on_different_data():
+    import run_remote_experiment as R
+    other = dict(_FP, data_sha256={"train": {"X": "zzz"}, "val": {"X": "b"}, "test": {"X": "c"}})
+    assert "different data" in R.resume_verdict(other, _FP)
+
+
+def test_resume_refused_on_different_seeds_or_flags():
+    import run_remote_experiment as R
+    assert R.resume_verdict(dict(_FP, seeds=[42]), _FP)
+    assert R.resume_verdict(dict(_FP, arms={"no_pcwi": ["--no-pcwi"]}), _FP)
+
+
+def test_resume_allowed_for_the_same_job():
+    import run_remote_experiment as R
+    assert R.resume_verdict(dict(_FP), _FP) == ""
+
+
+def test_output_gate_does_not_suggest_resume_for_a_foreign_run(tmp_path, monkeypatch):
+    import run_remote_experiment as R
+    monkeypatch.setattr(R, "REPO", tmp_path)
+    msgs = []
+    monkeypatch.setattr(R, "say", lambda m="": msgs.append(m))
+    d = tmp_path / "results" / "x" / "no_pcwi" / "seed_42"
+    d.mkdir(parents=True)
+    (d / "test_metrics.json").write_text("{}")
+    cfg = {"experiment": {"output_root": "results/x"}, "seeds": [42], "arms": []}
+    with pytest.raises(SystemExit):
+        R.check_output(cfg, allow_resume=False)
+    text = "\n".join(msgs)
+    assert "Do NOT use --allow-resume" in text
+    with pytest.raises(SystemExit):
+        R.check_output(cfg, allow_resume=True, data={s: {"sha256": {}} for s in ("train", "val", "test")})

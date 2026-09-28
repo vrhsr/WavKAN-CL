@@ -574,18 +574,64 @@ def check_reference_arm(cfg) -> dict:
     return {"n_seeds": len(seeds), "dir": ref["dir"]}
 
 
-def check_output(cfg, allow_resume: bool) -> Path:
+FINGERPRINT = ".run_fingerprint.json"
+
+
+def run_fingerprint(cfg, data) -> dict:
+    """What a resumed seed must share with the seeds it is combined with: the
+    exact data arrays (sha256), the seed list and the arms."""
+    return {"data_sha256": {s: data[s]["sha256"] for s in ("train", "val", "test")},
+            "seeds": list(cfg["seeds"]),
+            "arms": {a["name"]: a["flags"] for a in selected_arms(cfg)}}
+
+
+def resume_verdict(existing, current) -> str:
+    """Pure rule (unit-tested). Returns '' if resuming is safe, else the reason.
+
+    AUDIT_FINDINGS.md H49 follow-up: on 2026-09-28 this gate told the operator
+    to pass --allow-resume on top of the invalid 2026-09-26 run. Resuming there
+    would have counted its 60 wrong-split seeds as finished and trained only
+    the replicate, silently mixing two datasets in one results.json.
+    """
+    if existing is None:
+        return ("the existing run has no data fingerprint: it predates the "
+                "data-equivalence gate, so its seeds are not known to share this "
+                "machine's data. It cannot be resumed; move it aside.")
+    if existing.get("data_sha256") != current["data_sha256"]:
+        return ("the existing run was trained on different data arrays "
+                "(sha256 mismatch). Its seeds cannot be combined with new ones.")
+    if existing.get("seeds") != current["seeds"]:
+        return "the existing run used a different seed list."
+    for arm, flags in existing.get("arms", {}).items():
+        if arm in current["arms"] and current["arms"][arm] != flags:
+            return f"arm '{arm}' was run with different flags ({flags})."
+    return ""
+
+
+def check_output(cfg, allow_resume: bool, data=None) -> Path:
     head("PREFLIGHT 5/6 -- output directory")
     root = REPO / cfg["experiment"]["output_root"]
     if root.exists():
         done = sorted(p.name for p in root.glob("*/seed_*/test_metrics.json"))
+        fp_path = root / FINGERPRINT
+        existing = json.load(open(fp_path, encoding="utf-8")) if fp_path.exists() else None
         if done and not allow_resume:
+            hint = ("pass --allow-resume to finish the remaining seeds of this same job"
+                    if existing is not None else
+                    "this run predates the data-equivalence gate, so it can only be moved "
+                    "aside -- e.g.\n         mv " + str(root) + " " + str(root) +
+                    "_INVALID_pre_h16_split\n       Do NOT use --allow-resume on it")
             die(EXIT_PREFLIGHT,
                 f"{root} already contains completed runs.\n"
-                f"       Refusing to overwrite an earlier run. Either move it aside, "
-                f"or pass --allow-resume to skip the seeds that already finished.")
+                f"       Refusing to overwrite an earlier run: {hint}.")
         if done:
-            say(f"  {root} exists; --allow-resume given, finished seeds will be skipped")
+            why = resume_verdict(existing, run_fingerprint(cfg, data)) if data else \
+                "no data fingerprint available to compare"
+            if why:
+                die(EXIT_PREFLIGHT, f"--allow-resume refused: {why}\n"
+                                    f"       Move {root} aside and start fresh.")
+            say(f"  {root} exists; --allow-resume given and the data fingerprint "
+                f"matches, finished seeds will be skipped")
     root.mkdir(parents=True, exist_ok=True)
     probe = root / ".write_probe"
     try:
@@ -1184,7 +1230,7 @@ def main():
     data["data_equivalence"] = equiv
     models = check_models(cfg)
     ref = check_reference_arm(cfg)
-    check_output(cfg, args.allow_resume)
+    check_output(cfg, args.allow_resume, data)
     check_trainer(cfg)
 
     say()
@@ -1197,6 +1243,11 @@ def main():
         say("\n--preflight-only given: exiting before training.")
         return 0
 
+    # Record what every seed in this directory is trained on, before the first
+    # one starts, so a later --allow-resume can prove it is continuing THIS job.
+    fp = root / FINGERPRINT
+    if not fp.exists():
+        fp.write_text(json.dumps(run_fingerprint(cfg, data), indent=1), encoding="utf-8")
     failures = train_all(cfg, root)
     post = postflight(cfg, root)
     stats = compute_stats(cfg, root)

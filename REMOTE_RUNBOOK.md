@@ -160,7 +160,13 @@ Long job — use `tmux` or `nohup` if the connection is unreliable:
 tmux new -s pcwi 'bash run_remote_experiment.sh 2>&1 | tee run_console.log'
 ```
 
-If it is interrupted, resume without redoing finished seeds:
+If `results/final_component_ablation/` still holds the invalid 2026-09-26 run, move it aside first — never resume onto it:
+
+```bash
+mv results/final_component_ablation results/final_component_ablation_INVALID_pre_h16_split
+```
+
+If *this* job is interrupted, resume without redoing finished seeds. The runner writes a data fingerprint (`.run_fingerprint.json`) before the first seed and refuses `--allow-resume` unless it matches the current data, seeds and arms:
 
 ```bash
 bash run_remote_experiment.sh --allow-resume
