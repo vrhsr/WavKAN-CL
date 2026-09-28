@@ -974,3 +974,55 @@ removed outright), Discussion compressed where it restated Results, two tall
 figures scaled, biographies placed behind an `\ifbios` switch (default off for
 review, as IEEE requests them at camera-ready), and the title's `\vspace`
 reduced from 15mm to 8mm.
+
+---
+
+## 2026-09-28 — Phase 10 GPU results analysed and found invalid; the cause was a stale class table in the manuscript itself (`AUDIT_FINDINGS.md` H49, H50)
+
+The Phase 10 component ablation came back from the GPU box (`no_pcwi`, `prior_swap_pt`, `no_pwam`; 20/20 seeds each; zero failures; every internal check passed). **None of its numbers is used.** Manuscript: **14 pages, 0 LaTeX errors, 0 undefined references**; no previously reported result changed.
+
+### What the results looked like, and why that was not the answer
+
+Read at face value, PCWI "did not replicate" on the adopted architecture and the permuted-prior control "matched" it — which `integrate_remote_results.py` reported as CLEAN followed by an instruction to rewrite the paper's central claim. Two things argued against taking that at face value. All three *unrelated* interventions produced the *same* shift (F-recall 0.097–0.147 in every new arm vs 0.0003–0.0080 in all ten published arms, including the published no-PCWI and no-PWAM ablations), and validation V-recall sat flat near 0.55 from the first epoch in every new arm while their test V-recall was a normal 0.86. A component cannot do that; a change of data can.
+
+### Establishing the cause by measurement, not inference
+
+Everything below is forward passes and annotation counting — no training.
+
+1. **Exact split counts from source.** Per-record AAMI counts from the PhysioNet `.atr`/`.hea` files, with `process_data.py`'s own selection rule, show the two candidate validation lists produce different, exactly identifiable totals: `split.py`'s 208/209/223/230 → train **40,177**; the pre-H16 215/220/223/230 → train **40,726**. The manuscript's class table and the Phase 10 config both carried 40,726.
+2. **Which split each checkpoint was selected on.** Regenerated MIT-BIH locally with the repo's unmodified `process_data.process_records` under both lists and re-evaluated all 80 checkpoints with the trainer's own `ECGDatasetRR`/`evaluate()`. A checkpoint's logged best-epoch validation score must reproduce on the set it was selected on:
+   - **published arm:** reproduces *exactly* (|Δ| = 0.0) on 208/209/223/230 for 19/20 seeds; misses by 0.013–0.185 on 215/220/223/230;
+   - **Phase 10 arms:** reproduce exactly on 215/220/223/230; score an impossible 0.68–0.90 on 208/209/223/230, because those records were in their training set;
+   - **test:** all 80 checkpoints reproduce their saved DS2 predictions beat for beat; regenerated test labels hash-match.
+
+So the published models used exactly the split the paper's prose states; **the paper's class-count table was stale** (pre-H16 counts, never re-derived after the 2026-08-12 fix — the published training set has **28** fusion beats, not 399); and the Phase 10 arms were trained on records 208/209, which fully explains the F-recall jump (14× more fusion training data).
+
+**How the run got onto the wrong split.** The Phase 10 config's expected counts were copied from that stale table. The preflight therefore rejected the box's *correct* 40,177-beat extraction on every attempt from 2026-09-04 to 2026-09-25 17:54 UTC; by 18:07 the data had been regenerated on the pre-H16 split so the counts would match. Counts prove which beats were selected, not what the arrays contain, so the preflight passed; the integrator checked only internal consistency, so it passed too. The design flaw — no check on the data itself, and no same-environment replicate of the reference arm — belongs to the Phase 10 pipeline this audit wrote.
+
+### Fixes
+
+- **Manuscript.** `tab:class_dist` corrected to the counts the published models were trained on (train 40,177 · val 10,815; test and every row total unchanged). One sentence explains the fusion imbalance (record 208 holds 372 of DS1's 414 fusion beats and sits in validation). Limitations (2): "399 training beats" → 28. The test-set disclosure now reports the forensic audit (20/20 beat-exact test reproductions, 19/20 exact validation reproductions) and the seed-1001 exception (H50). **Two stale cross-references** to a non-existent Limitations "item 9" (the list ends at 7 after an earlier renumbering) now point at item 7. Limitation (7) no longer says the permuted-prior experiment "has not been run" — a run exists but is invalid — and now says a valid run is pending. Future Work no longer restates item (7) in full, states that the rerun must include a same-job reference replicate, and no longer uses "Second" twice. Page count held at 14 by tightening only text added or duplicated in this pass.
+- **Ground truth.** New `src/derive_split_counts.py` → `configs/mitbih_split_counts.json` (per-record and per-split counts from the annotations; also records the stale pre-H16 counts so the drift is explained, marked reference-only).
+- **Verifier.** `src/verify_manuscript_numbers.py` now parses the class table *and* the three prose record lists (partition-exact) from the `.tex` and checks them against the ground truth. This table had never been checked; the new block passes on the corrected manuscript and flags all 12 stale cells of the old one.
+- **Runner** (`run_remote_experiment.py`). Refuses a config whose counts disagree with the ground truth. New **preflight 2b — data equivalence**: the 20 git-tracked published checkpoints are re-evaluated on the box's arrays and must reproduce their own saved test and recorded validation Macro-F1 (tolerance 0.002; the wrong split misses by 0.013–0.185), with seed 1001 exempt from the validation half only. Array SHA-256 fingerprints recorded in provenance. New **`reference_replicate`** arm re-trains the published configuration in the same job; every ablation is now compared against it first, and replicate-vs-published is reported as an explicit drift check. Abort messages now say never to edit `split.py`/`process_data.py`/the arrays to pass a gate. Evaluation batch size made configurable (a 1024 batch exhausted a 16 GB machine; the number is irrelevant in eval mode).
+- **Two bugs found by running gate 2b end to end, both of which would have crashed it on the GPU box.** (a) The runner replaces `sys.stdout` with its `Tee` logger, which had no `.encoding`; importing `src/train_pca.py` inside the runner (as the gate must) runs the H48 console guard, which read that attribute and raised `AttributeError`. `Tee` now proxies the stream it wraps (`encoding`, `reconfigure`, `isatty`, and `__getattr__` delegation), and the guard uses `getattr` so no wrapper stream can make it the thing that crashes. (b) `--allow-cpu` works by monkeypatching `torch.cuda.is_available` to return `True`; the gate chose its device with that call, so under `--allow-cpu` it would have targeted a GPU that does not exist. It now probes the device by allocating on it. Regression-tested, including the exact failing sequence in a fresh interpreter under a cp1252 stdout.
+- **Integrator** (`src/integrate_remote_results.py`). New comparability gate, run before any statistic: refuses a run whose training class counts differ from the ground truth or that lacks a passed data-equivalence record. Recomputes and diffs the within-batch family as well as the published-reference family, reports the drift check, and reads its outcome statements (now including the permuted-prior reading for the word "physiology") from the within-batch comparison. It now exits 2 on the invalid run, naming the record-level mismatch.
+- **Config** (`configs/final_component_ablation.yaml`, revision 2). Corrected counts, `data_equivalence` section, `reference_replicate` arm, `within_batch_reference`. 4 arms × 20 seeds ≈ 18 GPU-hours.
+- **Runbook.** Up-front account of what went wrong; the data section now requires an unmodified regeneration with `git status` check and states the expected counts; the reference-arm fallback is the new `reference_arm_for_equivalence.tar.gz` (60 files, 11 MB, gitignored) because the old metrics-only tarball cannot feed gate 2b.
+- **The invalid run** moved, not deleted, to `results/final_component_ablation_INVALID_pre_h16_split/`, with `README_INVALID.md` and a banner on its `RESULTS_README.md`.
+- **Tests.** `tests/test_split_counts.py` (9) pins the ground truth to `split.py`, to `process_data.py`'s selection rule (parsed from source), to the config, and to the manuscript's table and record lists; `tests/test_comparability_gates.py` (12) pins the gate-2b decision rule with the real observed magnitudes, the replicate arm, the tolerance, and the integrator's refusal of the exact shape of the invalid run. **15 of the 21 fail against the pre-fix files**; the remaining 6 are ground-truth self-consistency checks.
+
+### End-to-end controls of the new gate (run, not assumed)
+
+- **Positive:** `run_remote_experiment.py --allow-cpu --preflight-only` against locally regenerated data on the published split passes all seven gates; gate 2b reproduces all 20 published checkpoints with max |diff| **0.00000** on test and validation (seed 1001: exact on test, exempt on validation).
+- **Negative:** gate 2b on the pre-H16 split refuses it (exit 2). Test reproduces exactly — the test arrays really are identical — but validation misses by **0.040–0.173** against the 0.002 tolerance, which is exactly the axis on which the invalid run differed.
+
+### Also checked and left alone
+
+- `heap_automated_2025` (added by the previous pass): verified real and correctly attributed (arXiv:2501.17727, Heap, Lawson, Farnik, Aitchison, 2025).
+- The power statement (80% power needs d_z ≳ 0.66; ≈57% at d_z = 0.5): recomputed exactly for the paired *t*-test (0.565, 0.660); the sentence already notes the Wilcoxon is marginally less efficient (simulated 0.542). Correct as written; an edit made during this check was reverted as redundant.
+- Seed-1001 sensitivity: excluding it changes no Holm-corrected conclusion (H50).
+
+### Required next
+
+One GPU job: `bash run_remote_experiment.sh` on **unmodified** data (expected train 40,177 · val 10,815 · test 49,684). Preflight 2b will refuse to train otherwise.

@@ -112,3 +112,8 @@ data/raw/ptb-xl/
 # transport tarballs (payload moved between this machine and the GPU box)
 reference_arm_metrics.tar.gz
 final_component_ablation_*.tar.gz
+
+# Fallback for the data-equivalence gate (H49): the 60 reference-arm files it
+# needs, for scp to a box whose clone lacks them. Its contents are already
+# tracked individually, so the tarball itself is not.
+reference_arm_for_equivalence.tar.gz

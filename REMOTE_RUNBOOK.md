@@ -5,7 +5,32 @@ only computation the manuscript still needs: PC-WavKAN's central architectural
 contribution (PCWI) has never been ablated on the configuration the paper
 actually adopts, and that gap cannot be closed from any result already on disk.
 
-**Two arms × 20 seeds, roughly 8–14 GPU-hours.** Nothing here requires root.
+**Four arms × 20 seeds, roughly 18 GPU-hours on an RTX A4000** (the first
+attempt ran 60 runs in 13.7 h). Nothing here requires root.
+
+> **Read this before starting — what went wrong on 2026-09-26.**
+> The first run of this job trained all three arms on the wrong records and
+> cannot be used (`AUDIT_FINDINGS.md` H49; kept for the record at
+> `results/final_component_ablation_INVALID_pre_h16_split/`). The config's
+> expected beat counts had been copied from a stale table and described an
+> older split. So preflight rejected the box's **correct** extraction
+> (40,177 training beats) for three weeks, and the box was then made to pass
+> by regenerating the old split (40,726). Two things now prevent a repeat:
+>
+> 1. **Never edit `src/split.py`, `src/process_data.py` or the arrays to make
+>    preflight pass.** If an *unmodified* regeneration disagrees with the
+>    expected counts, stop and report it — the config may be what is wrong.
+>    The expected counts are now derived from the PhysioNet annotations
+>    (`configs/mitbih_split_counts.json`), and the runner refuses a config
+>    that disagrees with them.
+> 2. **Preflight 2b re-runs the 20 published checkpoints on your arrays** and
+>    requires each to reproduce its own recorded validation and test score.
+>    That checks the data itself, not just its labels. It is never to be
+>    relaxed to get past it.
+>
+> The job also now re-trains the published configuration itself
+> (`reference_replicate`), so every ablation is compared against a reference
+> trained on the same machine, data and code.
 
 ---
 
@@ -25,10 +50,13 @@ gitignored), so §2 covers those separately.
 bash run_remote_experiment.sh --preflight-only
 ```
 
-Six gates run before any GPU time is spent: environment and CUDA, data
-integrity down to exact per-class beat counts, model construction with a real
-forward pass and a parameter-count assertion per arm, reference-arm
-completeness by seed identity, output writability, and the trainer's CLI
+Seven gates run before any GPU time is spent: environment and CUDA; data
+integrity down to exact per-class beat counts (themselves checked against
+`configs/mitbih_split_counts.json`); **data equivalence** — the 20 published
+reference checkpoints re-evaluated on this box's arrays must reproduce their
+own recorded scores (a few minutes on GPU); model construction with a real
+forward pass and a parameter-count assertion per arm; reference-arm
+completeness by seed identity; output writability; and the trainer's CLI
 surface. It exits 2 and names the specific problem if anything is wrong.
 
 Fix whatever it reports, then re-run it. Preflight is free; a failed 12-hour
@@ -78,36 +106,47 @@ The run needs `data/processed_rr_history/`, which is gitignored.
 ls data/processed_rr_history/ 2>/dev/null | head
 ```
 
-If missing, regenerate it from the MIT-BIH records (`wfdb` downloads them; no
-root needed):
+If missing — **or if it was ever produced by a modified `split.py` /
+`process_data.py`, which is true of the arrays used on 2026-09-26** — delete it
+and regenerate from the MIT-BIH records with the repository's code exactly as
+checked out (`wfdb` downloads them; no root needed):
 
 ```bash
+git status --short src/split.py src/process_data.py   # must print nothing
+rm -rf data/processed_rr_history
 python src/process_data.py            # reads data/raw/, writes data/processed_rr_history/
 ```
 
-Preflight then verifies the output against the exact beat and per-class counts
-recorded in `configs/final_component_ablation.yaml`, so a partial or
-wrong-protocol regeneration is caught rather than trained on.
+Expected result: **train 40,177 · val 10,815 · test 49,684 beats** (validation
+= records 208, 209, 223, 230). Preflight checks these counts and then gate 2b
+checks the arrays themselves. If an unmodified regeneration gives different
+numbers, do not work around it: send `run.log`.
 
 ### (c) Reference arm absent
 
-Both new arms are compared, seed by seed, against the already-published
-adopted configuration in `results/ablation_no_rr_attn/`. It is **not**
-retrained — that would waste GPU time and risk changing a published number.
+The published adopted configuration in `results/ablation_no_rr_attn/` is used
+twice and never written to: gate 2b re-evaluates its checkpoints to prove the
+data matches, and the drift check compares it with `reference_replicate`. Its
+`best_model.pth`, `training_history.json` and `test_metrics.json` are all
+git-tracked, so `git pull` normally suffices:
 
 ```bash
-ls results/ablation_no_rr_attn/seed_*/test_metrics.json 2>/dev/null | wc -l   # want 20
+for f in best_model.pth training_history.json test_metrics.json; do
+  echo "$f: $(ls results/ablation_no_rr_attn/seed_*/$f 2>/dev/null | wc -l)/20"; done
 ```
 
-If that is not 20, upload `reference_arm_metrics.tar.gz` from this repository
-(1.8 KB — the 20 metrics files, nothing else) and unpack it at the repo root:
+If any count is not 20, upload `reference_arm_for_equivalence.tar.gz` (about
+13 MB — exactly those 60 files) and unpack it at the repo root:
 
 ```bash
 # from the local machine
-scp reference_arm_metrics.tar.gz USER@HOST:~/projects/WavKAN-CL/
+scp reference_arm_for_equivalence.tar.gz USER@HOST:~/projects/WavKAN-CL/
 # on the box
-tar -xzf reference_arm_metrics.tar.gz
+tar -xzf reference_arm_for_equivalence.tar.gz
 ```
+
+(The older `reference_arm_metrics.tar.gz` holds only the metrics files and is
+not enough for gate 2b.)
 
 ## 3. Run it
 
@@ -127,7 +166,7 @@ If it is interrupted, resume without redoing finished seeds:
 bash run_remote_experiment.sh --allow-resume
 ```
 
-Per-seed failures are isolated and logged rather than killing the other 39, and
+Per-seed failures are isolated and logged rather than killing the other 79, and
 the runner refuses to overwrite a completed run.
 
 ## 4. Bring the results back
@@ -163,8 +202,12 @@ python src/integrate_remote_results.py --dir results/final_component_ablation
 ```
 
 This verifies the artifacts, seed completeness and provenance — including that
-the run's config snapshot matches this repository's — then **recomputes every
-statistic locally from the per-seed files and diffs it against the remote
+the run's config snapshot matches this repository's — and then
+**comparability**: the run's training counts must equal the PhysioNet-derived
+published split and its data-equivalence gate must have passed, or it is
+refused outright. (The 2026-09-26 run passed every other check and was
+reported CLEAN; this gate is what it lacked.) Only then does it **recompute
+every statistic locally from the per-seed files and diff it against the remote
 summary to 1e-9**, so transport corruption or a library-version difference
 surfaces as a mismatch instead of being quietly accepted. It reports the
 numbers and which manuscript claim each bears on, and deliberately does not
@@ -188,5 +231,6 @@ that does not reproduce.
 | No-root CUDA fix | `nvidia-modprobe -u -c 0` |
 | Run | `bash run_remote_experiment.sh` |
 | Resume | `bash run_remote_experiment.sh --allow-resume` |
-| Regenerate data | `python src/process_data.py` |
+| Regenerate data | `rm -rf data/processed_rr_history && python src/process_data.py` (unmodified code) |
+| Expected counts | train 40,177 · val 10,815 · test 49,684 |
 | Integrate locally | `python src/integrate_remote_results.py --dir results/final_component_ablation` |

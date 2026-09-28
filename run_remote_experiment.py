@@ -19,11 +19,16 @@ single-variable ablation.
 
 Stages
 ------
-  preflight   environment, data integrity, model construction, parameter counts,
+  preflight   environment, data integrity, DATA EQUIVALENCE (the published
+              reference checkpoints must reproduce their own recorded scores on
+              this machine's arrays), model construction, parameter counts,
               reference-arm completeness, output directory, git revision
   train       one arm x one seed at a time, skipping completed seeds
   postflight  seed completeness, NaN screen, paired-seed alignment
-  stats       paired Wilcoxon + Holm + Cohen's d + 95% CI vs the reference arm
+  stats       paired Wilcoxon + Holm + Cohen's d + 95% CI. Primary family:
+              each arm vs the reference REPLICATE trained in this same job
+              (same machine, data, code, time). Secondary: every arm vs the
+              published reference, and replicate vs published as a drift check.
   report      results.json, results.csv, RESULTS_README.md, plots, logs
 
 Exit codes
@@ -66,6 +71,25 @@ class Tee:
     def flush(self):
         self.out.flush()
         self.f.flush()
+
+    # Behave as the stream it wraps for everything else. Found 2026-09-28 by
+    # running preflight 2b end to end: importing src/train_pca.py inside this
+    # process runs its console-encoding guard (H48), which reads
+    # sys.stdout.encoding -- an attribute a bare Tee did not have, so the gate
+    # crashed with AttributeError before evaluating a single checkpoint.
+    @property
+    def encoding(self):
+        return getattr(self.out, "encoding", "utf-8")
+
+    def reconfigure(self, **kw):
+        if hasattr(self.out, "reconfigure"):
+            self.out.reconfigure(**kw)
+
+    def isatty(self):
+        return bool(getattr(self.out, "isatty", lambda: False)())
+
+    def __getattr__(self, name):
+        return getattr(self.out, name)
 
 
 def say(msg=""):
@@ -265,9 +289,38 @@ def check_environment(cfg) -> dict:
     return info
 
 
+def check_counts_against_ground_truth(cfg) -> None:
+    """The config's expected counts must equal the counts derived from the
+    PhysioNet annotations (configs/mitbih_split_counts.json). H49: counts copied
+    by hand from the manuscript's stale class table made this gate enforce the
+    wrong split for three weeks. A config that disagrees with the ground truth
+    is refused rather than trusted."""
+    gt_path = REPO / "configs" / "mitbih_split_counts.json"
+    if not gt_path.exists():
+        die(EXIT_PREFLIGHT, f"ground-truth split counts missing: {gt_path}")
+    gt = json.load(open(gt_path, encoding="utf-8"))
+    for split, expect in cfg["data"]["expect_class_counts"].items():
+        want = {str(k): int(v) for k, v in gt["counts"][split].items()}
+        have = {str(k): int(v) for k, v in expect.items()}
+        for k in want:
+            have.setdefault(k, 0)
+        if have != want:
+            die(EXIT_PREFLIGHT,
+                f"config expect_class_counts[{split}] = {have} disagrees with the\n"
+                f"       PhysioNet-derived ground truth {want}\n"
+                f"       ({gt_path.relative_to(REPO)}). The config is stale; fix it,\n"
+                f"       not the data.")
+        if int(cfg["data"]["expect_beats"][split]) != int(gt["totals"][split]):
+            die(EXIT_PREFLIGHT,
+                f"config expect_beats[{split}] = {cfg['data']['expect_beats'][split]} "
+                f"!= ground truth {gt['totals'][split]}")
+    say(f"  config counts match {gt_path.relative_to(REPO)}  OK")
+
+
 def check_data(cfg) -> dict:
     head("PREFLIGHT 2/6 -- data integrity")
     import numpy as np
+    check_counts_against_ground_truth(cfg)
 
     d = Path(cfg["data"]["dir"])
     if not d.is_dir():
@@ -288,9 +341,13 @@ def check_data(cfg) -> dict:
         y = np.load(d / f"y_{split}.npy")
         if X.shape[0] != expect_n:
             die(EXIT_PREFLIGHT,
-                f"{split}: expected {expect_n} beats, found {X.shape[0]}. The "
-                f"preprocessing differs from the published arms, so results would "
-                f"not be comparable. Re-run src/process_data.py unmodified.")
+                f"{split}: expected {expect_n} beats, found {X.shape[0]}.\n"
+                f"       Re-run src/process_data.py UNMODIFIED. Do NOT edit split.py,\n"
+                f"       process_data.py or the arrays to make the counts match: that is\n"
+                f"       exactly how the 2026-09-26 run ended up trained on the wrong\n"
+                f"       records (AUDIT_FINDINGS.md H49). If an unmodified regeneration\n"
+                f"       still disagrees, the CONFIG may be stale -- compare it with\n"
+                f"       configs/mitbih_split_counts.json and report it; don't run.")
         if X.shape[1] != cfg["data"]["beat_length"]:
             die(EXIT_PREFLIGHT,
                 f"{split}: beat length {X.shape[1]} != {cfg['data']['beat_length']}")
@@ -309,8 +366,134 @@ def check_data(cfg) -> dict:
                     f"{split}: class {cls} has {counts.get(cls, 0)} beats, expected {n}. "
                     f"The AAMI mapping or split differs from the published arms.")
         say(f"  {split:5s}: {X.shape[0]:6d} beats  dist={counts}  OK")
-        out[split] = {"n": int(X.shape[0]), "class_counts": counts}
+        out[split] = {"n": int(X.shape[0]), "class_counts": counts,
+                      "sha256": {f: _sha256(d / f"{f}_{split}.npy") for f in ("X", "X_rr", "y")}}
     return out
+
+
+def _sha256(path: Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+# ─────────────────────────────────────────────────────── data equivalence
+def equivalence_verdict(rows, tol: float, val_exempt=()) -> dict:
+    """Pure decision rule for the data-equivalence gate (unit-tested).
+
+    rows: one dict per reference seed with keys
+        seed, test_saved, test_got, val_recorded, val_got
+    A checkpoint's saved test Macro-F1 and its recorded best validation
+    Macro-F1 were both computed from these exact weights on the arrays it was
+    trained with. So if this machine's arrays are those arrays, re-evaluating
+    the checkpoint must reproduce both numbers up to floating-point argmax
+    ties. A different split, filter or alignment moves them by 1e-2 or more.
+    Seeds in val_exempt are checked on test only (H50: seed 1001's checkpoint
+    does not reproduce its own recorded validation score on any candidate
+    validation set, so it cannot vouch for the validation arrays).
+    """
+    exempt = {str(s) for s in val_exempt}
+    fails, test_d, val_d = [], [], []
+    for r in rows:
+        s = str(r["seed"])
+        dt = abs(float(r["test_got"]) - float(r["test_saved"]))
+        test_d.append(dt)
+        if dt > tol:
+            fails.append(f"seed {s}: test Macro-F1 {r['test_got']:.4f} vs saved "
+                         f"{r['test_saved']:.4f} (|diff| {dt:.4f} > {tol})")
+        if s in exempt:
+            continue
+        dv = abs(float(r["val_got"]) - float(r["val_recorded"]))
+        val_d.append(dv)
+        if dv > tol:
+            fails.append(f"seed {s}: validation Macro-F1 {r['val_got']:.4f} vs "
+                         f"recorded {r['val_recorded']:.4f} (|diff| {dv:.4f} > {tol})")
+    import statistics as _st
+    return {"passed": not fails and bool(test_d) and bool(val_d),
+            "n_seeds": len(rows), "tolerance": tol,
+            "val_exempt_seeds": sorted(exempt),
+            "max_abs_test_diff": max(test_d) if test_d else None,
+            "max_abs_val_diff": max(val_d) if val_d else None,
+            "median_abs_val_diff": _st.median(val_d) if val_d else None,
+            "failures": fails}
+
+
+def check_data_equivalence(cfg) -> dict:
+    """PREFLIGHT 2b. Counts only prove the same beats were SELECTED. This
+    proves the arrays are the ones the published arm was trained, selected and
+    tested on, by re-running its git-tracked checkpoints (forward passes only)."""
+    head("PREFLIGHT 2b/6 -- data equivalence (published checkpoints must reproduce)")
+    eq = cfg.get("data_equivalence")
+    if not eq:
+        die(EXIT_PREFLIGHT, "config has no 'data_equivalence' section. Counts alone "
+                            "cannot establish comparability (AUDIT_FINDINGS.md H49).")
+    import torch
+    from torch.utils.data import DataLoader
+    from sklearn.metrics import f1_score
+    from models.wavkan_v2 import WavKAN_v2
+    sys.path.insert(0, str(REPO / "src"))
+    from src.train_pca import ECGDatasetRR, evaluate
+
+    # Probe the device by use, not by torch.cuda.is_available(): --allow-cpu
+    # monkeypatches that to return True (see _patch_cpu), which would send this
+    # gate to a GPU that does not exist.
+    try:
+        torch.zeros(1).to("cuda")
+        dev = torch.device("cuda")
+    except Exception:
+        dev = torch.device("cpu")
+    say(f"  evaluating on {dev}")
+    ddir = cfg["data"]["dir"]
+    # Evaluation batch size does not affect any number (eval mode, no batch
+    # statistics); it only bounds memory. The wavelet layer materialises
+    # batch x 64 x 360 floats several times over, which at 1024 exhausted a
+    # 16 GB CPU machine during the 2026-09-28 forensic reproduction.
+    bs = int(eq.get("batch_size", 256))
+    loaders = {s: DataLoader(ECGDatasetRR(s, ddir), batch_size=bs, shuffle=False)
+               for s in ("test", "val")}
+    ref = REPO / eq["reference_dir"]
+    seeds = cfg["seeds"] if eq.get("seeds", "all") == "all" else eq["seeds"]
+    rows = []
+    for s in seeds:
+        sd = ref / f"seed_{s}"
+        for f in ("best_model.pth", "test_metrics.json", "training_history.json"):
+            if not (sd / f).exists():
+                die(EXIT_PREFLIGHT, f"data-equivalence needs {sd / f} (git-tracked); "
+                                    f"run `git pull` / check out the full repo")
+        m = WavKAN_v2(**eq["model_kwargs"]).to(dev)
+        m.load_state_dict(torch.load(sd / "best_model.pth", map_location=dev))
+        got = {}
+        for split, L in loaders.items():
+            yt, yp, _ = evaluate(m, L, dev)
+            got[split] = float(f1_score(yt, yp, average="macro", zero_division=0))
+        hist = json.load(open(sd / "training_history.json"))
+        row = {"seed": s,
+               "test_saved": float(json.load(open(sd / "test_metrics.json"))["macro_f1"]),
+               "test_got": got["test"],
+               "val_recorded": float(max(e["val_macro_f1"] for e in hist)),
+               "val_got": got["val"]}
+        rows.append(row)
+        say(f"  seed {s:>5}: test {row['test_got']:.4f} (saved {row['test_saved']:.4f})"
+            f"   val {row['val_got']:.4f} (recorded {row['val_recorded']:.4f})"
+            + ("   [val exempt, H50]" if str(s) in {str(x) for x in eq.get('val_exempt_seeds', [])} else ""))
+    v = equivalence_verdict(rows, float(eq["tolerance_macro_f1"]), eq.get("val_exempt_seeds", []))
+    v["rows"] = rows
+    if not v["passed"]:
+        die(EXIT_PREFLIGHT,
+            "DATA EQUIVALENCE FAILED -- this machine's arrays are not the arrays the\n"
+            "       published reference arm was trained and selected on:\n         "
+            + "\n         ".join(v["failures"][:12])
+            + "\n       Results trained on them would not be comparable to any published\n"
+              "       number. Regenerate with UNMODIFIED src/process_data.py and\n"
+              "       src/split.py (validation = records 208, 209, 223, 230) and retry.\n"
+              "       Do not relax the tolerance to get past this gate.")
+    say(f"  {len(rows)} published checkpoints reproduce their recorded scores on this")
+    say(f"  machine's arrays (max |diff| test {v['max_abs_test_diff']:.5f}, "
+        f"val {v['max_abs_val_diff']:.5f}; tolerance {v['tolerance']})  OK")
+    return v
 
 
 def check_models(cfg) -> dict:
@@ -588,6 +771,8 @@ def compute_stats(cfg, root: Path) -> dict:
     results = {"reference_arm": {}, "arms": {}}
     for m in metrics:
         results["reference_arm"][m] = describe(load(ref_dir, m).values())
+    wb_name = cfg["experiment"].get("within_batch_reference")
+    wb_dir = root / wb_name if wb_name else None
 
     for arm in selected_arms(cfg):
         arm_dir = root / arm["name"]
@@ -610,6 +795,16 @@ def compute_stats(cfg, root: Path) -> dict:
             "descriptives": {m: describe(load(arm_dir, m).values()) for m in metrics},
             "vs_reference": fam,
         }
+        # PRIMARY family: vs the replicate trained in this same job. This is the
+        # comparison that cannot be confounded by machine, data, code or time.
+        if wb_dir is not None and arm["name"] != wb_name and wb_dir.is_dir():
+            wfam = {}
+            for m in metrics:
+                a, b = load(wb_dir, m), load(arm_dir, m)
+                if a and b:
+                    wfam[m] = paired_compare(a, b, metric_name=m, ci=cfg["statistics"]["ci"])
+            if wfam:
+                results["arms"][arm["name"]]["vs_within_batch_reference"] = holm_family(wfam)
         say()
         say(f"  arm '{arm['name']}'  (positive d favours keeping the component)")
         say(f"    {'metric':<10} {'reference':>17} {'variant':>17} "
@@ -621,6 +816,31 @@ def compute_stats(cfg, root: Path) -> dict:
                 f"[{r['ci_low']:>+8.4f},{r['ci_high']:>+8.4f}] "
                 f"{r['cohens_d']:>+7.2f} {r['holm_p']:>10.2e}"
                 + ("  *" if r["significant_after_holm"] else ""))
+        wfam = results["arms"][arm["name"]].get("vs_within_batch_reference")
+        if wfam:
+            say(f"    -- PRIMARY: vs '{wb_name}' (same job) --")
+            for m, r in wfam.items():
+                say(f"    {m:<10} {r['mean_a']:>9.4f}+-{r['std_a']:<6.4f} "
+                    f"{r['mean_b']:>9.4f}+-{r['std_b']:<6.4f} "
+                    f"{r['mean_diff']:>+9.4f} "
+                    f"[{r['ci_low']:>+8.4f},{r['ci_high']:>+8.4f}] "
+                    f"{r['cohens_d']:>+7.2f} {r['holm_p']:>10.2e}"
+                    + ("  *" if r["significant_after_holm"] else ""))
+    if wb_name and wb_name in results["arms"]:
+        # drift: the replicate IS the published configuration, so any
+        # significant difference here is environment, not architecture.
+        results["drift_check"] = {
+            "replicate": wb_name,
+            "vs_published_reference": results["arms"][wb_name]["vs_reference"],
+            "reading": ("a Holm-significant difference between the replicate and the "
+                        "published reference is machine/code/time drift; if present, "
+                        "only the within-batch family is interpretable"),
+        }
+        say()
+        say(f"  DRIFT CHECK: '{wb_name}' is the published configuration re-trained here.")
+        sig = [m for m, r in results["arms"][wb_name]["vs_reference"].items()
+               if r["significant_after_holm"]]
+        say("    significant drift on: " + (", ".join(sig) if sig else "none"))
     return results
 
 
@@ -679,6 +899,7 @@ def write_outputs(cfg, root: Path, env, data, models, ref, post, stats, failures
         "finished_utc": finished,
         "environment": env,
         "data_verified": data,
+        "data_equivalence": data.get("data_equivalence"),
         "models_verified": models,
         "reference_arm": ref,
         "config_snapshot": cfg,
@@ -696,13 +917,17 @@ def write_outputs(cfg, root: Path, env, data, models, ref, post, stats, failures
     # flat CSV: one row per arm x metric, for spreadsheet-level inspection
     with open(root / "results.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["arm", "metric", "n_paired", "reference_mean", "reference_std",
+        w.writerow(["comparison", "arm", "metric", "n_paired", "reference_mean", "reference_std",
                     "variant_mean", "variant_std", "mean_diff", "ci_low", "ci_high",
                     "cohens_d", "effect_size", "p_raw", "holm_p", "family_size",
                     "significant_after_holm"])
-        for name, a in stats["arms"].items():
-            for m, r in a["vs_reference"].items():
-                w.writerow([name, m, r["n_paired"],
+        rows_out = [("vs_published_reference", n, a["vs_reference"])
+                    for n, a in stats["arms"].items()]
+        rows_out += [("vs_within_batch_reference", n, a["vs_within_batch_reference"])
+                     for n, a in stats["arms"].items() if a.get("vs_within_batch_reference")]
+        for comp, name, fam in rows_out:
+            for m, r in fam.items():
+                w.writerow([comp, name, m, r["n_paired"],
                             f"{r['mean_a']:.6f}", f"{r['std_a']:.6f}",
                             f"{r['mean_b']:.6f}", f"{r['std_b']:.6f}",
                             f"{r['mean_diff']:.6f}",
@@ -811,25 +1036,70 @@ def write_readme(cfg, root: Path, env, stats, post, failures):
     A("| `<arm>/seed_<N>.log` | full training transcript |")
     A("| `run.log` | this run's console transcript |")
     A("")
-    A("## Results")
+    eq = (json.loads((root / "provenance.json").read_text(encoding="utf-8"))
+          .get("data_equivalence") if (root / "provenance.json").exists() else None)
+    A("## Data equivalence (preflight 2b)")
     A("")
-    A("Sign convention: **positive Cohen's _d_ favours the reference arm**, i.e.")
-    A("favours *keeping* the ablated component. `*` marks Holm-significant within")
-    A("that arm's five-metric family.")
+    if eq:
+        A(f"**{'PASSED' if eq['passed'] else 'FAILED'}.** {eq['n_seeds']} published reference "
+          f"checkpoints were re-evaluated on this machine's arrays. Max |diff| vs their own "
+          f"saved test Macro-F1: {eq['max_abs_test_diff']:.5f}; vs their recorded best "
+          f"validation Macro-F1: {eq['max_abs_val_diff']:.5f} (tolerance {eq['tolerance']}; "
+          f"validation-exempt seeds: {eq['val_exempt_seeds'] or 'none'}). This is what "
+          f"licenses comparing these arms with any published number; class counts alone "
+          f"cannot (AUDIT_FINDINGS.md H49).")
+    else:
+        A("**NOT RUN.** Without this gate the arms below are not known to have been "
+          "trained on the published data, and must not be compared with it.")
     A("")
-    for name, a in stats.get("arms", {}).items():
-        A(f"### `{name}`  (`{' '.join(a['flags'])}`)")
-        A("")
+
+    def table(fam):
         A("| metric | reference | variant | diff | 95% CI | _d_ | Holm _p_ | sig |")
         A("|---|---|---|---|---|---|---|---|")
-        for m, r in a["vs_reference"].items():
+        for m, r in fam.items():
             A(f"| {m} | {r['mean_a']:.4f}±{r['std_a']:.4f} | "
               f"{r['mean_b']:.4f}±{r['std_b']:.4f} | {r['mean_diff']:+.4f} | "
               f"[{r['ci_low']:+.4f}, {r['ci_high']:+.4f}] | {r['cohens_d']:+.2f} | "
               f"{r['holm_p']:.2e} | {'*' if r['significant_after_holm'] else ''} |")
         A("")
-        A(f"_n_ paired = {list(a['vs_reference'].values())[0]['n_paired']}")
+        A(f"_n_ paired = {list(fam.values())[0]['n_paired']}")
         A("")
+
+    wb = cfg["experiment"].get("within_batch_reference")
+    A("## Results")
+    A("")
+    A("Sign convention: **positive Cohen's _d_ favours the reference**, i.e.")
+    A("favours *keeping* the ablated component. `*` marks Holm-significant within")
+    A("that comparison's five-metric family.")
+    A("")
+    if wb:
+        A(f"**Primary comparisons are against `{wb}`**, the published configuration")
+        A("re-trained in this same job. That comparison shares machine, data, code and")
+        A("time with each arm, so it is the one a batch effect cannot confound. The")
+        A("comparison against the published arm is reported second, as a check.")
+        A("")
+    dc = stats.get("drift_check")
+    if dc:
+        sig = [m for m, r in dc["vs_published_reference"].items() if r["significant_after_holm"]]
+        A(f"### Drift check: `{wb}` vs the published reference")
+        A("")
+        A("Both are the same configuration, so any significant difference is environment "
+          "(machine, library versions, time), not architecture. Significant on: "
+          + (", ".join(f"`{m}`" for m in sig) if sig else "**none**") + ".")
+        A("")
+        table(dc["vs_published_reference"])
+    for name, a in stats.get("arms", {}).items():
+        if name == wb:
+            continue
+        A(f"### `{name}`  (`{' '.join(a['flags'])}`)")
+        A("")
+        if a.get("vs_within_batch_reference"):
+            A(f"**Primary -- vs `{wb}` (same job):**")
+            A("")
+            table(a["vs_within_batch_reference"])
+        A("Secondary -- vs the published reference arm:")
+        A("")
+        table(a["vs_reference"])
     if failures.get("failures"):
         A("## Failures")
         A("")
@@ -910,6 +1180,8 @@ def main():
 
     env = check_environment(cfg)
     data = check_data(cfg)
+    equiv = check_data_equivalence(cfg)
+    data["data_equivalence"] = equiv
     models = check_models(cfg)
     ref = check_reference_arm(cfg)
     check_output(cfg, args.allow_resume)

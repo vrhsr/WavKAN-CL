@@ -521,6 +521,59 @@ except Exception as _e:
     print("  (torch unavailable: %s)" % _e)
 
 print("\n" + "=" * 100)
+print("CLASS-DISTRIBUTION TABLE (tab:class_dist) vs PhysioNet-derived split counts")
+print("=" * 100)
+print("Parsed from the .tex itself, not typed here, and checked against")
+print("configs/mitbih_split_counts.json (src/derive_split_counts.py). This table carried")
+print("pre-H16 counts for weeks while every other number was verified, because nothing")
+print("checked it (AUDIT_FINDINGS.md H49).")
+import re as _re  # noqa: E402
+_tex = open("Submission_JBHI/ieee_manuscript_v2.tex", encoding="utf-8").read()
+_tab = _tex.split(r"\label{tab:class_dist}")[1].split(r"\end{tabular}")[0]
+_gt = json.load(open("configs/mitbih_split_counts.json", encoding="utf-8"))
+
+
+def _num(s):
+    return int(_re.sub(r"[^0-9]", "", s))
+
+
+for _i, _cls in enumerate(["N", "S", "V", "F", "Q"]):
+    _row = [ln for ln in _tab.split("\n") if ln.strip().startswith(r"\textbf{%s}" % _cls)]
+    chk("class table row %s present" % _cls, 1, len(_row), 0)
+    if not _row:
+        continue
+    _cells = [c.strip() for c in _row[0].split("&")]
+    _tr, _va, _te, _tot = (_num(_cells[2]), _num(_cells[3]), _num(_cells[4]), _num(_cells[5]))
+    chk("class table %s train" % _cls, _tr, _gt["counts"]["train"][str(_i)], 0)
+    chk("class table %s val" % _cls, _va, _gt["counts"]["val"][str(_i)], 0)
+    chk("class table %s test" % _cls, _te, _gt["counts"]["test"][str(_i)], 0)
+    chk("class table %s row total" % _cls, _tot, _tr + _va + _te, 0)
+_trow = [ln for ln in _tab.split("\n") if ln.strip().startswith(r"\textbf{Total}")][0]
+_tc = [c.strip() for c in _trow.split("&")]
+for _k, _split in ((2, "train"), (3, "val"), (4, "test")):
+    chk("class table total %s" % _split, _num(_tc[_k]), _gt["totals"][_split], 0)
+# the prose statement added with the correction
+chk("prose: record 208 fusion beats", 372, _gt["per_record"]["208"][3], 0)
+chk("prose: DS1 fusion beats", 414, _gt["counts"]["train"]["3"] + _gt["counts"]["val"]["3"], 0)
+chk("prose: training fusion beats", 28, _gt["counts"]["train"]["3"], 0)
+# and the table must describe the split the published arms were SELECTED on:
+# the forensic reproduction of 2026-09-28 is the evidence; the prose record
+# lists must name the same records the ground truth uses.
+_prose = _tex.split(r"\subsection{Inter-Patient Split}")[1].split(r"\subsection")[0]
+_LIST = r"((?:\d{3}, )*\d{3},? and \d{3})"
+for _split, _pat in (("train", r"training uses the (\d+) records " + _LIST),
+                     ("val", r"validation the (\d+) records " + _LIST),
+                     ("test", r"held out, the (\d+) records " + _LIST)):
+    _m = _re.search(_pat, _prose)
+    chk("split prose lists the %s partition" % _split, 1, 1 if _m else 0, 0)
+    if not _m:
+        continue
+    _recs = sorted(_re.findall(r"\d{3}", _m.group(2)))
+    chk("split prose %s record count as stated" % _split, int(_m.group(1)), len(_recs), 0)
+    chk("split prose %s records == ground truth" % _split, 1,
+        1 if _recs == sorted(_gt["records"][_split]) else 0, 0)
+
+print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))
 if BAD:
     print("\nMISMATCHES REQUIRING CORRECTION:")

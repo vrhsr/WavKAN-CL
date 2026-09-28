@@ -176,6 +176,49 @@ def verify_provenance(d: Path, cfg: dict) -> None:
 
 
 # ─────────────────────────────────────────────────────── 4. recompute
+def verify_comparability(d: Path, cfg: dict) -> None:
+    """Refuse a run that is not known to share its data with the published arms.
+
+    AUDIT_FINDINGS.md H49: the 2026-09-26 run passed every other check in this
+    script -- artifacts, seed completeness, provenance, and local-vs-remote
+    statistics all agreed -- and this script printed CLEAN followed by an
+    instruction to rewrite the paper's central claim. Its arms had been trained
+    and selected on different records from the reference they were compared
+    against. Internal consistency is not comparability, so both are required.
+    """
+    head("3b/5  COMPARABILITY WITH THE PUBLISHED ARMS")
+    prov_path = d / "provenance.json"
+    if not prov_path.exists():
+        bad("provenance.json missing; comparability cannot be established")
+        return
+    prov = json.load(open(prov_path, encoding="utf-8"))
+
+    gt_path = REPO / "configs" / "mitbih_split_counts.json"
+    gt = json.load(open(gt_path, encoding="utf-8"))
+    dv = prov.get("data_verified") or {}
+    for split in ("train", "val", "test"):
+        got = {str(k): int(v) for k, v in (dv.get(split, {}).get("class_counts") or {}).items()}
+        want = {str(k): int(v) for k, v in gt["counts"][split].items() if int(v) or str(k) in got}
+        got_nz = {k: v for k, v in got.items() if v}
+        want_nz = {k: v for k, v in want.items() if v}
+        if got_nz != want_nz:
+            bad(f"{split}: the run trained on class counts {got_nz}, but the published "
+                f"arms used {want_nz} ({gt_path.relative_to(REPO)}). These are different "
+                f"records; no comparison with a published number is valid.")
+        else:
+            ok(f"{split}: class counts equal the PhysioNet-derived published split")
+
+    eq = prov.get("data_equivalence") or (dv.get("data_equivalence") if isinstance(dv, dict) else None)
+    if not eq:
+        bad("the run has no data-equivalence record: it predates preflight 2b, so the "
+            "arrays it trained on are not known to be the published ones")
+    elif not eq.get("passed"):
+        bad("the run's data-equivalence gate did not pass: " + "; ".join(eq.get("failures", [])[:5]))
+    else:
+        ok(f"data equivalence passed: {eq['n_seeds']} published checkpoints reproduced "
+           f"(max |diff| test {eq['max_abs_test_diff']:.5f}, val {eq['max_abs_val_diff']:.5f})")
+
+
 def load_metric(d: Path, metric: str) -> dict:
     out = {}
     for f in d.glob("seed_*/test_metrics.json"):
@@ -211,11 +254,32 @@ def recompute_and_diff(d: Path, cfg: dict, remote: dict, arms: dict) -> dict:
         local["arms"][name] = {"vs_reference": fam,
                                "descriptives": {m: describe(load_metric(arm_dir, m).values())
                                                 for m in metrics}}
-        rem = (remote.get("arms") or {}).get(name, {}).get("vs_reference", {})
-        if not rem:
-            bad(f"remote results.json has no statistics for arm '{name}'")
-            continue
-        say(f"  arm '{name}'")
+        wb = cfg["experiment"].get("within_batch_reference")
+        if wb and name != wb and (d / wb).is_dir():
+            wfam = {}
+            for m in metrics:
+                a, b = load_metric(d / wb, m), load_metric(arm_dir, m)
+                if a and b:
+                    wfam[m] = paired_compare(a, b, metric_name=m, ci=cfg["statistics"]["ci"])
+            if wfam:
+                local["arms"][name]["vs_within_batch_reference"] = holm_family(wfam)
+        for key in ("vs_reference", "vs_within_batch_reference"):
+            if key not in local["arms"][name]:
+                continue
+            n_checked += _diff_family(name, key, local["arms"][name][key],
+                                      (remote.get("arms") or {}).get(name, {}).get(key, {}))
+    say()
+    say(f"  {n_checked} statistic fields compared")
+    return local
+
+
+def _diff_family(name, key, fam, rem) -> int:
+    n_checked = 0
+    if not rem:
+        bad(f"remote results.json has no '{key}' statistics for arm '{name}'")
+        return 0
+    say(f"  arm '{name}'  [{key}]")
+    if True:
         for m, r in fam.items():
             rr = rem.get(m)
             if rr is None:
@@ -235,9 +299,7 @@ def recompute_and_diff(d: Path, cfg: dict, remote: dict, arms: dict) -> dict:
             if sorted(r["paired_seeds"]) != sorted(rr.get("paired_seeds", [])):
                 bad(f"    {m}: paired seed sets differ between local and remote")
         ok(f"    {len(fam)} metrics recomputed and matched to within {TOL:g}")
-    say()
-    say(f"  {n_checked} statistic fields compared")
-    return local
+    return n_checked
 
 
 # ─────────────────────────────────────────────────────── 5. report
@@ -249,7 +311,26 @@ def report(cfg: dict, local: dict) -> None:
     say("Sign convention: positive Cohen's d favours the REFERENCE arm, i.e.")
     say("favours keeping the ablated component. Holm is within each arm's")
     say(f"{len(cfg['statistics']['metrics'])}-metric family.")
+    wb = cfg["experiment"].get("within_batch_reference")
+    if wb and wb in local["arms"]:
+        drift = local["arms"][wb]["vs_reference"]
+        sig = [m for m, r in drift.items() if r["significant_after_holm"]]
+        say()
+        say("-" * 78)
+        say(f"DRIFT CHECK -- '{wb}' is the published configuration re-trained in this job")
+        say("-" * 78)
+        for m, r in drift.items():
+            say(f"  {m:<10} published {r['mean_a']:.4f}  replicate {r['mean_b']:.4f}  "
+                f"d {r['cohens_d']:+.2f}  Holm p {r['holm_p']:.2e}"
+                + ("  SIGNIFICANT" if r["significant_after_holm"] else ""))
+        say("  " + ("no significant drift: the published numbers and this job's numbers "
+                    "can be read together." if not sig else
+                    "SIGNIFICANT drift on " + ", ".join(sig) + ": read ONLY the within-batch "
+                    "comparisons below; pairing new arms with published numbers would "
+                    "mix environment with architecture."))
     for name, a in local["arms"].items():
+        if name == wb:
+            continue
         meta = next((x for x in cfg["arms"] if x["name"] == name), {})
         say()
         say("-" * 78)
@@ -267,7 +348,31 @@ def report(cfg: dict, local: dict) -> None:
                 f"{r['cohens_d']:>+7.2f} {r['holm_p']:>10.2e}"
                 f"  {'YES' if r['significant_after_holm'] else 'no'}")
 
-        pcwi = a["vs_reference"].get("macro_f1")
+        primary = a.get("vs_within_batch_reference")
+        if primary:
+            say(f"  PRIMARY (vs '{wb}', same job):")
+            for m, r in primary.items():
+                say(f"  {m:<10} {r['mean_a']:>9.4f}+-{r['std_a']:<6.4f} "
+                    f"{r['mean_b']:>9.4f}+-{r['std_b']:<6.4f} "
+                    f"{r['mean_diff']:>+9.4f} "
+                    f"[{r['ci_low']:>+8.4f},{r['ci_high']:>+8.4f}] "
+                    f"{r['cohens_d']:>+7.2f} {r['holm_p']:>10.2e}"
+                    f"  {'YES' if r['significant_after_holm'] else 'no'}")
+        fam_for_reading = primary or a["vs_reference"]
+        pcwi = fam_for_reading.get("macro_f1")
+        if name == "prior_swap_pt" and pcwi:
+            say()
+            say("  Reading for the manuscript (the word 'physiology'):")
+            if pcwi["significant_after_holm"] and pcwi["cohens_d"] > 0:
+                say("    The physiological assignment beats the permuted one: the benefit is")
+                say("    morphological, and the name and title are supported.")
+            elif pcwi["cohens_d"] > 0:
+                say("    Directionally favours the physiological assignment but unresolved;")
+                say("    keep 'structured initialisation' wording and report the CI.")
+            else:
+                say("    The permuted assignment is as good or better: the benefit is")
+                say("    structural, not morphological. The method name and title must")
+                say("    stop attributing it to physiology.")
         if name == "no_pcwi" and pcwi:
             say()
             say("  Reading for the manuscript:")
@@ -311,6 +416,7 @@ def main() -> int:
     remote = verify_artifacts(d)
     arms = verify_seeds(d, cfg)
     verify_provenance(d, cfg)
+    verify_comparability(d, cfg)
     if problems:
         head("RESULT")
         say(f"{len(problems)} problem(s) found before statistics were recomputed:")

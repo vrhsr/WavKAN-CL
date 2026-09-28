@@ -14,14 +14,37 @@
 # use_pcwi=False AND use_rr_attn=False. So the paper's primary contribution has
 # only ever been ablated on a configuration it abandoned.
 #
-# This job closes that gap. Two arms, both on the adopted architecture:
-#   arm A  no_pcwi     -- use_pcwi=False, use_rr_attn=False   (the essential one)
-#   arm B  no_pwam     -- use_pwam=False, use_rr_attn=False   (closes Limitations item 9)
-# Everything else matches the already-published adopted arm exactly, so each is a
-# genuine single-variable ablation against results/ablation_no_rr_attn/.
+# REVISION 2 (2026-09-28, AUDIT_FINDINGS.md H49). The first run of this job
+# (2026-09-26, preserved at results/final_component_ablation_INVALID_pre_h16_split/)
+# is not usable: this config's expected counts had been copied from the
+# manuscript's stale class table, which describes the PRE-H16 split (validation
+# 215/220/223/230). Every published arm was trained on split.py's split
+# (validation 208/209/223/230) -- proven by re-evaluating their checkpoints,
+# which reproduce their own recorded validation scores only on that split.
+# The preflight therefore rejected the GPU box's correct data for three weeks,
+# the box was made to pass by regenerating the pre-H16 split, and the three arms
+# were trained and selected on different records from the arm they were
+# compared against (the new arms saw 399 fusion training beats, the reference
+# 28). Three changes make that impossible to repeat:
+#   1. expected counts now equal configs/mitbih_split_counts.json, derived from
+#      the PhysioNet annotations; the runner refuses a config that disagrees;
+#   2. data_equivalence: before any training, the 20 published reference
+#      checkpoints must reproduce their own recorded validation and test
+#      Macro-F1 on this machine's arrays -- the only check that measures the
+#      data itself rather than its labels;
+#   3. reference_replicate: the published configuration is re-trained in this
+#      same job, and every ablation is compared against it first, so no
+#      machine, library or time difference can masquerade as a component effect.
 #
-# The reference arm is NOT retrained: results/ablation_no_rr_attn/ already holds
-# 20 seeds of it and must not be overwritten.
+# Arms, all on the adopted architecture:
+#   reference_replicate -- the published configuration, re-trained here (comparator)
+#   no_pcwi             -- use_pcwi=False                  (is PCWI useful at all?)
+#   prior_swap_pt       -- P and T priors swapped           (is the benefit physiological?)
+#   no_pwam             -- no gated P-region pathway        (closes Limitations item 9)
+# Each differs from reference_replicate in exactly one flag.
+#
+# The published reference arm (results/ablation_no_rr_attn/) is read-only: it is
+# never overwritten, and is used for the data-equivalence gate and the drift check.
 # ---------------------------------------------------------------------------
 
 experiment:
@@ -42,10 +65,46 @@ experiment:
       Adopted architecture (PCWI on, gated P-region fusion on, MLP rhythm
       encoder, Mexican Hat basis, RAC curriculum, augmentation on).
 
+  # The arm every ablation is compared against FIRST. It is the published
+  # configuration re-trained in this job, so the comparison is within one batch.
+  within_batch_reference: reference_replicate
+
+# ---------------------------------------------------------------------------
+# Data equivalence (preflight 2b). The published reference checkpoints,
+# best_model.pth + training_history.json + test_metrics.json, are all
+# git-tracked, so a `git pull` is enough. Each is re-evaluated on this
+# machine's arrays and must reproduce its own saved test Macro-F1 and its
+# recorded best-epoch validation Macro-F1 to within the tolerance. On the
+# published arrays reproduction is exact (verified 2026-09-28 by local
+# regeneration: 20/20 test predictions identical beat-for-beat, 19/20
+# validation scores identical to 4 dp). The wrong split moves them by 0.02-0.2.
+# ---------------------------------------------------------------------------
+data_equivalence:
+  reference_dir: results/ablation_no_rr_attn
+  model_kwargs: {use_pcwi: true, use_pwam: true, use_rr_attn: false}
+  seeds: all
+  tolerance_macro_f1: 0.002     # a few argmax ties on a different GPU; never relax to pass
+  batch_size: 256               # memory only; numerically irrelevant in eval mode
+  # H50: seed 1001's checkpoint reproduces its saved test predictions exactly but
+  # does not reproduce its own recorded validation score on either candidate
+  # validation set, so it cannot vouch for the validation arrays. Test is still
+  # checked for it.
+  val_exempt_seeds: [1001]
+
 # ---------------------------------------------------------------------------
 # Arms to train. Each is one flag away from the reference arm.
 # ---------------------------------------------------------------------------
 arms:
+  - name: reference_replicate
+    priority: essential
+    flags: ["--no-rr-attn"]
+    expect_params: 153045
+    protects_claim: >
+      Every comparison below. It is the published configuration trained in this
+      same job, so arm-vs-replicate differences cannot be machine, library, data
+      or time effects. Its own comparison with the published arm is the drift
+      check that says whether the published numbers can be paired with new runs.
+
   - name: no_pcwi
     priority: essential
     flags: ["--no-pcwi", "--no-rr-attn"]
@@ -142,10 +201,15 @@ data:
     - y_test.npy
   # Preflight asserts these exactly; a mismatch means the wrong preprocessing
   # was run and the results would not be comparable to the published arms.
-  expect_beats: {train: 40726, val: 10266, test: 49684}
+  # Must equal configs/mitbih_split_counts.json (derived from the PhysioNet
+  # annotations by src/derive_split_counts.py); the runner refuses to start
+  # otherwise, and tests/test_split_counts.py pins it. These are split.py's
+  # split: validation = records 208, 209, 223, 230. (The previous values,
+  # 40726/10266, were the pre-H16 split -- H49.)
+  expect_beats: {train: 40177, val: 10815, test: 49684}
   expect_class_counts:
-    train: {0: 36396, 1: 773, 2: 3150, 3: 399, 4: 8}
-    val:   {0: 9443,  1: 170, 2: 638,  3: 15,  4: 0}
+    train: {0: 37337, 1: 485,  2: 2321, 3: 28,  4: 6}
+    val:   {0: 8502,  1: 458,  2: 1467, 3: 386, 4: 2}
     test:  {0: 44232, 1: 1837, 2: 3220, 3: 388, 4: 7}
   beat_length: 360
   rr_length: 5
@@ -163,7 +227,8 @@ statistics:
   correction: holm_bonferroni
   effect_size: cohens_d_paired
   ci: 0.95
-  # positive d favours the REFERENCE arm, i.e. favours keeping the component.
+  # positive d favours the REFERENCE (replicate for the primary family,
+  # published arm for the secondary), i.e. favours keeping the component.
   sign_convention: reference_minus_variant
   implementation: src/paired_stats.py
 

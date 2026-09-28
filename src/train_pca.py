@@ -71,7 +71,10 @@ import sys
 # than by stripping the characters, so the informative output is preserved on
 # consoles that can render it.
 # ---------------------------------------------------------------------------
-if sys.stdout.encoding is not None and sys.stdout.encoding.lower() != "utf-8":
+# getattr, not .encoding: a wrapping stream (e.g. the remote runner's Tee)
+# need not have the attribute, and this guard must never be what crashes.
+_enc = getattr(sys.stdout, "encoding", None)
+if _enc is not None and str(_enc).lower() != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")

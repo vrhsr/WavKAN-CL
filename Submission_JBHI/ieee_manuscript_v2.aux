@@ -65,7 +65,6 @@
 \citation{xiao_deep_2023,luz_survey_2016}
 \citation{goldberger_physiobank_2000}
 \citation{greenwald_improved_1990}
-\citation{wagner_ptb-xl_2020}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Rarity-Anchored Curriculum (RAC)}}{5}{algorithm.1}\protected@file@percent }
 \newlabel{alg:curriculum}{{1}{5}{Rarity-Anchored Curriculum (RAC)}{algorithm.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {III-D}Physiological Prior Retention (PPR)}{5}{subsection.3.4}\protected@file@percent }
@@ -75,9 +74,11 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-A}Preprocessing}{5}{subsection.4.1}\protected@file@percent }
 \newlabel{sec:preprocessing}{{IV-A}{5}{Preprocessing}{subsection.4.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-B}Inter-Patient Split}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:split}{{IV-B}{5}{Inter-Patient Split}{subsection.4.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-C}Class Distribution and AAMI Mapping}{5}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {IV-D}External Datasets}{5}{subsection.4.4}\protected@file@percent }
 \newlabel{sec:external_data}{{IV-D}{5}{External Datasets}{subsection.4.4}{}}
+\citation{wagner_ptb-xl_2020}
 \citation{wilcoxon_individual_1945}
 \citation{holm_simple_1979}
 \citation{cohen_statistical_1988}
@@ -100,10 +101,10 @@
 \newlabel{tab:family_ablation}{{III}{8}{Single-variable component ablation on \textbf {DS1 validation}, 20 seeds per row. Base configuration: PCWI $+$ gated P-region fusion $+$ self-attention rhythm encoder $+$ RAC, validation Macro-F1 $0.4145\pm 0.0201$. $\Delta $ and $d$ are variant minus base, so positive favours the variant. $p$ is Holm-adjusted across the seven comparisons. Only two components have a corrected effect: removing PCWI hurts, and removing the self-attention rhythm encoder helps}{table.3}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces \textbf  {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero.}}{8}{table.4}\protected@file@percent }
 \newlabel{tab:baseline_comparison}{{IV}{8}{\textbf {Primary outcome.} DS2 Macro-F1, PC-WavKAN vs.\ four baselines, 20 paired seeds. $\Delta $, CI and $d$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons. No comparison reaches significance and every CI includes zero}{table.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions.}}{8}{figure.3}\protected@file@percent }
-\newlabel{fig:confusion}{{3}{8}{Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions}{figure.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {V-C}Per-Class Operating Points}{8}{subsection.5.3}\protected@file@percent }
 \newlabel{sec:results_perclass}{{V-C}{8}{Per-Class Operating Points}{subsection.5.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions.}}{8}{figure.3}\protected@file@percent }
+\newlabel{fig:confusion}{{3}{8}{Row-normalised confusion matrix, PC-WavKAN, seed 42, DS2. Generated from this checkpoint's own predictions}{figure.3}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Per-class precision/recall/F1, 20 seeds, DS2. \textbf  {(a)} PC-WavKAN, all classes. \textbf  {(b)} S class across all five models, with the Holm-adjusted paired comparison of S-F1 against PC-WavKAN (positive $d$ favours PC-WavKAN). Q is unlearnable at 8 training beats and scores exactly zero for every model.}}{8}{table.5}\protected@file@percent }
 \newlabel{tab:perclass}{{V}{8}{Per-class precision/recall/F1, 20 seeds, DS2. \textbf {(a)} PC-WavKAN, all classes. \textbf {(b)} S class across all five models, with the Holm-adjusted paired comparison of S-F1 against PC-WavKAN (positive $d$ favours PC-WavKAN). Q is unlearnable at 8 training beats and scores exactly zero for every model}{table.5}{}}
 \citation{chazal_automatic_2004}
@@ -125,7 +126,6 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {V-G}Cross-Dataset Generalisation}{10}{subsection.5.7}\protected@file@percent }
 \newlabel{sec:results_crossdata}{{V-G}{10}{Cross-Dataset Generalisation}{subsection.5.7}{}}
 \citation{bae_handling_2025}
-\citation{zhao_mak-net_2025}
 \@writefile{lot}{\contentsline {table}{\numberline {IX}{\ignorespaces Zero-shot cross-dataset evaluation, 20 seeds per model. Significance is PC-WavKAN vs.\ each baseline on Macro-F1, Holm-adjusted within each dataset; positive $d$ favours PC-WavKAN. Boldface marks the numerically highest value per column, which for Macro-F1 on INCART is not a significant win over B-Spline KAN.}}{11}{table.9}\protected@file@percent }
 \newlabel{tab:multidataset}{{IX}{11}{Zero-shot cross-dataset evaluation, 20 seeds per model. Significance is PC-WavKAN vs.\ each baseline on Macro-F1, Holm-adjusted within each dataset; positive $d$ favours PC-WavKAN. Boldface marks the numerically highest value per column, which for Macro-F1 on INCART is not a significant win over B-Spline KAN}{table.9}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {V-H}Few-Shot Domain Adaptation}{11}{subsection.5.8}\protected@file@percent }
@@ -136,6 +136,7 @@
 \newlabel{tab:deployment}{{X}{11}{Measured deployment metrics, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6. Mean of 3 repeated runs; $\pm $ is the spread across runs}{table.10}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {V-J}Efficiency and Quantisation}{11}{subsection.5.10}\protected@file@percent }
 \newlabel{sec:results_deploy}{{V-J}{11}{Efficiency and Quantisation}{subsection.5.10}{}}
+\citation{zhao_mak-net_2025}
 \citation{silva_systematic_2025}
 \citation{addison_wavelet_2005}
 \@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{12}{section.6}\protected@file@percent }
@@ -147,11 +148,11 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {VI-D}Limitations}{12}{subsection.6.4}\protected@file@percent }
 \newlabel{sec:limitations}{{VI-D}{12}{Limitations}{subsection.6.4}{}}
 \citation{dai_angular_2026}
-\citation{goldberger_physiobank_2000}
 \@writefile{toc}{\contentsline {subsection}{\numberline {VI-E}Future Work}{13}{subsection.6.5}\protected@file@percent }
 \newlabel{sec:future}{{VI-E}{13}{Future Work}{subsection.6.5}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{13}{section.7}\protected@file@percent }
 \newlabel{sec:conclusion}{{VII}{13}{Conclusion}{section.7}{}}
+\citation{goldberger_physiobank_2000}
 \citation{goldberger_physiobank_2000}
 \citation{moody_impact_2001}
 \citation{greenwald_improved_1990}
