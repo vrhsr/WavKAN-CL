@@ -1136,3 +1136,15 @@ On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00
 - **`results/` is gitignored.** The new result files, and the never-tracked `results/README.md`, need `git add -f`.
 - **Confirm the generative-AI declaration** reflects the authors' actual use.
 - **`Submission_JBHI/` can be deleted by the owner.** The tool policy blocked deleting it in this session.
+
+### 2026-09-30 (continued) — figure pass on all four manuscript figures (`AUDIT_FINDINGS.md` H68, H69)
+- **Figure 1** (`src/generate_workflow_diagram.py`): redrawn at print size.
+  - Adds tensor dimensions, real operations, the gate equation, a training-only band, and per-block parameter counts computed from the model.
+  - Vertical spacing was increased on the owner's request.
+- **Figure 2** (`src/generate_wavkan_figure.py`): crossbar layout; exact Eq. 2; enlarged edge panel against input amplitude; illustrative values disclosed in the caption.
+- **Figure 3** (`src/generate_confusion_matrix_figure.py`): 20-seed mean ± sd with row support, replacing seed 42 (H68).
+  - Text corrected: S→V 0.42/S→N 0.30 → 0.40/0.39; F→N 0.87 → 0.78; V-recall 0.905 → 0.898.
+  - Verifier updated.
+- **Figure 4** (`src/generate_prior_retention_figure.py`): per-edge μ and |γ| histograms over 20 seeds with the trained isotropic null, replacing single-seed channel-mean curves mislabelled as edges (H69). The text now states that retention is mainly in the translations.
+- **Manuscript layout:** A4 with 2.5 cm margins, line numbers off (one line to re-enable), floats placed nearer their first reference, Figures 1, 2 and 4 at full text width, and a typo fixed ("inthe").
+- **Verification:** verifier 471 verified, 0 mismatched. Full LaTeX build: 0 errors, 0 undefined references, 0 overfull boxes, 21 pages. Manuscript tests pass.

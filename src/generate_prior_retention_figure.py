@@ -1,139 +1,119 @@
 """
-generate_prior_retention_figure.py -- single-column figure of the trained wavelet
-bases against their PCWI priors.
+generate_prior_retention_figure.py -- Fig. 4 of the manuscript: per-edge wavelet parameters
+after training, against the PCWI prior values and a trained null
+(Submission_Array/manuscript.tex, \\label{fig:wavelets}).
 
-Reads a real trained checkpoint's wavelet parameters and plots, per ECG channel
-group, a sample of the learned Mexican Hat basis functions against the prior the
-group was initialised from (see wavkan_pcwi.ECG_PRIORS). Nothing is simulated:
-every curve is drawn from parameters read out of the checkpoint's state_dict.
+Redrawn 2026-09-30 (final pre-submission audit). The previous version drew, for one seed,
+one curve per channel from that channel's MEAN translation and MEAN |dilation| over its 360
+input edges, and labelled those curves "trained edges". They were not edges. Averaging over
+edges is exactly the aggregation the manuscript shows to be degenerate: per-edge translation
+drift largely cancels in the mean (mean per-edge |dmu| 0.064 against 0.004 for block means),
+so the curves hugged the priors and visually understated the movement Table 8 reports.
 
-This replaces the wide 1x3 layout produced by wavelet_alignment_score.py's
-plot_learned_wavelets(), which is illegible when scaled into a single IEEE
-column. The layout here is 3x1 (stacked) and sized for \\columnwidth, and it
-additionally annotates each panel with that group's measured Physiological
-Prior Retention so the figure and Table VIII cannot drift apart.
+This version shows the actual per-edge parameters:
+* rows are the three channel blocks (named for the prior value each was initialised at, not
+  for a function; the channels are exchangeable, AUDIT_FINDINGS.md H62), columns are the
+  translation mu and the dilation |gamma|;
+* coloured histograms pool every edge of the block over all 20 seeds of the evaluated
+  configuration (results/ablation_no_rr_attn);
+* the grey outline is the trained isotropic-initialisation arm (results/ablation_no_pcwi),
+  all 64 channels, i.e. the "trained, isotropic" null of Table 8;
+* the dashed line is the block's prior value and the shaded band its initial PCWI range.
+Parameters are read from the saved state_dicts; nothing is simulated. Drawn at print size.
 
 Usage:
-    python src/generate_prior_retention_figure.py \
-        --checkpoint results/ablation_no_rr_attn/seed_42/best_model.pth \
-        --no-rr-attn \
-        --output Submission_Array/final_learned_wavelets.pdf
+    python src/generate_prior_retention_figure.py --output Submission_Array/final_learned_wavelets.pdf
 """
-
 import argparse
+import glob
 import os
 import sys
 
-import numpy as np
-import torch
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+from matplotlib.legend_handler import HandlerTuple  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.wavkan_pcwi import ECG_PRIORS  # noqa: E402
-from models.wavkan_v2 import WavKAN_v2  # noqa: E402
 
-import matplotlib  # noqa: E402
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+plt.rcParams.update({
+    "font.family": "serif",
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
+    "mathtext.fontset": "stix",
+    "font.size": 7.5,
+    "axes.linewidth": 0.6,
+})
 
-# Normalising spans of the PPR definition -- must match
-# wavelet_alignment_score.py so the annotation agrees with the reported table.
-MU_RANGE, GAMMA_RANGE = 0.40, 0.20
-
-PALETTE = {"QRS": "#b2182b", "P": "#2166ac", "T": "#1a7a3e"}
-# Blocks are named for the prior value they were initialised with, not for a
-# function: the 64 output channels are exchangeable downstream, so no block can be
-# said to compute a waveform component (AUDIT_FINDINGS.md H62).
-LABEL = {"QRS": "QRS-prior block (ch. 1-32)",
-         "P": "P-prior block (ch. 33-48)",
-         "T": "T-prior block (ch. 49-64)"}
+# Blocks are named for the prior value they were initialised with, not for a function: the
+# 64 output channels are exchangeable downstream (AUDIT_FINDINGS.md H62).
+BLOCKS = [("QRS", "QRS-prior block\n(ch. 1–32)", "#B2182B"),
+          ("P", "P-prior block\n(ch. 33–48)", "#2166AC"),
+          ("T", "T-prior block\n(ch. 49–64)", "#1A7A3E")]
 
 
-def mexican_hat(x):
-    return (1.0 - x ** 2) * np.exp(-0.5 * x ** 2)
+def load_params(arm):
+    files = sorted(glob.glob(os.path.join(arm, "seed_*", "best_model.pth")))
+    if not files:
+        raise FileNotFoundError(f"no seed_*/best_model.pth under {arm}")
+    mu, ga = [], []
+    for f in files:
+        sd = torch.load(f, map_location="cpu")
+        mu.append(sd["kan.translation"].numpy())
+        ga.append(np.abs(sd["kan.scale"].numpy()))
+    return np.array(mu), np.array(ga), len(files)
 
 
-def group_ppr(kan, comp):
-    """Per-edge Parameter-space Prior Retention (PPR) for one channel block."""
-    prior = ECG_PRIORS[comp]
-    c0, c1 = prior["channels"]
-    mu = kan.translation.data[c0:c1]
-    gamma = kan.scale.data[c0:c1].abs()
-    e_mu = (mu - prior["mu_center"]).abs().mean().item()
-    e_ga = (gamma - prior["gamma"]).abs().mean().item()
-    return max(0.0, 1.0 - (e_mu / MU_RANGE + e_ga / GAMMA_RANGE) / 2.0)
+def generate(arm, null_arm, output_path):
+    M, G, n = load_params(arm)
+    Mn, Gn, n_null = load_params(null_arm)
+    fig, axes = plt.subplots(3, 2, figsize=(6.3, 4.4), sharex="col")
+    bins_mu = np.linspace(-0.45, 0.45, 91)
+    bins_ga = np.linspace(0.0, 0.45, 91)
+    for r, (key, name, col) in enumerate(BLOCKS):
+        p = ECG_PRIORS[key]
+        c0, c1 = p["channels"]
+        for c, (vals, null, bins, centre, half, xlab) in enumerate([
+                (M[:, c0:c1].ravel(), Mn.ravel(), bins_mu, p["mu_center"], p["mu_noise"],
+                 r"translation $\mu_{jk}$"),
+                (G[:, c0:c1].ravel(), Gn.ravel(), bins_ga, p["gamma"], p["gamma_jitter"],
+                 r"dilation $|\gamma_{jk}|$")]):
+            ax = axes[r, c]
+            ax.axvspan(centre - half, centre + half, color="#DDDDDD", zorder=0, lw=0)
+            ax.hist(null, bins=bins, density=True, histtype="step", color="#7F7F7F", lw=0.9, zorder=2)
+            ax.hist(vals, bins=bins, density=True, color=col, alpha=0.55, lw=0, zorder=1)
+            ax.axvline(centre, color="#1A1A1A", lw=0.9, ls=(0, (4, 2)), zorder=3)
+            ax.set_yticks([])
+            for sp in ("top", "right", "left"):
+                ax.spines[sp].set_visible(False)
+            ax.tick_params(labelsize=6.8, width=0.6, length=2.5, pad=2)
+            if r == 2:
+                ax.set_xlabel(xlab, fontsize=7.8, labelpad=2)
+        axes[r, 0].set_ylabel(name, fontsize=7.4, rotation=0, ha="right", va="center", labelpad=4, color=col)
 
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--checkpoint", required=True)
-    ap.add_argument("--output", default="Submission_Array/final_learned_wavelets.pdf")
-    ap.add_argument("--no-pcwi", action="store_true")
-    ap.add_argument("--no-pwam", action="store_true")
-    ap.add_argument("--no-rr-attn", action="store_true",
-                    help="Match a checkpoint trained with use_rr_attn=False.")
-    ap.add_argument("--n-curves", type=int, default=6,
-                    help="Learned edges sampled per group (kept low for legibility).")
-    args = ap.parse_args()
-
-    model = WavKAN_v2(use_pcwi=not args.no_pcwi,
-                      use_pwam=not args.no_pwam,
-                      use_rr_attn=not args.no_rr_attn)
-    model.load_state_dict(torch.load(args.checkpoint, map_location="cpu"))
-    model.eval()
-    kan = model.kan
-
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "DejaVu Serif"],
-        "mathtext.fontset": "dejavuserif",
-        "axes.linewidth": 0.6,
-    })
-
-    x = np.linspace(-0.45, 0.45, 800)
-    fig, axes = plt.subplots(3, 1, figsize=(3.4, 3.95), sharex=True)
-
-    for ax, comp in zip(axes, ("QRS", "P", "T")):
-        prior = ECG_PRIORS[comp]
-        c0, c1 = prior["channels"]
-        colour = PALETTE[comp]
-
-        # Prior wavelet for this group
-        phi_prior = mexican_hat((x - prior["mu_center"]) / prior["gamma"])
-        ax.plot(x, phi_prior, color="0.15", lw=1.5, ls="--", zorder=3,
-                label="initial prior")
-
-        # A sample of the trained edges, one curve per output channel
-        step = max(1, (c1 - c0) // args.n_curves)
-        for ch in range(c0, c1, step):
-            mu = kan.translation.data[ch].mean().item()
-            gamma = kan.scale.data[ch].abs().mean().item() + 1e-6
-            ax.plot(x, mexican_hat((x - mu) / gamma), color=colour, lw=0.9,
-                    alpha=0.75, zorder=2)
-        ax.plot([], [], color=colour, lw=1.2, label="trained edges")
-
-        ax.axvline(prior["mu_center"], color="0.55", lw=0.6, ls=":", zorder=1)
-        ax.set_ylabel(r"$\psi(x)$", fontsize=8.5)
-        ax.set_ylim(-0.55, 1.18)
-        ax.tick_params(labelsize=7.5, width=0.6, length=2.5)
-        ax.grid(alpha=0.18, lw=0.5)
-        ax.text(0.015, 0.955,
-                "%s   PPR $=%.3f$" % (LABEL[comp], group_ppr(kan, comp)),
-                transform=ax.transAxes, fontsize=7.8, va="top", ha="left",
-                bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="0.75", lw=0.5))
-        ax.legend(fontsize=6.8, loc="upper right", frameon=False,
-                  handlelength=1.5, borderaxespad=0.2)
-
-    axes[-1].set_xlabel("Normalised signal amplitude $x$", fontsize=8.5)
-    fig.align_ylabels(axes)
-    fig.tight_layout(pad=0.35, h_pad=0.5)
-
-    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
-    fig.savefig(args.output, dpi=400, bbox_inches="tight")
+    block_patches = tuple(plt.Rectangle((0, 0), 1, 1, fc=b[2], alpha=0.55, lw=0) for b in BLOCKS)
+    handles = [block_patches,
+               plt.Line2D([], [], color="#7F7F7F", lw=0.9),
+               plt.Line2D([], [], color="#1A1A1A", lw=0.9, ls=(0, (4, 2))),
+               plt.Rectangle((0, 0), 1, 1, fc="#DDDDDD", lw=0)]
+    labels = [f"trained PC-WavKAN, every edge of the block ({n} seeds)",
+              f"trained with isotropic initialisation, all channels ({n_null} seeds)",
+              "prior value of the block", "initial PCWI range"]
+    fig.legend(handles, labels, loc="upper center", ncol=2, frameon=False, fontsize=6.9,
+               bbox_to_anchor=(0.56, 1.02), handlelength=2.4, columnspacing=1.5,
+               handler_map={tuple: HandlerTuple(ndivide=None, pad=0.0)})
+    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.6, w_pad=1.2)
+    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.03)
     plt.close(fig)
-    print("wrote %s" % args.output)
-    for comp in ("QRS", "P", "T"):
-        print("  %-4s PPR = %.4f" % (comp, group_ppr(kan, comp)))
+    print(f"Saved -> {output_path} ({n} seeds; null {n_null} seeds)")
 
 
 if __name__ == "__main__":
-    main()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arm", default="results/ablation_no_rr_attn")
+    ap.add_argument("--null-arm", default="results/ablation_no_pcwi")
+    ap.add_argument("--output", default="Submission_Array/final_learned_wavelets.pdf")
+    a = ap.parse_args()
+    generate(a.arm, a.null_arm, a.output)

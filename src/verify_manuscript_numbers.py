@@ -330,14 +330,19 @@ for k, dl, ds_, hp in [("RR-2", -0.0020, 0.0077, 0.221), ("RR-1", -0.0016, 0.007
     chk("rr " + k + " delta std", ds_, pp[k]["s_recall_delta_std"], 0.0001)
     chk("rr " + k + " holm p", hp, hrr[k], max(0.0002, hp * 0.06))
 
-cmx = np.load("results/ablation_no_rr_attn/seed_42/confusion_matrix.npy")
-rn = cmx / cmx.sum(1, keepdims=True)
-chk("DS2 cm S->V", 0.42, rn[1, 2], 0.005)
-chk("DS2 cm S->N", 0.30, rn[1, 0], 0.005)
-chk("DS2 cm F->N", 0.87, rn[3, 0], 0.005)
-chk("DS2 cm V-Rec", 0.905, rn[2, 2], 0.0009)
-chk("DS2 cm N->V (<6%)", 0.0498, rn[0, 2], 0.0009)
-chk("DS2 cm V->N (<6%)", 0.0512, rn[2, 0], 0.0009)
+# Fig. fig:confusion: mean of the 20 per-seed row-normalised matrices (redrawn 2026-09-30;
+# previously a single seed, whose S-recall 0.25 disagreed with Table tab:perclass).
+_cms = [np.load(f) for f in sorted(glob.glob("results/ablation_no_rr_attn/seed_*/confusion_matrix.npy"))]
+chk("DS2 cm seeds", 20, len(_cms), 0)
+rn = np.mean([c / c.sum(1, keepdims=True) for c in _cms], axis=0)
+chk("DS2 cm S->V (0.40)", 0.40, rn[1, 2], 0.005)
+chk("DS2 cm S->N (0.39)", 0.39, rn[1, 0], 0.005)
+chk("DS2 cm F->N (0.78)", 0.78, rn[3, 0], 0.005)
+chk("DS2 cm V-Rec (0.898)", 0.898, rn[2, 2], 0.0006)
+chk("DS2 cm N->V under 6%", 1, 1 if rn[0, 2] < 0.06 else 0, 0)
+chk("DS2 cm V->N under 6%", 1, 1 if rn[2, 0] < 0.06 else 0, 0)
+for _i, _r in enumerate([0.905, 0.198, 0.898, 0.006, 0.0]):   # diagonal == Table tab:perclass recall
+    chk("DS2 cm diagonal == per-class recall (%s)" % "NSVFQ"[_i], _r, rn[_i, _i], 0.0006)
 
 old = json.load(open("results/wavkan_v2_20seed_comparison.json"))["metrics"]
 chk("replication S-Rec no-RAC", 0.079, old["s_recall"]["baseline_mean"], 0.0006)

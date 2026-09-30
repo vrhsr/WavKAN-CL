@@ -478,3 +478,41 @@ Neither survives Holm correction across the two metrics (p≈0.051). On DS2, S-r
 - **C23(a):** superseded by H66.
 - **H49-split:** the Phase 10 rerun is no longer required (H64).
 - **Limitation "pending permuted-prior control":** withdrawn (H62).
+
+### H68 — Figure 3 showed one seed whose S-recall contradicted the paper's own table — MAJOR (presentation) — RESOLVED
+
+**What was wrong.** The DS2 confusion-matrix figure plotted seed 42 alone. Its S-recall is 0.25, while Table `tab:perclass` reports the 20-seed mean, 0.198. Seed 42 was not chosen on test data (it is simply the first seed of the list), but the figure still contradicted the table and invited a selection question.
+
+**Knock-on error in the text.** The single seed also drove a wrong sentence: "S beats are assigned predominantly to V (0.42) and secondarily to N (0.30)". Over 20 seeds the split is nearly equal: V 0.40, N 0.39.
+
+**Fix.** `src/generate_confusion_matrix_figure.py` now plots the mean of the 20 per-seed row-normalised matrices, with the across-seed sd in each cell and the class support on each row (the Q row rests on 7 beats). Text corrected:
+- S beats split between V (0.40) and N (0.39);
+- F→N 0.78 (was 0.87);
+- V-recall 0.898 (was 0.905).
+
+**Verifier.** `src/verify_manuscript_numbers.py` checks the 20-seed values, and checks that the figure's diagonal equals Table `tab:perclass`'s recalls.
+
+### H69 — Figure 4's "trained edges" were channel averages, the aggregation the paper calls degenerate — MAJOR (presentation) — RESOLVED
+
+**What was wrong.** The prior-retention figure drew, for one seed, one curve per channel from that channel's mean μ and mean |γ| over its 360 edges, and labelled those curves "trained edges". Averaging over edges cancels most translation drift (per-edge |Δμ| 0.064 against 0.004 for block means), so the curves hugged the priors and visually understated the movement reported in Table `tab:ppr`.
+
+**Fix.** `src/generate_prior_retention_figure.py` now shows histograms of the actual per-edge μ and |γ| for each block, pooled over all 20 seeds, against:
+- the block's prior value and initial PCWI range;
+- the trained isotropic-initialisation arm (the trained null of Table `tab:ppr`).
+
+**What the new figure shows, now stated in the text.** Retention lies mainly in the translations. The dilations of the P- and T-prior blocks spread to a distribution broadly similar to the null's.
+
+### Figures 1 and 2 (same pass, no change to any result)
+
+**Figure 1 (architecture).** Redrawn at print size with tensor dimensions, the operations each block actually performs, and per-block parameter counts computed from the model at generation time (92.3K + 18.8K + 34.8K + 3.0K + 4.1K = 153,045). The training-only mechanisms are shown as a separate band rather than as an arrow into the classifier.
+
+**Figure 2 (edge parameterisation).**
+- **Formula:** now exactly Eq. 2, including |γ| and the linear path.
+- **Layout:** redrawn as a crossbar, so every edge can be traced.
+- **Edge panel:** a new panel plots one edge function against the input *value*, marking μ and ±|γ|. This shows that the parameters are an amplitude offset and width, not a time position.
+- **Caption:** states that the parameter values are illustrative.
+
+**All four figures:**
+- titles moved out of the images;
+- drawn at print size;
+- manuscript layout changed to 2.5 cm margins and no line numbers.

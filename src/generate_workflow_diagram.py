@@ -101,17 +101,21 @@ def label(ax, x, y, t, color="#333333"):
 
 def generate_workflow_figure(output_path):
     pc = param_counts()
-    fig, ax = plt.subplots(figsize=(7.2, 3.7))
+    # Taller canvas (2026-09-30, on request): more room between the lanes, around the
+    # side-branch encoder and inside each box. Units stay equal in x and y.
+    fig, ax = plt.subplots(figsize=(7.2, 4.8))
     ax.set_xlim(0, 100)
-    ax.set_ylim(0, 51.4)          # equal data units per inch in x and y
+    ax.set_ylim(0, 67)
     ax.axis("off")
 
     k = lambda v: f"{v / 1000:.1f}K params"  # noqa: E731
-    YM, YR, H = 29.0, 15.0, 11.0   # lane centre lines and box height
+    YM, YR, H = 38.0, 18.0, 12.5   # lane centre lines and box height
+    YE0, YE1 = 51.0, 61.0           # side-branch encoder box (bottom, top)
+    YROUTE = (YE0 + YE1) / 2
 
-    ax.text(0.3, 50.8, "Morphology branch", fontsize=7.2, fontweight="bold",
+    ax.text(0.3, 66.5, "Morphology branch", fontsize=7.4, fontweight="bold",
             color=COL["morph"][1], va="top")
-    ax.text(0.3, 22.5, "Rhythm branch", fontsize=7.2, fontweight="bold",
+    ax.text(0.3, 29.0, "Rhythm branch", fontsize=7.4, fontweight="bold",
             color=COL["rhythm"][1], va="top")
 
     # ── morphology lane ─────────────────────────────────────────────────────
@@ -120,33 +124,33 @@ def generate_workflow_figure(output_path):
     box(ax, 17.5, YM - H / 2, 18.5, H, "morph",
         ["Wavelet-KAN layer", "PCWI init., Mexican Hat", r"360$\rightarrow$64, + linear path",
          "LayerNorm, dropout"], fs=7.0)
-    note(ax, 26.75, YM - H / 2 - 0.9, k(pc["kan"]))
+    note(ax, 26.75, YM - H / 2 - 1.0, k(pc["kan"]))
     box(ax, 40.0, YM - H / 2, 11.5, H, "morph",
         ["BiGRU", "1 step, 2×32", r"$\mathbf{z}_m\in\mathbb{R}^{64}$"], fs=7.0)
-    note(ax, 45.75, YM - H / 2 - 0.9, k(pc["gru"]))
+    note(ax, 45.75, YM - H / 2 - 1.0, k(pc["gru"]))
     box(ax, 55.5, YM - H / 2, 15.0, H, "side",
         ["Gated fusion", r"$g=\sigma(W[\mathbf{z}_m;\mathbf{a}])$", r"$\mathbf{z}_m+g\odot\mathbf{a}$"],
         fs=7.0)
-    note(ax, 63.0, YM - H / 2 - 0.9, k(pc["side"]) + " (with encoder)")
+    note(ax, 63.0, YM - H / 2 - 1.0, k(pc["side"]) + " (with encoder)")
 
     # side-branch encoder above the lane
-    box(ax, 37.0, 38.8, 35.0, 8.6, "side",
+    box(ax, 37.0, YE0, 35.0, YE1 - YE0, "side",
         ["Side-branch encoder", r"samples 80$-$160 of $\mathbf{x}$ ($-$28 to +194 ms)",
          r"Wavelet-KAN 80$\rightarrow$32, Linear$\rightarrow$64:  $\mathbf{a}\in\mathbb{R}^{64}$"],
-        fs=6.8)
+        fs=7.0)
 
     arrow(ax, (13.8, YM), (17.2, YM))
-    label(ax, 15.5, YM + 0.5, "360")
+    label(ax, 15.5, YM + 0.6, "360")
     arrow(ax, (36.3, YM), (39.7, YM))
-    label(ax, 38.0, YM + 0.5, "64")
+    label(ax, 38.0, YM + 0.6, "64")
     arrow(ax, (51.8, YM), (55.2, YM))
-    label(ax, 53.5, YM + 0.5, "64")
+    label(ax, 53.5, YM + 0.6, "64")
     # beat window -> encoder, routed over the top
-    ax.plot([7.0, 7.0, 36.0], [YM + H / 2 + 0.3, 43.1, 43.1], color=ARROW, lw=0.9, zorder=1)
-    arrow(ax, (35.5, 43.1), (36.7, 43.1))
+    ax.plot([7.0, 7.0, 36.0], [YM + H / 2 + 0.3, YROUTE, YROUTE], color=ARROW, lw=0.9, zorder=1)
+    arrow(ax, (35.5, YROUTE), (36.7, YROUTE))
     # encoder -> gated fusion
-    arrow(ax, (63.0, 38.5), (63.0, YM + H / 2 + 0.3))
-    label(ax, 64.3, 35.6, r"$\mathbf{a}$")
+    arrow(ax, (63.0, YE0 - 0.3), (63.0, YM + H / 2 + 0.3))
+    label(ax, 64.4, (YE0 + YM + H / 2) / 2 - 0.8, r"$\mathbf{a}$")
 
     # ── rhythm lane ─────────────────────────────────────────────────────────
     box(ax, 0.5, YR - H / 2, 13.0, H, "input",
@@ -155,9 +159,9 @@ def generate_workflow_figure(output_path):
     box(ax, 17.5, YR - H / 2, 18.5, H, "rhythm",
         ["Rhythm encoder", r"MLP 5$\rightarrow$64$\rightarrow$32$\rightarrow$16",
          r"ReLU; $\mathbf{z}_r\in\mathbb{R}^{16}$"], fs=7.0)
-    note(ax, 26.75, YR - H / 2 - 0.9, k(pc["rr"]))
+    note(ax, 26.75, YR - H / 2 - 1.0, k(pc["rr"]))
     arrow(ax, (13.8, YR), (17.2, YR))
-    label(ax, 15.5, YR + 0.5, "5")
+    label(ax, 15.5, YR + 0.6, "5")
 
     # ── concatenation and head ──────────────────────────────────────────────
     xc0, xc1 = 74.5, 79.0
@@ -168,33 +172,33 @@ def generate_workflow_figure(output_path):
     ax.text((xc0 + xc1) / 2, (YM + YR) / 2, r"concatenate  $\mathbb{R}^{80}$", rotation=90,
             ha="center", va="center", fontsize=7.0, fontweight="bold", color="#1A1A1A", zorder=3)
     arrow(ax, (70.8, YM), (xc0 - 0.3, YM))
-    label(ax, 72.6, YM + 0.5, "64")
+    label(ax, 72.6, YM + 0.6, "64")
     ax.plot([36.3, 72.5], [YR, YR], color=ARROW, lw=0.9, zorder=1)
     arrow(ax, (72.0, YR), (xc0 - 0.3, YR))
-    label(ax, 55.0, YR + 0.5, "16")
+    label(ax, 55.0, YR + 0.6, "16")
 
     yh = (YM + YR) / 2
     box(ax, 83.0, yh - H / 2, 16.5, H, "head",
         ["Classifier head", r"80$\rightarrow$48$\rightarrow$5", "ReLU, dropout", "softmax"], fs=7.0)
-    note(ax, 91.25, yh - H / 2 - 0.9, k(pc["head"]))
+    note(ax, 91.25, yh - H / 2 - 1.0, k(pc["head"]))
     arrow(ax, (xc1 + 0.3, yh), (82.7, yh))
-    label(ax, 81.0, yh + 0.5, "80")
-    arrow(ax, (91.25, yh + H / 2 + 0.3), (91.25, yh + H / 2 + 3.2))
-    ax.text(91.25, yh + H / 2 + 3.5, "N, S, V, F, Q", ha="center", va="bottom", fontsize=7.2,
+    label(ax, 81.0, yh + 0.6, "80")
+    arrow(ax, (91.25, yh + H / 2 + 0.3), (91.25, yh + H / 2 + 4.5))
+    ax.text(91.25, yh + H / 2 + 4.9, "N, S, V, F, Q", ha="center", va="bottom", fontsize=7.4,
             fontweight="bold", color="#1A1A1A")
 
     # ── training-only band and legend ───────────────────────────────────────
-    box(ax, 17.5, 0.4, 82.0, 5.2, "train",
+    box(ax, 17.5, 0.5, 82.0, 6.6, "train",
         ["Training only: class-balanced sampling with unweighted cross-entropy (every retained checkpoint "
          "from epochs ≤ 25);",
          "augmentation of non-N beats; AdamW; checkpoint selection on DS1-validation Macro-F1."],
-        title_bold=False, dashed=True, fs=6.6)
-    ax.plot([0.8, 4.3], [4.5, 4.5], color=ARROW, lw=0.9)
-    ax.text(5.0, 4.5, "data flow", fontsize=6.5, va="center", color="#333333")
-    ax.plot([0.8, 4.3], [1.7, 1.7], color=COL["train"][1], lw=0.9, ls=(0, (4, 2.5)))
-    ax.text(5.0, 1.7, "training only", fontsize=6.5, va="center", color="#333333")
+        title_bold=False, dashed=True, fs=6.8)
+    ax.plot([0.8, 4.3], [5.4, 5.4], color=ARROW, lw=0.9)
+    ax.text(5.0, 5.4, "data flow", fontsize=6.6, va="center", color="#333333")
+    ax.plot([0.8, 4.3], [2.2, 2.2], color=COL["train"][1], lw=0.9, ls=(0, (4, 2.5)))
+    ax.text(5.0, 2.2, "training only", fontsize=6.6, va="center", color="#333333")
 
-    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.02)
+    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.03)
     plt.close(fig)
     print(f"Generated workflow diagram at {output_path} (total {pc['total']:,} parameters)")
 

@@ -155,8 +155,8 @@ with learnable translation $\mu_{j,k}$, dilation $\gamma_{j,k}$ and weight $w_{j
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.7\textwidth]{wavkan_micro_architecture_v2.pdf}
-\caption{Wavelet-KAN edge parameterisation. Every edge of the $j\times k$ grid carries its own translation and dilation, as in \eqref{eq:kan}.}
+\includegraphics[width=\textwidth]{wavkan_micro_architecture_v2.pdf}
+\caption{Wavelet-KAN layer, drawn as a schematic with three inputs and three outputs; the actual layer has $360\times64$ edges, and the parameter values shown are illustrative. Every edge $(j,k)$ applies its own function $\phi_{jk}(x_j)=w_{jk}\,\psi\big((x_j-\mu_{jk})/|\gamma_{jk}|\big)$ to the value of input $j$. Each output sums its incoming edges and adds the linear path of \eqref{eq:kan}. Right: the highlighted edge enlarged and plotted against the input value, which shows that $\mu$ and $\gamma$ set an amplitude offset and width, not a position in time.}
 \label{fig:wavkan_micro}
 \end{figure}
 
@@ -280,12 +280,12 @@ B-Spline KAN & 118,229 & $0.371\pm0.024$ & $-0.014$ & $[-0.029, +0.001]$ & $-0.4
 
 PC-WavKAN's DS2 Macro-F1 is not statistically distinguishable from any baseline (Table~\ref{tab:baseline_comparison}). All Holm-adjusted $p \geq 0.36$, all effects are negligible to small, and every 95\% interval on the paired difference contains zero, the widest bound being $0.029$. The data exclude a large difference in either direction. They do not establish equivalence, for which no margin was set. PC-WavKAN is also the largest of the five models. Because the Q class contributes a near-constant zero (\S\ref{sec:results_perclass}), we also report the four-class N/S/V/F Macro-F1 (exploratory): PC-WavKAN $0.446\pm0.023$, ResNet1D $0.439\pm0.023$, Transformer $0.441\pm0.050$, CNN+Focal $0.453\pm0.019$ and B-Spline KAN $0.463\pm0.030$, with all Holm-adjusted $p \geq 0.36$. The conclusion is unchanged.
 
-Fig.~\ref{fig:confusion} shows the structure behind these values for one seed. N and V separate well, each leaking under 6\% into the other, with V-recall $0.905$. S beats are assigned predominantly to V ($0.42$) and secondarily to N ($0.30$), and F beats are almost entirely predicted as N ($0.87$).
+Fig.~\ref{fig:confusion} shows the structure behind these values, averaged over the 20 seeds. N and V separate well, each leaking under 6\% into the other, with V-recall $0.898$. S beats are split almost equally between V ($0.40$) and N ($0.39$), and most F beats are predicted as N ($0.78$).
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.6\textwidth]{final_confusion_matrix_main.pdf}
-\caption{Row-normalised DS2 confusion matrix, PC-WavKAN, seed 42, generated from this checkpoint's own predictions.}
+\includegraphics[width=0.75\textwidth]{final_confusion_matrix_main.pdf}
+\caption{Row-normalised DS2 confusion matrix of PC-WavKAN, averaged over the 20 seeds. Each seed's matrix is normalised by row and then averaged, and the across-seed standard deviation is shown under each value. Rows are labelled with their support; the Q row rests on 7 beats. The diagonal equals the per-class recall of Table~\ref{tab:perclass}.}
 \label{fig:confusion}
 \end{figure}
 
@@ -394,12 +394,12 @@ Trained, isotropic & $0.5794\pm0.0173$ & $0.177$ & $0.080$ \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Training moves the PCWI parameters substantially: PPR falls from $0.973$ to $0.783$, and the mean per-edge translation deviation grows fivefold. The trained PCWI basis nonetheless remains closer to the prior values than an untrained isotropic basis ($0.783$ against $0.670$). The trained isotropic row decides the interpretation. When training starts from the isotropic initialisation, it moves the parameters \emph{further} from the prior values ($0.670 \rightarrow 0.579$). Both comparisons separate the 20 models completely (two-sided Mann--Whitney $p = 7\times10^{-8}$). The prior values are therefore not where gradient descent leads. The trained PCWI model's proximity to them reflects where it started, not a learned preference. Together with the exchangeability of the channel blocks (\S\ref{sec:pcwi}), this means the wavelet parameters of this model do not support a physiological interpretation. They support the modest statement that the initial structure is partly retained. Fig.~\ref{fig:wavelets} shows the trained functions of one checkpoint against the initial priors. Automated interpretability scores can rate untrained models as highly as trained ones \cite{heap_automated_2025}, and our results show that parameter-space scores for KANs need the same reference points.
+Training moves the PCWI parameters substantially: PPR falls from $0.973$ to $0.783$, and the mean per-edge translation deviation grows fivefold. The trained PCWI basis nonetheless remains closer to the prior values than an untrained isotropic basis ($0.783$ against $0.670$). The trained isotropic row decides the interpretation. When training starts from the isotropic initialisation, it moves the parameters \emph{further} from the prior values ($0.670 \rightarrow 0.579$). Both comparisons separate the 20 models completely (two-sided Mann--Whitney $p = 7\times10^{-8}$). The prior values are therefore not where gradient descent leads. The trained PCWI model's proximity to them reflects where it started, not a learned preference. Together with the exchangeability of the channel blocks (\S\ref{sec:pcwi}), this means the wavelet parameters of this model do not support a physiological interpretation. They support the modest statement that the initial structure is partly retained. Fig.~\ref{fig:wavelets} shows the per-edge parameters behind these values. The retention lies mainly in the translations, which stay centred on the prior values. The dilations of the P- and T-prior blocks spread to a distribution broadly similar to that of the isotropic arm. Automated interpretability scores can rate untrained models as highly as trained ones \cite{heap_automated_2025}, and our results show that parameter-space scores for KANs need the same reference points.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.5\textwidth]{final_learned_wavelets.pdf}
-\caption{Trained wavelet functions of one checkpoint (seed 42) for each channel block, against the prior each block was initialised at (dashed). Annotated PPR values are for this checkpoint and differ slightly from Table~\ref{tab:ppr}'s 20-seed means.}
+\includegraphics[width=\textwidth]{final_learned_wavelets.pdf}
+\caption{Per-edge wavelet parameters after training. Coloured histograms pool every edge of each channel block over all 20 seeds of PC-WavKAN. They are shown against the block's prior value (dashed line) and initial PCWI range (grey band), and against the trained isotropic-initialisation arm, all channels (grey outline; the trained null of Table~\ref{tab:ppr}). Translations stay centred on the prior values but spread well beyond their initial range. The dilations of the P- and T-prior blocks spread to a distribution broadly similar to the null's. Block names refer to initial values, not to functions.}
 \label{fig:wavelets}
 \end{figure}
 

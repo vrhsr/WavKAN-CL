@@ -1,108 +1,96 @@
 """
-generate_confusion_matrix_figure.py -- Fig. "Normalized Confusion Matrix"
-(Submission_JBHI/ieee_manuscript_v2.tex, \\label{fig:confusion}).
+generate_confusion_matrix_figure.py -- Fig. 3 of the manuscript: the DS2 confusion
+matrix of the evaluated configuration (Submission_Array/manuscript.tex,
+\\label{fig:confusion}).
 
-Why this script exists (2026-09-02, deep check of final_confusion_matrix_main.pdf
-at the project owner's request): the current, real figure embedded in the
-manuscript was verified byte-for-byte against
-results/ablation_no_rr_attn/seed_42/confusion_matrix.npy (values match to 3
-decimals) -- the figure itself is accurate. But there was no standalone,
-correctly-sourced script that could reproduce it: the one script in this repo
-that plots a confusion matrix, src/generate_publication_figures.py, hardcodes
-the OLD, superseded HybridWavKAN_RR model (95,189 params, imported from
-src/wavkan.py), not the canonical models.wavkan_v2.WavKAN_v2 this figure's
-own caption claims ("final architecture, 153,045 params") -- the same
-stale-model-class bug already found and fixed in several sibling scripts
-this session (AUDIT_FINDINGS.md H25 and others). Re-running that script
-against a real WavKAN_v2 checkpoint would either crash (state_dict mismatch)
-or silently plot the wrong architecture's confusion matrix. This script is a
-fresh, minimal, correctly-sourced replacement scoped to exactly this one
-figure -- it does not touch generate_publication_figures.py's other
-functions (PR curves, ROC curves, comparison bar chart), which are out of
-scope for this fix.
+Redrawn 2026-09-30 (final pre-submission audit). The previous version plotted one seed
+(42). Its S-recall (0.25) is well above the 20-seed mean the paper reports (0.198), so the
+figure contradicted Table 4 and invited a seed-selection question, even though seed 42 was
+simply the first seed of the list. It also implied that S beats go mainly to V (0.42 vs
+0.30 to N), which the 20-seed mean does not support (0.40 vs 0.39).
 
-Also restyled to match the publication format established this session for
-the paper's other two schematic figures (serif typography, restrained
-styling) for visual consistency across the paper.
+This version shows, for every cell, the MEAN of the 20 per-seed row-normalised matrices
+(each seed weighted equally, so the diagonal equals the per-class recall of Table 4) with
+the across-seed standard deviation, and it labels each row with its support so that the
+7-beat Q row is not over-read. It reads the saved per-seed confusion_matrix.npy files; it
+never re-runs inference, so it cannot silently use the wrong architecture's predictions.
+No title inside the image (the caption carries it); drawn at its printed size.
 
 Usage:
-    python src/generate_confusion_matrix_figure.py \\
-        --checkpoint-dir results/ablation_no_rr_attn/seed_42 \\
-        --output Submission_JBHI/final_confusion_matrix_main.pdf \\
-        --label "PC-WavKAN (153,045 params), seed 42, DS2 test set"
+    python src/generate_confusion_matrix_figure.py --arm results/ablation_no_rr_attn \\
+        --output Submission_Array/final_confusion_matrix_main.pdf
 """
+import argparse
+import glob
+import os
+
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 
 plt.rcParams.update({
     "font.family": "serif",
-    "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
     "mathtext.fontset": "stix",
+    "font.size": 7.5,
 })
 
 CLASS_NAMES = ["N", "S", "V", "F", "Q"]
 
 
-def plot_confusion_matrix(cm: np.ndarray, output_path: str, label: str):
-    row_norm = cm / cm.sum(axis=1, keepdims=True)
+def load_row_normalised(arm):
+    files = sorted(glob.glob(os.path.join(arm, "seed_*", "confusion_matrix.npy")))
+    if not files:
+        raise FileNotFoundError(f"no seed_*/confusion_matrix.npy under {arm}")
+    cms = [np.load(f) for f in files]
+    support = cms[0].sum(1)
+    for c in cms:
+        assert np.array_equal(c.sum(1), support), "per-seed matrices disagree on class support"
+    rn = np.array([c / c.sum(1, keepdims=True) for c in cms])
+    return rn.mean(0), rn.std(0, ddof=1), support, len(files)
 
-    fig, ax = plt.subplots(figsize=(6.2, 5.4))
-    im = ax.imshow(row_norm, cmap="Blues", vmin=0.0, vmax=1.0)
 
-    ax.set_xticks(range(len(CLASS_NAMES)))
-    ax.set_yticks(range(len(CLASS_NAMES)))
-    ax.set_xticklabels(CLASS_NAMES, fontsize=12)
-    ax.set_yticklabels(CLASS_NAMES, fontsize=12)
-    ax.set_xlabel("Predicted", fontsize=12.5, fontweight="bold")
-    ax.set_ylabel("True", fontsize=12.5, fontweight="bold")
-
-    for i in range(len(CLASS_NAMES)):
-        for j in range(len(CLASS_NAMES)):
-            val = row_norm[i, j]
-            color = "white" if val > 0.55 else "#1A1A1A"
-            ax.text(j, i, f"{val:.2f}", ha="center", va="center",
-                     fontsize=11, color=color, fontweight="bold" if i == j else "normal")
-
-    ax.set_title(f"Normalized Confusion Matrix\n{label}", fontsize=12.5, fontweight="bold")
-
-    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Row-normalized fraction", fontsize=11)
-
-    for spine in ax.spines.values():
-        spine.set_visible(True)
-        spine.set_color("#333333")
-        spine.set_linewidth(0.9)
-
-    plt.tight_layout()
-    fig.savefig(output_path, dpi=400, bbox_inches="tight")
+def plot_confusion_matrix(mean, sd, support, n_seeds, output_path):
+    fig, ax = plt.subplots(figsize=(3.9, 3.35))
+    im = ax.imshow(mean, cmap="Blues", vmin=0.0, vmax=1.0)
+    k = len(CLASS_NAMES)
+    ax.set_xticks(range(k))
+    ax.set_yticks(range(k))
+    ax.set_xticklabels(CLASS_NAMES, fontsize=8)
+    ax.set_yticklabels([f"{c}  (n = {int(n):,})" for c, n in zip(CLASS_NAMES, support)], fontsize=7.4)
+    ax.set_xlabel("Predicted class", fontsize=8, labelpad=3)
+    ax.set_ylabel("True class", fontsize=8, labelpad=3)
+    ax.tick_params(length=0, pad=3)
+    for i in range(k):
+        for j in range(k):
+            v, e = mean[i, j], sd[i, j]
+            col = "white" if v > 0.55 else "#1A1A1A"
+            ax.text(j, i - 0.12, f"{v:.2f}", ha="center", va="center", fontsize=7.8, color=col,
+                    fontweight="bold" if i == j else "normal")
+            ax.text(j, i + 0.22, f"±{e:.2f}", ha="center", va="center", fontsize=6.0, color=col)
+    ax.set_xticks(np.arange(-0.5, k, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, k, 1), minor=True)
+    ax.grid(which="minor", color="white", lw=0.8)
+    ax.tick_params(which="minor", length=0)
+    for sp in ax.spines.values():
+        sp.set_color("#555555")
+        sp.set_linewidth(0.7)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+    cbar.set_label(f"row-normalised fraction (mean of {n_seeds} seeds)", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5, width=0.5, length=2)
+    cbar.outline.set_linewidth(0.5)
+    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.03)
     plt.close(fig)
-    print(f"Saved -> {output_path}")
-    print("Row-normalized matrix:")
+    print(f"Saved -> {output_path}  ({n_seeds} seeds)")
     for i, c in enumerate(CLASS_NAMES):
-        print(f"  {c}: " + "  ".join(f"{v:.3f}" for v in row_norm[i]))
+        print(f"  {c}: " + "  ".join(f"{m:.3f}+-{s:.3f}" for m, s in zip(mean[i], sd[i])))
 
 
 if __name__ == "__main__":
-    import argparse
-    from pathlib import Path
-
-    parser = argparse.ArgumentParser(description="Confusion-matrix figure from a real checkpoint's saved predictions")
-    parser.add_argument("--checkpoint-dir", type=str, default="results/ablation_no_rr_attn/seed_42",
-                        help="Directory containing this seed's confusion_matrix.npy")
-    parser.add_argument("--output", type=str, default="Submission_Array/final_confusion_matrix_main.pdf")
-    parser.add_argument("--label", type=str,
-                        default="PC-WavKAN (153,045 params), seed 42, DS2 test set")
-    args = parser.parse_args()
-
-    cm_path = Path(args.checkpoint_dir) / "confusion_matrix.npy"
-    if not cm_path.exists():
-        raise FileNotFoundError(
-            f"{cm_path} not found -- this script reads a real, already-saved "
-            "confusion matrix, it does not run inference itself. Point "
-            "--checkpoint-dir at a directory containing confusion_matrix.npy "
-            "(e.g. results/ablation_no_rr_attn/seed_<N>/)."
-        )
-    cm = np.load(cm_path)
-    plot_confusion_matrix(cm, args.output, args.label)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arm", default="results/ablation_no_rr_attn",
+                    help="directory with seed_*/confusion_matrix.npy (the evaluated configuration)")
+    ap.add_argument("--output", default="Submission_Array/final_confusion_matrix_main.pdf")
+    a = ap.parse_args()
+    plot_confusion_matrix(*load_row_normalised(a.arm), a.output)

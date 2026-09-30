@@ -1,165 +1,151 @@
 """
-generate_wavkan_figure.py -- WavKAN micro-architecture figure (Fig. "Micro-
-Architecture of WavKAN" in Submission_JBHI/ieee_manuscript_v2.tex).
+generate_wavkan_figure.py -- Fig. 2 of the manuscript: the wavelet-KAN edge
+parameterisation (Submission_Array/manuscript.tex, \\label{fig:wavkan_micro}).
 
-Fixed 2026-09-02 (deep check + publication-format pass, project owner
-request), two real content bugs found against the manuscript's own
-Methodology equation (z_kan^(k) = sum_j w_{j,k} . psi((x_j - mu_{j,k}) /
-gamma_{j,k}))):
-  1. The formula box used sigma as the dilation symbol; the manuscript uses
-     gamma throughout (Eq. 1, Fig. "wavelet bases" caption, the WAS section).
-     Fixed to match.
-  2. The old figure only drew a wavelet glyph on the 3 "diagonal" edges
-     (x1->y1, x2->y2, x3->y3) and left the other 6 edges of this 3x3 example
-     as plain background lines with no function shown at all -- this
-     misrepresents a KAN layer, where EVERY edge (all j,k pairs) has its own
-     independently-parameterized wavelet, not just a diagonal subset.
-     Redrawn as an explicit 3x3 grid of distinct wavelet glyphs (one per
-     (input j, output k) pair, each with a visibly different mu/gamma so the
-     "independently learned per edge" claim is actually visible), matching
-     the equation's own j,k indexing -- rows = inputs (j), columns = outputs
-     (k). This is illustrative/generic (small 3x3 example, not the real
-     360x64 layer), same as before -- only the per-edge claim was wrong, not
-     the choice to illustrate with a small example.
+Redrawn 2026-09-30 (final pre-submission audit):
 
-Also fixed the old broken output path (a stray e:\\The\\... path that could
-never have produced the real file, same bug class as
-generate_workflow_diagram.py's pre-2026-08-27 default) and restyled to match
-that figure's publication format (serif typography, restrained palette).
+* the formula is exactly Eq. (2) of the manuscript and PCWIWavKANLinear.forward in
+  src/wavkan_pcwi.py, including |gamma| and the lambda-weighted linear path, which the
+  previous version omitted;
+* the layer is drawn as a crossbar (inputs as rows, outputs collected down columns
+  into summation nodes, one edge function at every crossing), so every edge (j, k) can
+  be traced; previously the output wires ran through the other cells;
+* a second panel plots one edge function against the input VALUE, marking mu and
+  +/- gamma, because psi acts on the amplitude of a single input sample, not on a
+  time window -- the unlabelled glyphs of the previous version invited the time-domain
+  reading the manuscript explicitly rules out;
+* drawn at its printed size (7-8 pt text at text width) instead of an 11-in canvas;
+* the (mu, gamma) values are ILLUSTRATIVE and chosen only to make the edges visibly
+  different; the caption says so. Trained dilations are about 0.05-0.12 (Fig. 4).
+
+Usage:
+    python src/generate_wavkan_figure.py --output Submission_Array/wavkan_micro_architecture_v2.pdf
 """
+import argparse
+
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import numpy as np
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+from matplotlib.patches import Circle, ConnectionPatch, FancyBboxPatch  # noqa: E402
 
 plt.rcParams.update({
     "font.family": "serif",
-    "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
     "mathtext.fontset": "stix",
+    "font.size": 7.5,
 })
 
-C_INPUT  = ("#EFF5FB", "#2C5F8A")
-C_OUTPUT = ("#DCEEE1", "#2E7D46")
-C_CELL   = ("#FDF3E7", "#B5651D")
-C_EDGE   = "#B8B8B8"
-C_WAVE   = "#C1651A"
+C_IN = ("#F4F6F8", "#4D5B6A")
+C_OUT = ("#E5F2E7", "#2E7040")
+C_CELL = ("#E3ECF6", "#2F5D8C")
+C_WAVE = "#1F4E79"
+C_WIRE = "#9A9A9A"
+
+# Illustrative, visibly distinct parameters for the 3 x 3 schematic (rows j, columns k).
+MU = np.array([[-0.35, 0.10, 0.30], [0.05, -0.30, 0.20], [0.25, -0.05, -0.35]])
+GAMMA = np.array([[0.75, 1.10, 0.85], [1.25, 0.65, 0.80], [0.80, 1.15, 0.60]])
+W = np.array([[1.0, -0.7, 0.8], [0.6, 1.0, 1.0], [-0.8, 0.7, 1.0]])   # sign/scale of w_{j,k}
 
 
-def mexican_hat(t, mu, gamma):
-    u = (t - mu) / gamma
-    return (1 - u ** 2) * np.exp(-0.5 * u ** 2)
+def mexican_hat(u):
+    return (1.0 - u ** 2) * np.exp(-0.5 * u ** 2)
 
 
-def draw_node(ax, xy, r, colors, label, label_side="left", inner=None):
-    fc, ec = colors
-    shadow = plt.Circle((xy[0] + 0.035, xy[1] - 0.035), r, color="#000000", alpha=0.10, zorder=2)
-    ax.add_patch(shadow)
-    circ = plt.Circle(xy, r, facecolor=fc, edgecolor=ec, linewidth=1.4, zorder=3)
-    ax.add_patch(circ)
-    if inner:
-        ax.text(xy[0], xy[1], inner, ha="center", va="center", fontsize=13,
-                 fontweight="bold", color=ec, zorder=4)
-    dx = -(r + 0.18) if label_side == "left" else (r + 0.18)
-    ha = "right" if label_side == "left" else "left"
-    ax.text(xy[0] + dx, xy[1], label, ha=ha, va="center", fontsize=11.5,
-             fontweight="bold", color="#1A1A1A")
+def crossbar(ax):
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 7.8)
+    ax.axis("off")
+    rows = [5.55, 4.05, 2.55]           # input j
+    cols = [3.55, 5.55, 7.55]           # output k
+    cw, ch = 1.45, 1.0
+    y_sum = 0.95
+
+    # wires first (behind everything): input rows and output columns
+    for y in rows:
+        ax.plot([1.25, cols[-1]], [y, y], color=C_WIRE, lw=0.8, zorder=1)
+    for x in cols:
+        ax.plot([x, x], [rows[0], y_sum + 0.36], color=C_WIRE, lw=0.8, zorder=1)
+        ax.annotate("", xy=(x, y_sum + 0.36), xytext=(x, y_sum + 0.9), zorder=1,
+                    arrowprops=dict(arrowstyle="-|>,head_length=0.35,head_width=0.18",
+                                    color=C_WIRE, lw=0.8, shrinkA=0, shrinkB=0))
+
+    # input nodes
+    for j, y in enumerate(rows):
+        ax.add_patch(Circle((0.9, y), 0.34, fc=C_IN[0], ec=C_IN[1], lw=0.9, zorder=3))
+        ax.text(0.9, y, f"$x_{j + 1}$", ha="center", va="center", fontsize=8, zorder=4)
+
+    # edge-function cells
+    t = np.linspace(-2.4, 2.4, 140)
+    for j, y in enumerate(rows):
+        for k, x in enumerate(cols):
+            hl = (j, k) == (1, 2)
+            ax.add_patch(FancyBboxPatch((x - cw / 2, y - ch / 2), cw, ch,
+                                        boxstyle="round,pad=0.02,rounding_size=0.08",
+                                        fc=C_CELL[0], ec=C_CELL[1], lw=1.6 if hl else 0.8, zorder=2))
+            psi = W[j, k] * mexican_hat((t - MU[j, k]) / GAMMA[j, k])
+            ax.plot(x + t * (cw * 0.19), y - 0.05 + psi * (ch * 0.30), color=C_WAVE, lw=1.1, zorder=3)
+            ax.text(x - cw / 2 + 0.08, y + ch / 2 - 0.05, fr"$\phi_{{{j + 1}{k + 1}}}$",
+                    ha="left", va="top", fontsize=6.6, color="#34495E", zorder=4)
+
+    # summation nodes
+    for k, x in enumerate(cols):
+        ax.add_patch(Circle((x, y_sum), 0.34, fc=C_OUT[0], ec=C_OUT[1], lw=0.9, zorder=3))
+        ax.text(x, y_sum, r"$\Sigma$", ha="center", va="center", fontsize=8.5, color=C_OUT[1], zorder=4)
+        ax.text(x + 0.45, y_sum, fr"$z^{{({k + 1})}}$", ha="left", va="center", fontsize=8, zorder=4)
+
+    ax.text(0.9, 6.05, "inputs $j$", ha="center", va="bottom", fontsize=7.2, color="#333333")
+    ax.text(cols[1], 6.35, "edge functions  "
+            r"$\phi_{jk}(x_j)=w_{jk}\,\psi((x_j-\mu_{jk})/|\gamma_{jk}|)$",
+            ha="center", va="bottom", fontsize=7.8, color="#1A1A1A")
+    ax.text(0.2, y_sum, "outputs $k$", ha="left", va="center", fontsize=7.2, color="#333333")
+    ax.text(cols[1], 0.02, r"each output also adds the linear path $\lambda\,\Sigma_j\, v_{jk}x_j$",
+            ha="center", va="bottom", fontsize=6.8, color="#555555", style="italic")
+    return cols, rows, cw, ch
 
 
-def draw_wavelet_cell(ax, center, w, h, mu, gamma, cell_label):
-    cx, cy = center
-    shadow = patches.FancyBboxPatch(
-        (cx - w / 2 + 0.03, cy - h / 2 - 0.03), w, h,
-        boxstyle="round,pad=0.02,rounding_size=0.05",
-        ec="none", fc="#000000", alpha=0.08, zorder=2,
-    )
-    ax.add_patch(shadow)
-    box = patches.FancyBboxPatch(
-        (cx - w / 2, cy - h / 2), w, h,
-        boxstyle="round,pad=0.02,rounding_size=0.05",
-        linewidth=1.1, edgecolor=C_CELL[1], facecolor=C_CELL[0], zorder=3,
-    )
-    ax.add_patch(box)
-    t = np.linspace(-2.6, 2.6, 120)
-    y = mexican_hat(t, mu, gamma)
-    t_scaled = cx + t * (w * 0.30)
-    y_scaled = cy - h * 0.06 + y * (h * 0.34)
-    ax.plot(t_scaled, y_scaled, color=C_WAVE, lw=1.7, zorder=4)
-    ax.text(cx, cy + h / 2 - 0.10, cell_label, ha="center", va="top",
-             fontsize=7.3, color="#7A4413", zorder=5, style="italic")
+def anatomy(ax, j=1, k=2):
+    """The highlighted crossbar cell, enlarged: the same mu, gamma and w, same x scale."""
+    mu, gamma, w = MU[j, k], GAMMA[j, k], W[j, k]
+    x = np.linspace(-2.4, 2.4, 400)
+    ax.plot(x, w * mexican_hat((x - mu) / gamma), color=C_WAVE, lw=1.3)
+    ax.axhline(0, color="#BBBBBB", lw=0.6, zorder=0)
+    ax.axvline(mu, color="#555555", lw=0.7, ls=(0, (3, 2)))
+    ax.text(mu + 0.08, 1.08, r"$\mu_{%d%d}$" % (j + 1, k + 1), fontsize=8, ha="left", va="center")
+    for sgn in (-1, 1):
+        ax.annotate("", xy=(mu + sgn * gamma, -0.62), xytext=(mu, -0.62),
+                    arrowprops=dict(arrowstyle="-|>,head_length=0.3,head_width=0.15", lw=0.7,
+                                    color="#555555", shrinkA=0, shrinkB=0))
+    ax.text(mu, -0.56, r"$\pm|\gamma_{%d%d}|$" % (j + 1, k + 1), fontsize=7.5, ha="center", va="bottom")
+    ax.set_xlim(-2.4, 2.4)
+    ax.set_ylim(-0.8, 1.25)
+    ax.set_xticks([-2, -1, 0, 1, 2])
+    ax.set_yticks([-0.5, 0, 0.5, 1.0])
+    ax.set_xlabel(r"input value $x_%d$ (signal amplitude)" % (j + 1), fontsize=7.2, labelpad=2)
+    ax.tick_params(labelsize=6.5, width=0.6, length=2.5, pad=2)
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    for sp in ("left", "bottom"):
+        ax.spines[sp].set_linewidth(0.6)
+    ax.set_title(r"edge function $\phi_{%d%d}(x_%d)$, enlarged" % (j + 1, k + 1, j + 1), fontsize=7.6, pad=4)
 
 
 def generate_wavkan_micro_figure(output_path):
-    fig, ax = plt.subplots(figsize=(11.5, 7.1))
-    ax.set_xlim(0, 12)
-    ax.set_ylim(0, 7.3)
-    ax.axis("off")
-    ax.set_aspect("equal")
-
-    in_y = [4.6, 3.3, 2.0]
-    out_y = [4.6, 3.3, 2.0]
-    in_x, grid_x0, grid_x1, out_x = 1.1, 3.6, 8.0, 10.9
-
-    cell_w, cell_h = 1.35, 0.95
-    col_x = np.linspace(grid_x0, grid_x1, 3)
-
-    # Illustrative, visibly-distinct (mu, gamma) per (input j, output k) cell
-    # -- generic values, not real trained parameters (same convention as
-    # before this fix; see module docstring).
-    MU = [[-0.35, 0.10, 0.30], [0.05, -0.30, 0.40], [0.25, -0.05, -0.35]]
-    GAMMA = [[0.75, 1.10, 0.85], [1.25, 0.65, 0.95], [0.80, 1.15, 0.60]]
-
-    # ── Input nodes ──────────────────────────────────────────────────────
-    for j, y in enumerate(in_y):
-        draw_node(ax, (in_x, y), 0.32, C_INPUT, f"Input $x_{j+1}$", "left")
-
-    # ── Output (summation) nodes ────────────────────────────────────────
-    for k, y in enumerate(out_y):
-        draw_node(ax, (out_x, y), 0.32, C_OUTPUT, f"$y_{k+1}$", "right", inner=r"$\Sigma$")
-
-    # ── Edges: input j -> cell (j,k) -> output k, every pair, not just j=k ──
-    for j, jy in enumerate(in_y):
-        for k, kx in enumerate(col_x):
-            ky = out_y[k]
-            cell_center = (kx, jy)
-            ax.plot([in_x + 0.32, kx - cell_w / 2], [jy, jy], color=C_EDGE, lw=1.0, zorder=1)
-            ax.plot([kx + cell_w / 2, out_x - 0.32], [jy, ky], color=C_EDGE, lw=0.9, zorder=1)
-            draw_wavelet_cell(ax, cell_center, cell_w, cell_h, MU[j][k], GAMMA[j][k],
-                                fr"$\psi_{{{j+1},{k+1}}}$")
-
-    # ── Column titles (drawn first, at a fixed row well clear of the grid) ──
-    TITLE_Y = 5.55
-    ax.text(in_x, TITLE_Y, "Input Layer", ha="center", va="center", fontsize=13, fontweight="bold")
-    ax.text((grid_x0 + grid_x1) / 2, TITLE_Y, "WavKAN Layer\n(per-edge wavelets, summed)",
-             ha="center", va="center", fontsize=13, fontweight="bold")
-    ax.text(out_x, TITLE_Y, "Output", ha="center", va="center", fontsize=13, fontweight="bold")
-
-    # ── Formula callout (own row, clear of the titles above and the grid below) ──
-    ax.text(5.8, 6.75,
-             r"$\psi_{j,k}(x_j) = \mathrm{MexicanHat}\!\left(\dfrac{x_j - \mu_{j,k}}{\gamma_{j,k}}\right)$"
-             r"$,\quad y_k = \sum_j w_{j,k}\,\psi_{j,k}(x_j)$",
-             ha="center", va="center", fontsize=11.5, fontweight="bold",
-             bbox=dict(facecolor="#FFF8E1", edgecolor="#B8860B", boxstyle="round,pad=0.4"))
-
-    ax.text(5.8, 0.55,
-             "Unlike an MLP, the learnable function sits on every edge $(j,k)$, not on the node --- "
-             "each edge learns its own $(\\mu_{j,k},\\gamma_{j,k})$.",
-             ha="center", va="center", fontsize=10.8, style="italic", color="#4D4D4D")
-
-    plt.tight_layout()
-    fig.savefig(output_path, dpi=400, bbox_inches="tight", facecolor="white")
+    fig = plt.figure(figsize=(6.6, 3.2))
+    ax = fig.add_axes([0.0, 0.0, 0.63, 1.0])
+    cols, rows, cw, ch = crossbar(ax)
+    ax2 = fig.add_axes([0.715, 0.25, 0.275, 0.55])
+    anatomy(ax2)
+    # dashed connector from the highlighted cell (row 2, column 3) to the panel
+    fig.add_artist(ConnectionPatch(xyA=(cols[2] + cw / 2 + 0.05, rows[1]), coordsA=ax.transData,
+                                   xyB=(0.0, 0.62), coordsB=ax2.transAxes,
+                                   color="#999999", lw=0.7, ls=(0, (3, 2))))
+    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.03)
     plt.close(fig)
     print(f"Figure saved to: {output_path}")
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=str,
-                        default="Submission_Array/wavkan_micro_architecture_v2.pdf",
-                        help="Fixed 2026-09-02: the old default was a broken path "
-                             "(e:\\The\\...) that could never have produced the real "
-                             "file, same bug class already fixed in "
-                             "generate_workflow_diagram.py.")
-    args = parser.parse_args()
-    generate_wavkan_micro_figure(args.output)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--output", default="Submission_Array/wavkan_micro_architecture_v2.pdf")
+    generate_wavkan_micro_figure(ap.parse_args().output)
