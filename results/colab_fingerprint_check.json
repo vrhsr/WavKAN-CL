@@ -1,0 +1,34 @@
+{
+ "incart_matched": {
+  "n": true,
+  "class_counts": true,
+  "y_sha256": true,
+  "rr_sha256": true,
+  "X_sha256": false,
+  "X_round4_sha256": true
+ },
+ "svdb_matched": {
+  "n": true,
+  "class_counts": true,
+  "y_sha256": true,
+  "rr_sha256": true,
+  "X_sha256": false,
+  "X_round4_sha256": true
+ },
+ "mitdb_test_published_rr": {
+  "n": true,
+  "class_counts": true,
+  "y_sha256": true,
+  "rr_sha256": true,
+  "X_sha256": true,
+  "X_round4_sha256": true
+ },
+ "mitdb_test_beats_only_rr": {
+  "n": true,
+  "class_counts": true,
+  "y_sha256": true,
+  "rr_sha256": true,
+  "X_sha256": true,
+  "X_round4_sha256": true
+ }
+}

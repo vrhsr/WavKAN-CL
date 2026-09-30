@@ -1,0 +1,156 @@
+{
+ "source": "MIT-BIH annotation files (PhysioNet mitdb 1.0.0), data/raw",
+ "window": {
+  "pre_samples": 90,
+  "post_samples": 270,
+  "fs": 360
+ },
+ "train": {
+  "beats": 40177,
+  "any_rr_element_changed": 2673,
+  "any_rr_element_changed_pct": 6.653060208577046,
+  "rr0_changed": 620,
+  "rr0_changed_pct": 1.5431714662617915,
+  "rr0_changed_and_shorter": 619,
+  "per_class": {
+   "N": {
+    "n": 37337,
+    "any": 2030,
+    "rr0": 459,
+    "rr0_pct": 1.2293435466159575
+   },
+   "S": {
+    "n": 485,
+    "any": 101,
+    "rr0": 16,
+    "rr0_pct": 3.2989690721649483
+   },
+   "V": {
+    "n": 2321,
+    "any": 527,
+    "rr0": 137,
+    "rr0_pct": 5.902628177509694
+   },
+   "F": {
+    "n": 28,
+    "any": 10,
+    "rr0": 5,
+    "rr0_pct": 17.857142857142858
+   },
+   "Q": {
+    "n": 6,
+    "any": 5,
+    "rr0": 3,
+    "rr0_pct": 50.0
+   }
+  },
+  "next_beat_inside_window": 18704,
+  "next_beat_inside_window_pct": 46.55399855638798,
+  "non_beat_annotation_counts": {
+   "+": 307,
+   "~": 234,
+   "|": 50,
+   "x": 58,
+   "[": 6,
+   "!": 472,
+   "]": 6,
+   "\"": 2
+  }
+ },
+ "val": {
+  "beats": 10815,
+  "any_rr_element_changed": 1522,
+  "any_rr_element_changed_pct": 14.073046694405917,
+  "rr0_changed": 374,
+  "rr0_changed_pct": 3.458159963014332,
+  "rr0_changed_and_shorter": 374,
+  "per_class": {
+   "N": {
+    "n": 8502,
+    "any": 1247,
+    "rr0": 316,
+    "rr0_pct": 3.7167725241119736
+   },
+   "S": {
+    "n": 458,
+    "any": 67,
+    "rr0": 12,
+    "rr0_pct": 2.6200873362445414
+   },
+   "V": {
+    "n": 1467,
+    "any": 161,
+    "rr0": 42,
+    "rr0_pct": 2.8629856850715747
+   },
+   "F": {
+    "n": 386,
+    "any": 45,
+    "rr0": 2,
+    "rr0_pct": 0.5181347150259067
+   },
+   "Q": {
+    "n": 2,
+    "any": 2,
+    "rr0": 2,
+    "rr0_pct": 100.0
+   }
+  },
+  "next_beat_inside_window": 8236,
+  "next_beat_inside_window_pct": 76.15349052242256,
+  "non_beat_annotation_counts": {
+   "+": 309,
+   "~": 55,
+   "|": 16
+  }
+ },
+ "test": {
+  "beats": 49684,
+  "any_rr_element_changed": 4578,
+  "any_rr_element_changed_pct": 9.214233958618468,
+  "rr0_changed": 1433,
+  "rr0_changed_pct": 2.8842283230013686,
+  "rr0_changed_and_shorter": 1432,
+  "per_class": {
+   "N": {
+    "n": 44232,
+    "any": 3649,
+    "rr0": 1202,
+    "rr0_pct": 2.717489600289383
+   },
+   "S": {
+    "n": 1837,
+    "any": 217,
+    "rr0": 24,
+    "rr0_pct": 1.30647795318454
+   },
+   "V": {
+    "n": 3220,
+    "any": 674,
+    "rr0": 205,
+    "rr0_pct": 6.366459627329193
+   },
+   "F": {
+    "n": 388,
+    "any": 35,
+    "rr0": 0,
+    "rr0_pct": 0.0
+   },
+   "Q": {
+    "n": 7,
+    "any": 3,
+    "rr0": 2,
+    "rr0_pct": 28.571428571428573
+   }
+  },
+  "next_beat_inside_window": 24223,
+  "next_beat_inside_window_pct": 48.75412607680541,
+  "non_beat_annotation_counts": {
+   "+": 557,
+   "~": 284,
+   "|": 65,
+   "\"": 435,
+   "x": 135
+  }
+ }
+}
