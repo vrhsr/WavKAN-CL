@@ -96,6 +96,9 @@ references.bib
 # files (paper/, paper/IEEE PAPER/) are intentionally left under the blanket rule --
 # not touched here.
 !Submission_JBHI/references.bib
+# 2026-09-30: the live bibliography moved with the manuscript to Submission_Array/;
+# carve it out for the same reason (it was silently ignored until this line).
+!Submission_Array/references.bib
 
 # Figures & Generated Images (Keep Local)
 fig_*.png
@@ -117,3 +120,7 @@ final_component_ablation_*.tar.gz
 # needs, for scp to a box whose clone lacks them. Its contents are already
 # tracked individually, so the tarball itself is not.
 reference_arm_for_equivalence.tar.gz
+
+# 2026-09-30 final audit: Colab bundle (checkpoints + code), regenerable, not for git
+colab/final_audit_bundle.zip
+final_audit_colab_results.zip

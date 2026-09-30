@@ -100,8 +100,8 @@ def group_label(ax, x, y, text):
 
 
 def generate_workflow_figure(output_path):
-    fig, ax = plt.subplots(figsize=(15.5, 7.6))
-    ax.set_xlim(0, 15)
+    fig, ax = plt.subplots(figsize=(16.4, 7.6))
+    ax.set_xlim(0, 15.9)
     ax.set_ylim(0, 7.1)
     ax.axis("off")
     ax.set_aspect("equal")
@@ -114,20 +114,24 @@ def generate_workflow_figure(output_path):
     group_label(ax, 0.55, BOT_Y + 0.85, "Rhythm Branch (RR-interval history)")
 
     # ── 1. Inputs ────────────────────────────────────────────────────────
-    draw_box(ax, (1.3, TOP_Y), 1.85, 0.62, "Raw ECG Signal\n(360 samples, 1 s)", "input", fontsize=9.5)
+    draw_box(ax, (1.3, TOP_Y), 1.85, 0.62, "Beat Window\n(360 samples; R at 250 ms)", "input", fontsize=9)
     draw_box(ax, (1.3, BOT_Y), 1.85, 0.68, "RR Intervals\n(2 Preceding + Current\n+ 2 Following)", "input", fontsize=9)
 
-    # ── 2. Morphology branch: WavKAN -> BiGRU -> PWAM ───────────────────
+    # ── 2. Morphology branch: WavKAN -> single-step BiGRU -> gated side branch ──
+    # The side branch reads raw-beat samples 80-160. With the R-peak at sample 90
+    # (process_data.py: 90 before, 270 after) that spans -28 to +194 ms around R,
+    # i.e. QRS and early ST, not the P-wave its original name implied
+    # (AUDIT_FINDINGS.md H60).
     draw_box(ax, (3.75, TOP_Y), 2.05, 0.8, "WavKAN Backbone\n(PCWI-init., Mexican Hat)", "morph", fontsize=9.5)
     draw_box(ax, (6.15, TOP_Y), 1.85, 0.8, "BiGRU\n(single timestep)", "morph", fontsize=9.5)
-    draw_box(ax, (8.55, TOP_Y), 2.0, 0.8, "Gated P-Region\nFusion", "morph", fontsize=9.5)
+    draw_box(ax, (8.55, TOP_Y), 2.0, 0.8, "Gated Peri-R\nSide Branch", "morph", fontsize=9.5)
 
     draw_arrow(ax, (2.23, TOP_Y), (2.72, TOP_Y))
     draw_arrow(ax, (4.78, TOP_Y), (5.22, TOP_Y))
     draw_arrow(ax, (7.08, TOP_Y), (7.55, TOP_Y))
 
     draw_curved_arrow(ax, (1.75, TOP_Y + 0.33), (8.15, TOP_Y + 0.58), rad=-0.22,
-                       text="raw signal (P-wave detail)")
+                       text="raw beat, −28 to +194 ms around R")
 
     # ── 3. Rhythm branch ─────────────────────────────────────────────────
     draw_box(ax, (3.75, BOT_Y), 2.05, 0.8, "RR-Timing Encoder\n(MLP on RR-history)", "rhythm", fontsize=9.5)
@@ -138,10 +142,12 @@ def generate_workflow_figure(output_path):
     draw_arrow(ax, (9.55, TOP_Y), (10.5, 3.95), "morphology", color="#1F4E79")
     draw_arrow(ax, (4.78, BOT_Y), (10.5, 3.35), "rhythm", color="#9E3A32")
 
-    # ── 5. Curriculum scheduler (training-only signal) ─────────────────
-    draw_box(ax, (6.15, 0.62), 3.0, 0.62, "Curriculum Scheduler\n(training-only)", "train", fontsize=9.5)
+    # ── 5. Class-balanced sampler (training-only signal) ────────────────
+    # Every reported checkpoint was selected during the balanced-sampling phase of
+    # train_pca.py (AUDIT_FINDINGS.md H61), so the figure names that, not a curriculum.
+    draw_box(ax, (6.15, 0.62), 3.0, 0.62, "Class-Balanced Sampler\n(training only)", "train", fontsize=9.5)
     draw_arrow(ax, (7.65, 0.62), (12.75, 2.75), color="#B8860B", lw=1.6, style="--")
-    ax.text(10.15, 1.45, "loss / sample re-weighting\n(no effect on inference)",
+    ax.text(10.15, 1.45, "batch sampling only\n(no effect on inference)",
              color="#8A6900", fontsize=8, fontweight="bold", ha="center",
              bbox=dict(facecolor="white", alpha=0.92, edgecolor="none", pad=1.6),
              zorder=5)
@@ -167,12 +173,12 @@ def generate_workflow_figure(output_path):
                  fontsize=15.5, y=0.975, fontweight="bold")
 
     rect = patches.FancyBboxPatch(
-        (0.35, 0.12), 14.55, 6.75,
+        (0.35, 0.12), 15.45, 6.75,
         boxstyle="round,pad=0.05,rounding_size=0.08",
         linewidth=1.4, edgecolor="#8C8C8C", facecolor="none", linestyle=(0, (5, 3)),
     )
     ax.add_patch(rect)
-    ax.text(7.5, 0.30, "End-to-End Trainable Framework", ha="center",
+    ax.text(12.9, 0.30, "End-to-End Trainable Framework", ha="center",
              fontsize=9.5, color="#666666", fontstyle="italic")
 
     plt.tight_layout()

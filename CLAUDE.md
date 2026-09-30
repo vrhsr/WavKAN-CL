@@ -4,6 +4,42 @@ This file orients an LLM (or a new contributor) working in this repository. It r
 
 **There is a live, ongoing scientific-integrity audit of this codebase.** Its full findings register is `AUDIT_FINDINGS.md` at the repo root. Read that file before making any change that touches training, evaluation, statistics, figure generation, or the manuscript. This CLAUDE.md summarizes the parts of it every session needs; `AUDIT_FINDINGS.md` has the exact file:line evidence for every claim below.
 
+> **2026-09-30: FINAL PRE-SUBMISSION FREEZE. Read this before anything below; much of the rest of this file is now history.**
+>
+> - **Live manuscript:** `Submission_Array/manuscript.tex`, in Elsevier `elsarticle` format for **Array**.
+>   - **Title:** *Wavelet Kolmogorov–Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation*.
+>   - The paper is framed as a controlled evaluation, not a method proposal.
+>   - `Submission_JBHI/` is superseded; see its `SUPERSEDED.md`. Deleting it was left to the project owner.
+>   - The verifier, `check_manuscript.py`, `check_citations.py` and the manuscript tests now point at `Submission_Array/`.
+> - **The old Method section described intent, not the code.** Verified against code and checkpoints, `AUDIT_FINDINGS.md` H58–H67:
+>   - The window is `r-90:r+270`, so the R-peak is at sample 90, not "centred".
+>   - The "P-region/PWAM" branch reads −28 to +194 ms around R (QRS/ST), never the P-wave.
+>   - All 60 "RAC" checkpoints were selected in the class-balanced warm-up phase, so the measured mechanism is class-balanced sampling (CBS) versus reweighting. The annealing, focal loss and S×8 never shaped a reported model.
+>   - RR intervals are computed over *all* annotations, including non-beat markers: 9.2% of DS2 beats are affected, 2.9% on RR₀. The artefact is label-correlated.
+>   - `process_incart.py`/`process_svdb.py` applied no filter, and INCART used lead I.
+>   - PTB-XL *is* z-scored, so C23's reason (a) was wrong.
+>   - The 64 PCWI channels are exchangeable, so `prior_swap_pt` is an exact relabelling, **null by construction**. Training moves random-init wavelets *away* from the priors.
+>   - The paper now describes what the code does and makes no physiological claim.
+> - **Current names in the paper:** PC-WavKAN = *Prior-Centred* WavKAN; PCWI = Prior-Centred Wavelet Initialisation; PPR = Parameter-space Prior Retention; CBS = class-balanced sampling. The code class is still `WavKAN_v2`.
+> - **GPU decision: no new GPU runs.** The Phase 10 rerun (`run_remote_experiment.sh`) is **not required**: the PCWI claim is scoped to the base configuration where it was measured.
+>   - Do not run `prior_swap_pt`, `cyclic` or `no_pwam`.
+> - **New tooling:**
+>   - `src/extract_matched.py`: extraction for MIT-BIH, INCART and SVDB, tested byte-identical to `process_data.py`.
+>   - `src/eval_inference_sensitivity.py`: forward-only re-evaluation of all 100 checkpoints.
+>   - `src/protocol_artefacts_report.py`.
+>   - Results go in `results/rr_sensitivity/` and `results/external_matched/`.
+> - **Do not change `process_data.py` or `pwam.py` indices.** Published arrays and checkpoints depend on them; use the opt-in `rr_mode` in `extract_matched.py` instead.
+> - **Data downloads:** PhysioNet's AWS mirror (`https://physionet-open.s3.amazonaws.com/<db>/1.0.0/`) is about 40× faster than physionet.org from this machine.
+> - **Outcomes of the inference-only analyses** (run on a Colab T4 via `colab/`; inputs fingerprint-verified against the local extraction):
+>   - **RR artefact:** it does not inflate performance. With beat-to-beat intervals, every model rises by +0.002 to +0.005, and parity is unchanged.
+>   - **External data:** under the matched pipeline, PC-WavKAN transfers **worse** than both CNN baselines on INCART and SVDB. The old "leads on INCART" finding was a preprocessing artefact.
+>   - **Verification:** 465/465 claims verified, 135 tests pass, and the manuscript compiles cleanly (29 pages).
+> - **Local-machine limit:** the Transformer baseline needs ~2 GB per layer of attention maps at batch 1,024. Never run several CPU evaluations in parallel at that batch size; five workers exhausted the 15.8 GB RAM on 2026-09-30. Use `--batch 64–256` or a GPU.
+> - **Before submission, the project owner must still:**
+>   - make the GitHub repo public or archive it (the cited URL currently returns 404);
+>   - `git add -f` the new `results/` files and `results/README.md`;
+>   - confirm the AI-use declaration.
+
 ---
 
 ## 1. What this project actually is

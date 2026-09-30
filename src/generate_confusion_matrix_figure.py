@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Confusion-matrix figure from a real checkpoint's saved predictions")
     parser.add_argument("--checkpoint-dir", type=str, default="results/ablation_no_rr_attn/seed_42",
                         help="Directory containing this seed's confusion_matrix.npy")
-    parser.add_argument("--output", type=str, default="Submission_JBHI/final_confusion_matrix_main.pdf")
+    parser.add_argument("--output", type=str, default="Submission_Array/final_confusion_matrix_main.pdf")
     parser.add_argument("--label", type=str,
                         default="PC-WavKAN (153,045 params), seed 42, DS2 test set")
     args = parser.parse_args()

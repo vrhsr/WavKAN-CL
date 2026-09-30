@@ -1,5 +1,13 @@
 # Remote GPU runbook — Phase 10 component ablation
 
+> **STATUS 2026-09-30: NOT REQUIRED. Do not run for the current manuscript.** The final pre-submission audit
+> (`AUDIT_FINDINGS.md` H62, H64) found that (a) `prior_swap_pt` is an exact relabelling of exchangeable channels,
+> so its expected result equals the reference by construction and it cannot test the question it was designed for,
+> and (b) the manuscript (`Submission_Array/manuscript.tex`) now scopes the PCWI finding to the base configuration
+> where it was measured and makes no physiological claim, so the adopted-configuration ablation would add a new
+> claim rather than support an existing one. The runbook below is kept as a record.
+
+
 One experiment, run on the GPU box, brought back here for integration. It is the
 only computation the manuscript still needs: PC-WavKAN's central architectural
 contribution (PCWI) has never been ablated on the configuration the paper

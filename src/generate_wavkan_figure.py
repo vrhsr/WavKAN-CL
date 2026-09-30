@@ -156,7 +156,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=str,
-                        default="Submission_JBHI/wavkan_micro_architecture_v2.pdf",
+                        default="Submission_Array/wavkan_micro_architecture_v2.pdf",
                         help="Fixed 2026-09-02: the old default was a broken path "
                              "(e:\\The\\...) that could never have produced the real "
                              "file, same bug class already fixed in "

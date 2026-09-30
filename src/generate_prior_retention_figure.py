@@ -17,7 +17,7 @@ Usage:
     python src/generate_prior_retention_figure.py \
         --checkpoint results/ablation_no_rr_attn/seed_42/best_model.pth \
         --no-rr-attn \
-        --output Submission_JBHI/final_learned_wavelets.pdf
+        --output Submission_Array/final_learned_wavelets.pdf
 """
 
 import argparse
@@ -40,9 +40,12 @@ import matplotlib.pyplot as plt  # noqa: E402
 MU_RANGE, GAMMA_RANGE = 0.40, 0.20
 
 PALETTE = {"QRS": "#b2182b", "P": "#2166ac", "T": "#1a7a3e"}
-LABEL = {"QRS": "QRS group (ch. 1--32)",
-         "P": "P-wave group (ch. 33--48)",
-         "T": "T-wave group (ch. 49--64)"}
+# Blocks are named for the prior value they were initialised with, not for a
+# function: the 64 output channels are exchangeable downstream, so no block can be
+# said to compute a waveform component (AUDIT_FINDINGS.md H62).
+LABEL = {"QRS": "QRS-prior block (ch. 1-32)",
+         "P": "P-prior block (ch. 33-48)",
+         "T": "T-prior block (ch. 49-64)"}
 
 
 def mexican_hat(x):
@@ -50,7 +53,7 @@ def mexican_hat(x):
 
 
 def group_ppr(kan, comp):
-    """Per-edge Physiological Prior Retention for one channel group."""
+    """Per-edge Parameter-space Prior Retention (PPR) for one channel block."""
     prior = ECG_PRIORS[comp]
     c0, c1 = prior["channels"]
     mu = kan.translation.data[c0:c1]
@@ -63,7 +66,7 @@ def group_ppr(kan, comp):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", required=True)
-    ap.add_argument("--output", default="Submission_JBHI/final_learned_wavelets.pdf")
+    ap.add_argument("--output", default="Submission_Array/final_learned_wavelets.pdf")
     ap.add_argument("--no-pcwi", action="store_true")
     ap.add_argument("--no-pwam", action="store_true")
     ap.add_argument("--no-rr-attn", action="store_true",
@@ -97,7 +100,7 @@ def main():
         # Prior wavelet for this group
         phi_prior = mexican_hat((x - prior["mu_center"]) / prior["gamma"])
         ax.plot(x, phi_prior, color="0.15", lw=1.5, ls="--", zorder=3,
-                label="PCWI prior")
+                label="initial prior")
 
         # A sample of the trained edges, one curve per output channel
         step = max(1, (c1 - c0) // args.n_curves)

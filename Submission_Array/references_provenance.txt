@@ -1,0 +1,42 @@
+Bibliography provenance notes for Submission_JBHI/references.bib
+======================================================================
+These notes documented citation-integrity corrections made during the
+project's reference audit. They were previously stored in BibTeX 'note'
+fields, where IEEEtran.bst typeset them into the printed reference list
+of the manuscript. They are retained here as the audit record and removed
+from the .bib so that they cannot appear in the compiled PDF.
+======================================================================
+
+[takalo-mattila_inter-patient_2018]
+  CORRECTED 2026-08-27: previous DOI (...00078) was off by one digit -- two independent web searches consistently attribute ...00077 to this exact paper/authors. IEEE Xplore itself could not be directly fetched to confirm (blocked the automated request both times), so this is corroborated but not primary-source confirmed -- flag if a future check finds otherwise.
+
+[akan_ecgformer_2024]
+  Also presented at IEEE CSCI 2023, pp.\ 1412--1417. AUDIT\_FINDINGS.md C14: the previous entry (authors "Akan, Taha and Alp, Sidre", journal Engineering Applications of Artificial Intelligence, DOI 10.1016/j.engappai.2024.108548) was fabricated -- that DOI resolves to an unrelated real paper on bibliographic reference parsing, and this work was never published in that journal. Fixed 2026-08-12.
+
+[xiao_deep_2023]
+  RESOLVED 2026-08-14 -- AUDIT\_FINDINGS.md C14: previous entry (author "Xiao, Fei and others", journal Computers in Biology and Medicine 164:107236) was fabricated -- that DOI resolved to a real but completely unrelated paper on spinal shape changes. This entry verified real via CrossRef DOI metadata lookup (title/authors/journal/volume/issue/page all confirmed) and Semantic Scholar's abstract, which explicitly states "notable performance degradation is observed in the inter-patient paradigm" across the 368 studies it reviews -- matching the manuscript's citation context (inter-patient generalization gap, AAMI mapping, general survey framing) closely. Not independently verified against the paper's full text: the manuscript's narrower claims at this citation (MIT-BIH records 201/202 same-subject leakage specifically; Transformer instability under limited data specifically) -- these are common, plausible claims for a review of this scope to support, but were not confirmed sentence-by-sentence. If a closer read of the full paper contradicts either narrower claim, flag for Phase 6.
+
+[zhao_mak-net_2025]
+  AUDIT\_FINDINGS.md C14: this is the manuscript's primary competing baseline, cited throughout with specific numbers (6.1M params, 24 ms/beat, per-class accuracy figures). The previous entry (author "Zhao, Yuheng and others", journal Biomedical Signal Processing and Control, vol 101, p.106891) was a real paper misattributed to the wrong journal/title/first-author -- fixed 2026-08-12. The specific per-class numbers the manuscript attributes to this paper (0.989/0.987/0.983) have NOT yet been re-checked against this paper's actual reported figures (it reports "0.9980 accuracy," a possibly different metric framing) -- flagged for Phase 5, not resolved here.
+
+[mousavi_inter-_2019]
+  AUDIT\_FINDINGS.md C14: this paper only exists as this ICASSP 2019 conference paper (also on arXiv:1812.07421) -- the previous entry invented a journal identity for it ("Information Sciences", vol 526, pp.100-110, year 2020) with a DOI (10.1016/j.ins.2020.03.021) that resolves to a completely unrelated real paper ("PUMAD: PU Metric learning for anomaly detection", Ju et al.). Fixed 2026-08-12. The manuscript's specific numeric claims attributed to this citation (S-recall >0.60, 5.5MB memory footprint, V-Rec 0.99 in the SOTA table) should be re-checked against this real conference paper's actual reported figures -- flagged for Phase 5, not resolved here.
+
+[taleban_explainable_2025]
+  CORRECTED 2026-08-27: previous entry had the wrong title wording ("...for electrocardiogram interpretation" instead of the real "...in electrocardiography"), wrong year (2026 instead of 2025), and a DOI with the wrong year segment (bspc.2026.109325 instead of bspc.2025.109325). Verified via direct WebFetch of the PMC record (PMC13056371): title, full 7-author list, volume 114, article no. 109325, and publication date (10 Dec 2025) all confirmed.
+
+[silva_systematic_2025]
+  AUDIT\_FINDINGS.md C7/C14: confirmed real (arXiv:2503.07276, submitted March 2025) -- 122 studies reviewed, 5 (4.1\%) E3C-compliant, 37 (30.3\%) inter-patient, matching the manuscript's "4.1\%" claim exactly. Title here was already correct; author first name was wrong ("Lucas R." -- real first author is Guilherme A. L. Silva) and the claimed "Expert Systems with Applications" journal/publisher fields were unconfirmed (this paper is currently only confirmed as an arXiv preprint) -- fixed 2026-08-12.
+
+[bozorgasl_wavkan_2024]
+  Introduces wavelet-based KAN with Mexican Hat wavelets as learnable activation functions
+
+[wagner_ptb-xl_2020]
+  Added 2026-09-03: PTB-XL was used in this paper but was previously uncited. Verified via Nature Scientific Data and PubMed 32451379.
+
+[greenwald_improved_1990]
+  Source publication for the MIT-BIH Supraventricular Arrhythmia Database (SVDB), as specified by the PhysioNet database landing page. Added 2026-09-03.
+
+[goldberger_physiobank_2000]
+  Standard PhysioNet citation, required by the St Petersburg INCART and SVDB database landing pages. Added 2026-09-03.
+

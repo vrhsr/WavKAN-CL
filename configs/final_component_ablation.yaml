@@ -1,3 +1,6 @@
+# STATUS 2026-09-30: NOT REQUIRED for the current manuscript -- see REMOTE_RUNBOOK.md
+# and AUDIT_FINDINGS.md H62/H64. prior_swap_pt is null by construction (exchangeable
+# channels); the PCWI claim is now scoped to the base configuration. Kept as a record.
 # ---------------------------------------------------------------------------
 # final_component_ablation.yaml
 #

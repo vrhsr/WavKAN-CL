@@ -1030,3 +1030,109 @@ One GPU job: `bash run_remote_experiment.sh` on **unmodified** data (expected tr
 ### 2026-09-28 (later) — resume guard
 
 On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00000 over the 20 published checkpoints), then preflight 5 stopped on the old invalid run still at `results/final_component_ablation/` — and its message suggested `--allow-resume`, which would have counted the 60 wrong-split seeds as finished and trained only the replicate. The runner now writes `.run_fingerprint.json` (data sha256, seeds, arm flags) before the first seed; `--allow-resume` is refused unless it matches (`resume_verdict()`), and for a run without a fingerprint the abort message says to move it aside and not to resume. Tested in `tests/test_comparability_gates.py` (5 new tests, including the exact box state).
+
+## 2026-09-30 — Final pre-submission audit and research freeze: the manuscript rewritten for Array to describe the system the code actually ran (`AUDIT_FINDINGS.md` H58–H67)
+
+**No model was trained.** Every change is either a correction of text to match code and checkpoints, a new forward-pass-only evaluation of the published checkpoints, or a new analysis of existing checkpoints and result files. **Previously reported numbers:**
+- The primary comparison, per-class metrics, component ablation, sampling comparison, RR ablation, PPR values and latency are unchanged.
+- The old INCART/SVDB table is **replaced** by matched-pipeline results (H58), **and the conclusion changed**. PC-WavKAN no longer leads on INCART: it is significantly below ResNet1D and CNN+Focal on both external databases. The unmatched ranking was a preprocessing artefact.
+- The few-shot section is **removed**.
+- One unverified number was corrected: block-mean |Δμ| is 0.002 → 0.004.
+- New numbers were added: validation rows, the trained-isotropic PPR null, 4-class Macro-F1, and the RR-artefact counts and bound.
+
+### Manuscript
+- **New file `Submission_Array/manuscript.tex`** (Elsevier `elsarticle`; target journal Array).
+  - **Title:** *Wavelet Kolmogorov–Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation*.
+  - It is framed as a controlled evaluation with four research questions, not as a method proposal. It was written as a new file because the author-approved deletion/rename of `Submission_JBHI/` was blocked by the session's safety policy.
+  - `Submission_JBHI/SUPERSEDED.md` explains which files there are stale.
+- **Method rewritten to match the implementation:**
+  - the window (R at sample 90);
+  - the gated peri-R side branch (H60);
+  - CBS in place of "RAC", with the 60/60 warm-up fact (H61);
+  - interval features including non-beat annotations (H59);
+  - exact filter description;
+  - record 114 on V5; records 201/202 from the same subject;
+  - the two-head attention encoder;
+  - "B-Spline KAN" described as a single-bump variant.
+- **Physiological claims removed (H62).**
+  - PCWI → *prior-centred* initialisation; PPR → *Parameter-space* Prior Retention.
+  - Exchangeability of the channel blocks is stated and verified.
+  - The PPR table gained a trained-isotropic null (0.579).
+  - The pending permuted-prior control was withdrawn.
+- **Statistics text:**
+  - effect sizes labelled d_z;
+  - cross-architecture pairing described honestly;
+  - explicit outcome hierarchy, with the post hoc (final-audit) analyses labelled as such;
+  - no equivalence claims ("costs nothing" removed).
+- **Sampling comparison:** the pre-specified base-configuration test is presented as confirmatory. The adopted-configuration comparison is labelled exploratory and now shows its validation rows, where the gain reverses (H65).
+- **Augmentation:** the validation evidence that supports it was added (+0.020, d_z +1.16).
+- **External data:** replaced by matched-pipeline results (H58). PTB-XL exclusion reasons corrected (H66). The few-shot section was removed.
+- **Related work:** WavelNet, WaveletKernelNet, Buda et al. 2018 and Kang et al. 2020 added, each checked against CrossRef or arXiv and its abstract. Rigas et al. updated to ICLR 2026. MAK-Net stated as intra-patient.
+- **Declarations:** CRediT, competing interests, funding, ethics, data and code availability, and a **generative-AI declaration** drafted from the documented use in this repository. **Authors must confirm it.**
+- **New `highlights.txt`** (5 items, each ≤85 characters) and **`cover_letter_array.txt`**.
+- **Figures:**
+  - `final_methodology_workflow_v2.pdf` regenerated with corrected labels (beat window with R at 250 ms, gated peri-R side branch, class-balanced sampler), and its two overlaps fixed.
+  - `final_learned_wavelets.pdf` regenerated with blocks named for their priors, not for waveform components.
+  - The confusion-matrix and edge-parameterisation figures were copied unchanged.
+  - The stale graphical abstract was dropped.
+
+### Code and data
+- `src/extract_matched.py` (new): single extraction path, byte-identical to `process_data.py` (`rr_mode="all_annotations"`, the default), with opt-in `rr_mode="beats_only"`. It also covers INCART (lead II, all 75 records) and SVDB.
+- `src/eval_inference_sensitivity.py` (new): forward-only evaluation of all 100 published checkpoints. It saves per-seed confusion matrices, checks beat-for-beat reproduction of saved DS2 predictions, and computes statistics through `src/paired_stats.py`.
+- `src/protocol_artefacts_report.py` (new): RR-artefact and lookahead counts from the annotation files, written to `results/rr_sensitivity/protocol_artefacts.json`.
+- `src/pwam.py`: comments corrected (H60). Code unchanged.
+- `src/generate_workflow_diagram.py`, `src/generate_prior_retention_figure.py`: labels corrected. The default output paths of the three figure generators now point at `Submission_Array/`.
+- `src/verify_manuscript_numbers.py`:
+  - repointed to `Submission_Array/manuscript.tex`;
+  - checks for removed claims deleted (old external table, few-shot, per-block PPR, isolated-augmentation values no longer quoted);
+  - new checks for every new claim (60/60 warm-up, validation reversal and its Holm correction, augmentation validation, seed-1001 interval, side-branch parameters and time span, two-head encoder, exchangeability, trained-isotropic PPR, block-mean drift, two-sided Mann–Whitney, artefact and lookahead counts, 4-class Macro-F1, A1/A2 results).
+- `tests/test_extract_matched.py` (new, 7 tests, including byte-identity on real records). `tests/test_manuscript_integrity.py`, `tests/test_split_counts.py`, `check_manuscript.py` and `check_citations.py` repointed.
+- MIT-BIH, INCART and SVDB raw data downloaded to gitignored `data/` from PhysioNet's AWS mirror. MIT-BIH arrays were regenerated with the unmodified `process_data.py`; the counts equal `configs/mitbih_split_counts.json`.
+- `REMOTE_RUNBOOK.md`, `configs/final_component_ablation.yaml`: marked NOT REQUIRED (H64).
+- `README.md`, `results/README.md`, `CLAUDE.md`: updated to the frozen state.
+
+### Not done, deliberately
+- **No retraining.** In particular, not with corrected RR features or a corrected side-branch window, since that would change the evaluated models, not correct their description.
+- `process_data.py`, the `pwam.py` indices and the `train_pca.py` focal loss were **not** changed, because published checkpoints depend on them.
+- `Submission_JBHI/` was not deleted; the tool policy blocked it, and it is left for the project owner.
+
+### Inference-only evaluations: how they were run
+- **Local CPU (first attempt).**
+  - A serial run turned out to be dominated by the Transformer baseline (about 10 ms per beat on one CPU thread; roughly 8–11 hours for the external data).
+  - A parallel scheduler (`src/run_inference_jobs.py`) was then launched with five workers at batch size 1,024. Each worker needed about 3.5 GB, which exhausted the machine's 15.8 GB RAM. Windows logged low-virtual-memory events and killed the serial A2 process after 4 of its 5 models.
+  - No result file was corrupted, since partial outputs are written atomically only on completion. The workers were stopped. `eval_inference_sensitivity.py` gained `--batch` so memory can be bounded.
+- **Colab T4 GPU (used for every reported number).**
+  - Code: `colab/colab_run.py` and `colab/final_audit_inference.ipynb`. The bundle `colab/final_audit_bundle.zip` (code plus 100 checkpoints plus saved predictions, 34 MB, gitignored) was smoke-tested from a clean unzip before use.
+  - Run: raw data from PhysioNet's AWS mirror; extraction with the same `extract_matched.py`; fingerprint check against the local extraction (beats, labels and RR byte-identical; signals equal to 1e-4); all four evaluations with TF32 off; 1,617 s total.
+  - Outputs copied into `results/rr_sensitivity/`, `results/external_matched/`, `results/colab_environment.json` and `results/colab_fingerprint_check.json`.
+- **Parallel mode check.** `eval_inference_sensitivity.py` gained `--parts-dir`/`--merge-parts`/`--models`/`--seeds`/`--threads`/`--device`. The parallel path was checked to give byte-identical `per_seed.json` and statistics to the serial path on a DS2 slice.
+
+### Outcomes
+- **A2 (RR artefact).**
+  - Reproduction: every model's Macro-F1 is reproduced. 88 of 100 checkpoints reproduce every DS2 prediction; 12 CNN+Focal checkpoints differ in 1–4 beats each.
+  - With beat-to-beat intervals, every model rises in all 20 seeds (+0.002 to +0.005), and the primary comparison is unchanged. The artefact did not inflate performance.
+- **A1 (external data).** Under the matched pipeline, PC-WavKAN transfers worse than both CNN baselines on INCART and SVDB.
+  - It beats B-Spline KAN on INCART and is tied with it on SVDB.
+  - The earlier unmatched evaluation had ranked it first on INCART.
+  - This changes an abstract-level conclusion and is reported as such.
+
+### Verification after all changes
+- `src/verify_manuscript_numbers.py`: **465 verified, 0 mismatched**.
+- `pytest tests`: **135 passed**. `test_ablation.py`: 2 passed; it now runs its smoke training because data is present, and it leaves no files.
+- `check_citations.py`: no missing keys. `check_manuscript.py`: all `\ref` targets defined, all 4 figures found.
+- Full `pdflatex` + `bibtex` + 2× `pdflatex` build: **0 errors, 0 undefined references, 0 overfull boxes**, 29 pages (single-column review format, line numbers).
+- The build first failed on `microtype` font expansion with bitmap fonts; fixed with `lmodern`.
+- A rendered-page check caught Markdown bullets that had leaked into the LaTeX source of the cross-database section; they were converted to prose.
+- **Stale-claim sweep of the manuscript, cover letter, highlights and README:**
+  - "physiological" appears only where the claim is stated as unsupported;
+  - "equivalence", "real-time" and "streaming" appear only in disclaimers;
+  - "curriculum" and "focal" appear only in related work and in the unused-phase description;
+  - there are no "clinical", "state-of-the-art" or "novel" claims.
+- `.gitignore`: `!Submission_Array/references.bib` added, because the blanket `references.bib` rule had silently ignored the live bibliography.
+
+### For the project owner, before submission
+- **The GitHub repository cited in Code availability returns HTTP 404** (private, or wrong URL). Make it public, or archive it (e.g. Zenodo), before submission.
+- **Only the 20 PC-WavKAN checkpoints are tracked.** The 80 baseline checkpoints are gitignored, and the manuscript now says they are available on request.
+- **`results/` is gitignored.** The new result files, and the never-tracked `results/README.md`, need `git add -f`.
+- **Confirm the generative-AI declaration** reflects the authors' actual use.
+- **`Submission_JBHI/` can be deleted by the owner.** The tool policy blocked deleting it in this session.

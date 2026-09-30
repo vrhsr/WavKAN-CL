@@ -364,3 +364,117 @@ not approach" -> "markedly above" (Transformer is 0.319 against 0.408);
 Limitations item 2 attributed S-recall 0.222 to the augmentation-free arm and
 gives the adopted model's 0.198; the PCWI scope caveat carried into the
 Conclusion; Limitations renumbered after an earlier merge left a gap.
+
+## Phase 12 — final pre-submission audit and research freeze (2026-09-30)
+
+Scope: the manuscript's Method section was checked line by line against the code, the checkpoints and the result files, and every earlier finding touched below was reproduced from the repository rather than taken from this register. The live manuscript moved to `Submission_Array/manuscript.tex` (Elsevier format, target journal Array); `Submission_JBHI/` is superseded (see its `SUPERSEDED.md`). No model was trained. Every new number comes from existing checkpoints and result files, or from forward-pass-only evaluation of the published checkpoints.
+
+**ID note.** H49 and H50 were each assigned twice before this pass: the 2026-09-28 rows in the CRITICAL table (split mismatch; seed 1001) and the Phase 11 headings (BiGRU wording; lone CR). Cite them as "H49-split"/"H50-seed1001" versus "H49-BiGRU"/"H50-CR". New IDs start at H58.
+
+### H58 — INCART and SVDB were not processed by the training pipeline — CRITICAL for the cross-dataset claims — RESOLVED
+
+The manuscript stated that INCART and SVDB were "processed by the identical pipeline" and used that as the reason to keep them while excluding PTB-XL. `src/process_incart.py` and `src/process_svdb.py` resample correctly to 360 Hz but apply **no filter**, where MIT-BIH is cleaned with `nk.ecg_clean`. INCART used **lead I** (channel 0), not lead II. Only 30 of INCART's 75 records were evaluated.
+**Fix:** `src/extract_matched.py` (new) is a line-for-line mirror of `process_data.py`'s per-record loop. `tests/test_extract_matched.py` asserts byte-identical output against `process_data.py` on real MIT-BIH records (passes), and the full DS2 arrays reproduce exactly. INCART (all 75 records, lead II, asserted by name) and SVDB were re-extracted with it. All 100 published checkpoints were re-evaluated forward-only by `src/eval_inference_sensitivity.py` into `results/external_matched/`. The superseded external table, its confusion diagnostic and the few-shot study were removed from the manuscript.
+**Outcome:** **Run on a Colab T4 GPU with TF32 disabled.** `results/colab_environment.json` records the environment. Inputs were verified against the local extraction (`results/colab_fingerprint_check.json`): beat sets, labels and RR features are byte-identical, and the signal arrays agree to 1e-4, because Colab ran a newer SciPy.
+
+**INCART** (all 75 records, lead II, 175,785 beats):
+- PC-WavKAN: 0.390 ± 0.017.
+- ResNet1D: 0.431 (d_z −1.80) and CNN+Focal: 0.431 (d_z −1.53), both Holm p < 0.001, i.e. significantly above PC-WavKAN.
+- Transformer: 0.398, not significantly different.
+- B-Spline KAN: 0.367 (d_z +0.83, Holm p = 0.003), below PC-WavKAN.
+
+**SVDB** (184,486 beats):
+- PC-WavKAN: 0.275, significantly below ResNet1D 0.350, Transformer 0.316 and CNN+Focal 0.354 (all Holm p < 0.001).
+- B-Spline KAN: 0.267, not significantly different.
+
+**The earlier "PC-WavKAN leads on INCART" finding was a preprocessing artefact.** Unmatched (30 records, lead I, no filter), PC-WavKAN ranked first (0.374 against 0.316–0.365). Matched, the ranking reverses. The manuscript reports only the matched result, and states the reversal as a caution about preprocessing sensitivity. This is a material change to the paper's conclusions: the wavelet KAN transfers worse than both CNN baselines. It is stated in the abstract, results, discussion and conclusion.
+
+### H59 — RR features include non-beat annotations (annotation-derived feature artefact) — MAJOR, disclosable — RESOLVED (disclosed and bounded)
+
+`process_data.py` computes each RR interval between consecutive entries of `ann.sample`, which includes rhythm-change `+`, noise `~`, artefact `|`, blocked-P `x`, flutter `!` and comment markers. `src/protocol_artefacts_report.py` counts the effect from the annotation files:
+- **DS2:** 4,578 of 49,684 beats (9.2%) have at least one changed element, and 1,433 (2.9%) a changed RR₀, almost always shortened. By class, RR₀ is changed for 6.4% of V beats versus 2.7% of N.
+- **Training:** 6.7% and 1.5% respectively.
+
+Rhythm-change markers sit where arrhythmic episodes begin, so this is label-correlated, annotation-derived information that unannotated recordings would not carry. It is *not* train→test leakage, and it affects every model identically.
+**Fix:** disclosed in the Method and Limitations. An inference-only bound re-evaluates all 100 checkpoints on DS2 with beat-to-beat intervals (`rr_mode="beats_only"`; `results/rr_sensitivity/`). The published-RR pass also serves as a beat-for-beat reproduction check. `process_data.py` was deliberately **not** changed, since published arrays and checkpoints depend on it.
+**Outcome:** **Run on the same Colab GPU backend for both passes, so the comparison is not confounded by CPU/GPU numerics.**
+
+**Reproduction check (published intervals):** the re-evaluation reproduces every model's published Macro-F1. 88 of 100 checkpoints reproduce every DS2 prediction exactly. The other 12 are all CNN+Focal, and each differs in 1–4 of 49,684 beats (GPU floating point).
+
+**Beat-to-beat intervals:**
+- Every model's Macro-F1 rises in all 20 seeds, by +0.002 to +0.005 on average (PC-WavKAN 0.357 → 0.360).
+- PC-WavKAN's V-recall changes by −0.001.
+- The primary comparison is unchanged: the minimum Holm p is 0.389, and every paired CI includes 0.
+
+**Conclusion:** the artefact did not inflate reported performance, and no comparative conclusion depends on it. Retraining with corrected intervals was not done, and no claim requires it.
+
+### H60 — The "P-region" branch never reads the P-wave — CRITICAL description mismatch — RESOLVED (described as implemented)
+
+`process_data.py` extracts `r-90:r+270`, so the R-peak is at sample 90. `src/pwam.py` slices 80:160 on the assumption that R sits at sample 180. The branch therefore reads **28 ms before to 194 ms after R** (QRS and early ST), not "278–56 ms before R" as the manuscript said. The manuscript's "centred" window was also wrong.
+**Fix:** the manuscript describes the branch as a "gated peri-R side branch" and the window as 250 ms before and 750 ms after R. The architecture figure was regenerated with corrected labels. The comments in `pwam.py` were corrected, and the indices were left unchanged because the checkpoints depend on them. The ablation of this branch was unresolved (Holm p=0.164), so no conclusion changes.
+
+### H61 — "RAC" never got past its warm-up phase — CRITICAL description mismatch — RESOLVED (re-described)
+
+In **60/60** runs of the three RAC arms (`ablation_no_rr_attn`, `ablation_no_rr_attn_no_augment`, `wavkan_v2_curriculum`), the retained checkpoint comes from the WARMUP phase. Best epochs were 2–25, and training stopped at epochs 17–40. The annealing phase, the focal loss and the S×8 weight described in Algorithm 1 therefore never shaped a reported model.
+
+The focal loss is also non-standard: `train_pca.py:112-115` computes p_t from the *weighted* CE, so p_t = p^{w_c}. This matters only in the unused phase, and the code was left unchanged for reproducibility. The comparison labelled RAC-vs-no-RAC actually measures class-balanced sampling with unweighted CE against natural sampling with inverse-frequency weighted CE (S×8).
+**Fix:** the manuscript names the procedure CBS (class-balanced sampling), describes the second phase and states that it never produced a selected checkpoint. Algorithm 1 was removed, the architecture figure relabelled, and the long-tail sampling literature cited (Buda et al. 2018; Kang et al. 2020).
+
+### H62 — PCWI's "physiological" reading is unsupported; `prior_swap_pt` is null by construction — CRITICAL for the title — RESOLVED (claim removed)
+
+Each PCWI prior is shared by all 360 input samples, and μ/γ are amplitude offsets and widths, not temporal locations. The 64 channels are exchangeable downstream: LayerNorm is initialised identically across channels, and the GRU input weights are i.i.d. Permuting the channels together with their downstream weights reproduces the network function (max difference ~1e-7), and the permuted physiological model carries exactly the `swap_pt` priors. So `prior_swap_pt` has the same initial distribution as the reference, and its expected result equals the reference by construction.
+
+Independently, the trained **isotropic** checkpoints (`ablation_no_pcwi`) move *away* from the prior values: PPR 0.670 untrained → 0.579 trained, with complete separation (two-sided Mann–Whitney p=7e-8). The priors are not attractors, and trained-PCWI proximity reflects initialisation.
+**Fix:** the title no longer contains "physiology-constrained". PCWI is renamed *prior-centred* wavelet initialisation, and PPR *Parameter-space* Prior Retention. The PPR table gained the trained-isotropic null, and the exchangeability argument is stated in Methods. The pending "permuted-prior control" was removed from Limitations and Future Work. The verifier checks the exchangeability numerically.
+
+### H63 — Post-R lookahead inside the beat window — disclosable
+
+The 750 ms post-R segment contains the next annotated beat for 48.8% of DS2 beats (46.6% train), so the morphology branch sees information beyond RR₊₁/RR₊₂. **Fix:** stated in the manuscript's temporal-scope paragraph. The task is framed as offline classification.
+
+### H64 — The Phase 10 adopted-configuration PCWI ablation is not required — decision
+
+Once H62 removed the physiological claim, the PCWI finding is stated only for the base configuration in which it was measured. An adopted-configuration ablation would add a new claim rather than support an existing one, so it fails the project's GPU gate. `prior_swap_pt` is uninformative (H62). `no_pwam` ablates a mislocated branch (H60) whose effect was unresolved. **Decision: no new GPU runs.** `REMOTE_RUNBOOK.md` and `configs/final_component_ablation.yaml` are marked NOT REQUIRED.
+
+### H65 — CBS's supraventricular gain does not reproduce on validation for the adopted configuration — MAJOR — RESOLVED (reported)
+
+On the adopted configuration (no-augmentation arms), CBS minus reweighting on DS1 validation gives:
+- Macro-F1 −0.009 (d_z −0.57, raw p 0.027);
+- S-recall 0.239 vs 0.264 (d_z −0.53, raw p 0.025).
+
+Neither survives Holm correction across the two metrics (p≈0.051). On DS2, S-recall rises from 0.137 to 0.222. The old manuscript said the effect reproduced "across both data partitions", citing base-configuration validation numbers.
+**Fix:** the validation rows were added to the sampling table. The pre-specified base-configuration test is presented as the confirmatory one, and the adopted-configuration comparison, whose arms were trained for H36, is labelled exploratory. Also reported: augmentation *is* validation-supported (+0.020, d_z +1.16, raw p 1.7e-4).
+
+### H66 — C23's first PTB-XL exclusion reason was wrong
+
+`process_ptbxl.py:266-267` *does* z-score each beat. The exclusion still stands on other grounds:
+- record-level labels;
+- a symmetric window, with R at sample 180 rather than 90;
+- no filter;
+- detector-derived R-peaks;
+- ratio-normalised RR.
+
+**Fix:** the manuscript's exclusion paragraph lists these instead.
+
+### H67 — Smaller verified corrections (batched)
+
+- Record 114's channel 0 is V5, not MLII.
+- Records 201 (train) and 202 (DS2) come from the same subject, so "no patient in more than one subset" was false.
+- Seed pairing across architectures shares no initialisation or data order (no sampler `generator`); the effect size is d_z.
+- Q has 6 training beats, not 8 (a pre-H16 leftover).
+- The self-attention rhythm encoder has two heads, not one.
+- The block-mean |Δμ| is 0.004, not the unverified 0.002 (so the ratio is ~16×, not 30×).
+- The PPR Mann–Whitney p values are now both two-sided (7e-8).
+- The mains filter is a 7-sample moving average designed for 50 Hz.
+- "B-Spline KAN" is one cubic B-spline per edge, not a Liu-style grid KAN.
+- MAK-Net is intra-patient.
+- WavelNet (CMPB 2023, a wavelet CNN on a subject-oriented MIT-BIH benchmark) and WaveletKernelNet are now cited. Rigas et al. is updated to ICLR 2026.
+- "Costs nothing in accuracy" was replaced by "no statistically detectable difference".
+- The few-shot k=0 values came from a 70% record subset (the report JSON's own note) and were never reconciled with the zero-shot table; the section is removed.
+- The stale graphical abstract (95K params, V-recall 0.88, wearable icons, apparently AI-generated) and the JBHI cover letter were superseded; they remain in `Submission_JBHI/` for the project owner to delete.
+- A generative-AI declaration was drafted for author confirmation.
+
+**Status updates to earlier findings:**
+- **C22:** strengthened by the trained-isotropic null (H62).
+- **C23(a):** superseded by H66.
+- **H49-split:** the Phase 10 rerun is no longer required (H64).
+- **Limitation "pending permuted-prior control":** withdrawn (H62).

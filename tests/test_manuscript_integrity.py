@@ -17,7 +17,9 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-TEX = REPO / "Submission_JBHI" / "ieee_manuscript_v2.tex"
+# Repointed 2026-09-30: the live manuscript is Submission_Array/manuscript.tex
+# (Submission_JBHI/ is superseded, see its SUPERSEDED.md).
+TEX = REPO / "Submission_Array" / "manuscript.tex"
 
 pytestmark = pytest.mark.skipif(not TEX.exists(), reason="manuscript not present")
 
@@ -81,9 +83,9 @@ def test_known_broken_reference_stays_fixed():
 def test_no_unescaped_percent_in_bib_note_fields():
     """H35/H39 pin: bib note fields broke the build once and printed internal
     audit history into the reference list once."""
-    bib = REPO / "Submission_JBHI" / "references.bib"
+    bib = REPO / "Submission_Array" / "references.bib"
     if not bib.exists():
         pytest.skip("references.bib absent")
     text = bib.read_text(encoding="utf-8", errors="replace")
     assert "note = {" not in text.replace("note = {}", ""), \
-        "note fields are typeset by IEEEtran.bst; keep provenance out of the .bib"
+        "note fields are typeset by the bibliography style; keep provenance out of the .bib"

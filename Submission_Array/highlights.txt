@@ -1,0 +1,7 @@
+Highlights
+
+- No detectable Macro-F1 difference between a wavelet KAN and four baselines
+- 20 paired seeds, Holm correction and CIs; architecture selected on validation
+- Mother wavelet did not matter; self-attention over RR intervals was harmful
+- Null models show the wavelet parameters do not support a physiological reading
+- Under matched preprocessing, the wavelet KAN transfers worse than CNN baselines

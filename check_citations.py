@@ -11,8 +11,8 @@ import re
 # Repointed 2026-09-01: see check_manuscript.py -- `ieee_manuscript.tex` and
 # `paper/IEEE PAPER/references.bib` were removed in a repo cleanup, superseded by
 # `ieee_manuscript_v2.tex` and the corrected `Submission_JBHI/references.bib`.
-tex = open(os.path.join('Submission_JBHI', 'ieee_manuscript_v2.tex'), encoding='utf-8').read()
-bib = open(os.path.join('Submission_JBHI', 'references.bib'), encoding='utf-8').read()
+tex = open(os.path.join('Submission_Array', 'manuscript.tex'), encoding='utf-8').read()
+bib = open(os.path.join('Submission_Array', 'references.bib'), encoding='utf-8').read()
 
 # Extract all cite keys from tex
 cite_matches = re.findall(r'\\cite\{([^}]+)\}', tex)

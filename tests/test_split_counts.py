@@ -104,7 +104,7 @@ def test_phase10_config_counts_equal_ground_truth():
 
 
 def test_manuscript_class_table_equals_ground_truth():
-    tex = io.open(REPO / "Submission_JBHI" / "ieee_manuscript_v2.tex", encoding="utf-8").read()
+    tex = io.open(REPO / "Submission_Array" / "manuscript.tex", encoding="utf-8").read()
     tab = tex.split(r"\label{tab:class_dist}")[1].split(r"\end{tabular}")[0]
     num = lambda s: int(re.sub(r"[^0-9]", "", s))
     for i, cls in enumerate(["N", "S", "V", "F", "Q"]):
@@ -115,12 +115,12 @@ def test_manuscript_class_table_equals_ground_truth():
 
 
 def test_manuscript_prose_record_lists_equal_ground_truth():
-    tex = io.open(REPO / "Submission_JBHI" / "ieee_manuscript_v2.tex", encoding="utf-8").read()
+    tex = io.open(REPO / "Submission_Array" / "manuscript.tex", encoding="utf-8").read()
     prose = tex.split(r"\subsection{Inter-Patient Split}")[1].split(r"\subsection")[0]
     LIST = r"((?:\d{3}, )*\d{3},? and \d{3})"
     for split, pat in (("train", r"training uses the (\d+) records " + LIST),
-                       ("val", r"validation the (\d+) records " + LIST),
-                       ("test", r"held out, the (\d+) records " + LIST)):
+                       ("val", r"validation (?:uses )?the (\d+) records " + LIST),
+                       ("test", r"held out, (?:comprises )?the (\d+) records " + LIST)):
         m = re.search(pat, prose)
         assert m, f"{split} list not found in the Inter-Patient Split prose"
         recs = sorted(re.findall(r"\d{3}", m.group(2)))

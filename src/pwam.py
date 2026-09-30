@@ -1,6 +1,13 @@
 """
 pwam.py  —  P-Wave Attention Module (PWAM)
 
+NOTE (2026-09-30, AUDIT_FINDINGS.md H60): despite the name and the motivation
+below, this branch does not read the P-wave. With the R-peak at sample 90 of the
+extracted window, samples 80:160 cover the QRS and early ST segment, and with a
+single key/value token the attention is degenerate (a linear map at inference).
+The manuscript calls it the "gated peri-R side branch". Class name and indices are
+unchanged so that published checkpoints still load.
+
 SECONDARY NOVEL CONTRIBUTION
 =============================
 Injects a dedicated, low-parameter pathway that explicitly attends to the
@@ -39,11 +46,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.wavkan_pcwi import PCWIWavKANLinear
 
-# ─── P-wave window (360 Hz, beat centred at sample 180) ──────────────────────
-#   Physiological P-wave: ~120 ms before R-peak  →  sample 180 - 43 ≈ 137
-#   We use a slightly wider window to capture PR-interval variation
-P_START = 80    # 280 ms before R-peak
-P_END   = 160   # 56 ms before R-peak
+# ─── Side-branch window ──────────────────────────────────────────────────────
+# CORRECTED 2026-09-30 (AUDIT_FINDINGS.md H60). These indices were chosen assuming
+# the R-peak sits at sample 180 of a centred window, which would make 80:160 the
+# pre-R/P-wave region. It does not: process_data.py extracts r-90:r+270, so the
+# R-peak is at sample 90 and 80:160 spans -28 ms to +194 ms around R (QRS and
+# early ST). The P-wave is NOT in this slice. The indices are left unchanged
+# because every published checkpoint was trained with them; the manuscript
+# describes the branch by what it actually reads ("gated peri-R side branch").
+P_START = 80    # 10 samples = 28 ms BEFORE the R-peak (R at sample 90)
+P_END   = 160   # 70 samples = 194 ms AFTER the R-peak
 P_LEN   = P_END - P_START  # 80 samples
 
 

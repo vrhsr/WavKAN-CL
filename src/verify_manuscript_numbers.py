@@ -1,6 +1,7 @@
 """
 verify_manuscript_numbers.py -- re-derive every quantitative claim in
-Submission_JBHI/ieee_manuscript_v2.tex from the real result files in results/
+Submission_Array/manuscript.tex from the real result files in results/
+(repointed 2026-09-30 from the superseded Submission_JBHI/ieee_manuscript_v2.tex)
 and report agreement or disagreement, claim by claim.
 
 Written 2026-09-03 during the publication-readiness audit. This is the honest
@@ -188,98 +189,107 @@ def eppr(kan, per_comp=False):
         ga = kan.scale.data[c0:c1].abs()
         emu = (mu - p_["mu_center"]).abs().mean().item()
         ega = (ga - p_["gamma"]).abs().mean().item()
-        v[comp] = (max(0.0, 1 - (emu / MU_R + ega / GA_R) / 2), emu)
+        bm = abs(mu.mean().item() - p_["mu_center"])
+        v[comp] = (max(0.0, 1 - (emu / MU_R + ega / GA_R) / 2), emu, ega, bm)
     if per_comp:
         return v
-    return float(np.mean([x[0] for x in v.values()])), float(np.mean([x[1] for x in v.values()]))
+    return tuple(float(np.mean([x[i] for x in v.values()])) for i in range(4))
 
 
-T, TM, PC = [], [], {c: [] for c in ECG_PRIORS}
-for ck in sorted(glob.glob("results/ablation_no_rr_attn/seed_*/best_model.pth")):
-    m_ = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=False)
-    m_.load_state_dict(torch.load(ck, map_location="cpu"))
-    a, b = eppr(m_.kan)
-    T.append(a); TM.append(b)
-    for c, (w, _) in eppr(m_.kan, True).items():
-        PC[c].append(w)
-chk("PPR trained mean", 0.7826, np.mean(T), 0.0006)
-chk("PPR trained std", 0.0351, np.std(T, ddof=1), 0.0006)
-chk("PPR trained per-edge |dmu|", 0.064, np.mean(TM), 0.0006)
-for c, cv in [("QRS", 0.814), ("P", 0.764), ("T", 0.770)]:
-    chk("PPR trained " + c, cv, np.mean(PC[c]), 0.0009)
-for lbl, pcwi, cm, cs, cmu in [("untrained PCWI", True, 0.9729, 0.0001, 0.013),
-                               ("untrained random", False, 0.6698, 0.0008, 0.161)]:
-    V, M2 = [], []
+def ppr_rows(pattern, **kw):
+    out = []
+    for ck in sorted(glob.glob(pattern)):
+        m_ = WavKAN_v2(**kw)
+        m_.load_state_dict(torch.load(ck, map_location="cpu"))
+        out.append(eppr(m_.kan))
+    return np.array(out)
+
+
+def ppr_untrained(pcwi):
+    out = []
     for sd_ in range(1000, 1020):
         torch.manual_seed(sd_)
-        m_ = WavKAN_v2(use_pcwi=pcwi, use_pwam=True, use_rr_attn=False)
-        a, b = eppr(m_.kan)
-        V.append(a); M2.append(b)
-    chk("PPR " + lbl + " mean", cm, np.mean(V), 0.0012)
-    chk("PPR " + lbl + " std", cs, np.std(V, ddof=1), 0.0006)
-    chk("PPR " + lbl + " |dmu|", cmu, np.mean(M2), 0.0015)
-    if not pcwi:
-        u, pmw = mannwhitneyu(T, V, alternative="greater")
-        pooled = np.sqrt((np.var(T, ddof=1) + np.var(V, ddof=1)) / 2)
-        chk("PPR trained-vs-random std diff", 4.6, (np.mean(T) - np.mean(V)) / pooled, 0.06)
-        print("   Mann-Whitney p = %.2e (manuscript claims 3e-8)" % pmw)
+        out.append(eppr(WavKAN_v2(use_pcwi=pcwi, use_pwam=True, use_rr_attn=False).kan))
+    return np.array(out)
+
+
+T_ = ppr_rows("results/ablation_no_rr_attn/seed_*/best_model.pth",
+              use_pcwi=True, use_pwam=True, use_rr_attn=False)
+U_pc, U_iso = ppr_untrained(True), ppr_untrained(False)
+# Trained isotropic null: the 20 checkpoints of the no-PCWI ablation arm (base config).
+R_ = ppr_rows("results/ablation_no_pcwi/seed_*/best_model.pth",
+              use_pcwi=False, use_pwam=True, use_rr_attn=True)
+chk("PPR trained n", 20, len(T_), 0)
+chk("PPR trained-isotropic n", 20, len(R_), 0)
+for lbl, A_, cm, cs, cmu, cga in [("untrained PCWI", U_pc, 0.9729, 0.0001, 0.013, 0.004),
+                                  ("trained PCWI", T_, 0.7826, 0.0351, 0.064, 0.055),
+                                  ("untrained isotropic", U_iso, 0.6698, 0.0008, 0.161, 0.051),
+                                  ("trained isotropic", R_, 0.5794, 0.0173, 0.177, 0.080)]:
+    chk("PPR " + lbl + " mean", cm, A_[:, 0].mean(), 0.0012)
+    chk("PPR " + lbl + " std", cs, A_[:, 0].std(ddof=1), 0.0006)
+    chk("PPR " + lbl + " |dmu|", cmu, A_[:, 1].mean(), 0.0015)
+    chk("PPR " + lbl + " |dgamma|", cga, A_[:, 2].mean(), 0.0015)
+chk("PPR trained block-mean |dmu| (0.004)", 0.004, T_[:, 3].mean(), 0.0006)
+chk("PPR |dmu| growth ~fivefold (0.064/0.013)", 5.0, T_[:, 1].mean() / U_pc[:, 1].mean(), 0.3)
+for lbl, X_, Y_ in [("trained PCWI vs untrained iso", T_, U_iso),
+                    ("trained iso vs untrained iso", R_, U_iso)]:
+    p_ = mannwhitneyu(X_[:, 0], Y_[:, 0], alternative="two-sided")[1]
+    sep = (X_[:, 0].min() > Y_[:, 0].max()) or (X_[:, 0].max() < Y_[:, 0].min())
+    chk("MW two-sided p (7e-8) " + lbl, 7e-8, p_, 0.5e-8)
+    chk("complete separation " + lbl, 1, 1 if sep else 0, 0)
+chk("trained isotropic moves AWAY from priors", 1,
+    1 if R_[:, 0].mean() < U_iso[:, 0].mean() else 0, 0)
+
+# Exchangeability of the 64 KAN channels (Methods): permuting hidden units with the
+# matching downstream weights leaves the function unchanged, and the permuted
+# physiological model carries exactly the swap_pt priors (AUDIT_FINDINGS.md H62).
+import copy as _copy  # noqa: E402
+torch.manual_seed(0)
+_ph = WavKAN_v2(use_rr_attn=False, prior_assignment="physiological").eval()
+torch.manual_seed(0)
+_sw = WavKAN_v2(use_rr_attn=False, prior_assignment="swap_pt").eval()
+_perm = torch.tensor(list(range(32)) + list(range(48, 64)) + list(range(32, 48)))
+_p2 = _copy.deepcopy(_ph)
+with torch.no_grad():
+    for _n in ["weights", "translation", "scale", "linear_w"]:
+        getattr(_p2.kan, _n).copy_(getattr(_ph.kan, _n)[_perm])
+    _p2.kan_norm.weight.copy_(_ph.kan_norm.weight[_perm])
+    _p2.kan_norm.bias.copy_(_ph.kan_norm.bias[_perm])
+    for _n in ["weight_ih_l0", "weight_ih_l0_reverse"]:
+        getattr(_p2.bigru, _n).copy_(getattr(_ph.bigru, _n)[:, _perm])
+    _x = torch.randn(256, 360)
+    _r = torch.rand(256, 5) + 0.5
+    _md = (_ph(_x, _r) - _p2(_x, _r)).abs().max().item()
+chk("exchangeability: max |f - f_perm| < 1e-6 (reported ~1e-7)", 1, 1 if _md < 1e-6 else 0, 0)
+
+
+def _blk(m, a, b):
+    return (round(m.kan.translation[a:b].mean().item(), 3), round(m.kan.scale[a:b].mean().item(), 3))
+
+
+chk("exchangeability: permuted priors == swap_pt priors", 1,
+    1 if all(_blk(_p2, a, b) == _blk(_sw, a, b) for a, b in [(0, 32), (32, 48), (48, 64)]) else 0, 0)
 
 print("\n" + "=" * 100)
 print("TABLE: Cross-dataset + confusion diagnostic + fewshot + augmentation + deployment")
 print("=" * 100)
-md = json.load(open("results/multidataset_final_stats.json"))
-for ds, cm, cs in [("INCART", 0.374, 0.009), ("SVDB", 0.281, 0.013)]:
-    chk(ds + " PC-WavKAN mean", cm, md[ds]["wavkan_v2_final_macro_f1"]["mean"], 0.0006)
-    chk(ds + " PC-WavKAN std", cs, list(md[ds]["comparisons"].values())[0]["std_a"], 0.0006)
-for ds, k, cmn, csd, cd in [("INCART", "resnet1d", 0.344, 0.018, 1.62), ("INCART", "transformer", 0.335, 0.031, 1.27),
-                            ("INCART", "cnn_focal", 0.316, 0.024, 2.02), ("INCART", "bspline_kan", 0.365, 0.017, 0.45),
-                            ("SVDB", "resnet1d", 0.370, 0.023, -3.26), ("SVDB", "transformer", 0.335, 0.035, -1.52),
-                            ("SVDB", "cnn_focal", 0.367, 0.013, -4.29), ("SVDB", "bspline_kan", 0.276, 0.018, 0.19)]:
-    v = md[ds]["comparisons"][k]
-    chk(ds + " " + k + " mean", cmn, v["mean_b"], 0.0006)
-    chk(ds + " " + k + " std", csd, v["std_b"], 0.0006)
-    chk(ds + " " + k + " d", cd, v["cohens_d"], 0.006)
-chk("INCART bspline holm p", 0.083, md["INCART"]["comparisons"]["bspline_kan"]["holm_p"], 0.0006)
-chk("SVDB bspline holm p", 0.648, md["SVDB"]["comparisons"]["bspline_kan"]["holm_p"], 0.0006)
-
-cd_ = json.load(open("results/svdb_incart_confusion_diagnostic.json"))
-for ds, mdl, sv, key in [("SVDB", "wavkan_v2_final", 0.408, "sv"), ("SVDB", "bspline_kan", 0.412, "sv"),
-                         ("SVDB", "resnet1d", 0.173, "sv"), ("SVDB", "cnn_focal", 0.118, "sv"),
-                         ("SVDB", "transformer", 0.319, "sv"), ("INCART", "wavkan_v2_final", 0.280, "sv"),
-                         ("INCART", "resnet1d", 0.253, "sv"), ("INCART", "transformer", 0.210, "sv"),
-                         ("INCART", "cnn_focal", 0.103, "sv")]:
-    r = np.array(cd_[ds][mdl]["row_normalized_confusion_matrix"])
-    chk(ds + " " + mdl + " S->V", sv, r[1, 2], 0.0009)
-for ds, mdl, share in [("SVDB", "wavkan_v2_final", 0.178), ("SVDB", "bspline_kan", 0.189),
-                       ("SVDB", "resnet1d", 0.083), ("SVDB", "cnn_focal", 0.055)]:
-    cmx = np.array(cd_[ds][mdl]["summed_confusion_matrix"])
-    chk(ds + " " + mdl + " pred-V share", share, cmx[:, 2].sum() / cmx.sum(), 0.0009)
-for ds, mdl, vr in [("SVDB", "wavkan_v2_final", 0.794), ("SVDB", "bspline_kan", 0.789),
-                    ("SVDB", "resnet1d", 0.733), ("SVDB", "cnn_focal", 0.642)]:
-    r = np.array(cd_[ds][mdl]["row_normalized_confusion_matrix"])
-    chk(ds + " " + mdl + " V-Rec", vr, r[2, 2], 0.0009)
-
-for ds, rows in [("incart", [(0, 0.392, 0.726, 0.571, 0.954), (500, 0.396, 0.850, 0.295, 0.958), (50, None, None, 0.643, None)]),
-                 ("svdb", [(0, 0.271, 0.774, 0.107, 0.788), (500, 0.331, 0.707, 0.506, 0.782)])]:
-    d_ = json.load(open("results/fewshot_adaptation/%s/fewshot_%s_report.json" % (ds, ds)))
-    for k, mf, vr, sr, nr in rows:
-        s_ = d_["summary"][str(k)]
-        for nm, c, real in [("MF1", mf, s_["macro_f1"]["mean"]), ("V", vr, s_["v_recall"]["mean"]),
-                            ("S", sr, s_["s_recall"]["mean"]), ("N", nr, s_["n_recall"]["mean"])]:
-            if c is not None:
-                chk("fewshot %s k=%d %s" % (ds, k, nm), c, real, 0.0009)
+# The superseded cross-dataset table (multidataset_final_stats.json, from an
+# unfiltered, lead-I pipeline) and the few-shot section were removed from the
+# manuscript on 2026-09-30 (AUDIT_FINDINGS.md H58). The matched-pipeline external
+# results are checked in the EXTERNAL section below.
 
 ag = json.load(open("results/noise_augmentation_final/augmentation_comparison.json"))["summary"]
-for st, mf, mfs, vr, vrs, sr, srs in [("none", 0.336, 0.031, 0.884, 0.017, 0.316, 0.050),
-                                      ("gaussian", 0.303, 0.010, 0.914, 0.016, 0.333, 0.038),
-                                      ("baseline_wander", 0.320, 0.009, 0.917, 0.010, 0.339, 0.051),
-                                      ("combined", 0.293, 0.018, 0.922, 0.030, 0.337, 0.048),
-                                      ("smote", 0.201, 0.026, 0.869, 0.062, 0.648, 0.105)]:
-    v = ag[st]
-    chk("aug " + st + " MF1", mf, v["macro_f1"]["mean"], 0.0006)
-    chk("aug " + st + " MF1 std", mfs, v["macro_f1"]["std"], 0.0006)
-    chk("aug " + st + " V", vr, v["v_recall"]["mean"], 0.0006)
-    chk("aug " + st + " S", sr, v["s_recall"]["mean"], 0.0006)
+chk("aug isolated none S", 0.316, ag["none"]["s_recall"]["mean"], 0.0006)
+chk("aug isolated smote S", 0.648, ag["smote"]["s_recall"]["mean"], 0.0006)
+chk("aug isolated smote largest MF1 cost", 1,
+    1 if ag["smote"]["macro_f1"]["mean"] == min(v["macro_f1"]["mean"] for v in ag.values()) else 0, 0)
+chk("aug isolated smote largest S gain", 1,
+    1 if ag["smote"]["s_recall"]["mean"] == max(v["s_recall"]["mean"] for v in ag.values()) else 0, 0)
+for _st in ("gaussian", "baseline_wander", "combined"):
+    chk("aug isolated %s raises V" % _st, 1,
+        1 if ag[_st]["v_recall"]["mean"] > ag["none"]["v_recall"]["mean"] else 0, 0)
+    chk("aug isolated %s lowers MF1" % _st, 1,
+        1 if ag[_st]["macro_f1"]["mean"] < ag["none"]["macro_f1"]["mean"] else 0, 0)
 
 h36 = json.load(open("results/h36_no_augment_ablation_report.json"))["headline_curriculum_augment_vs_no_augment"]["per_metric"]
 chk("h36 MF1 with-aug", 0.357, h36["macro_f1"]["with_augment_mean"], 0.0006)
@@ -288,8 +298,6 @@ chk("h36 MF1 holm p", 0.46, h36["macro_f1"]["holm_adjusted_p"], 0.006)
 chk("h36 F-Rec with-aug", 0.0061, h36["f_recall"]["with_augment_mean"], 0.0002)
 chk("h36 F-Rec no-aug", 0.0022, h36["f_recall"]["no_augment_mean"], 0.0002)
 chk("h36 F-Rec holm p", 0.043, h36["f_recall"]["holm_adjusted_p"], 0.002)
-chk("h36 V-Rec holm p", 0.083, h36["v_recall"]["holm_adjusted_p"], 0.002)
-chk("h36 V-Rec d", -0.70, h36["v_recall"]["cohens_d"], 0.006)
 
 dep = [json.load(open("results/deployment_final_runs/run%d/benchmark_report.json" % r)) for r in (1, 2, 3)]
 chk("dep FP32 size MB", 0.596, dep[0]["fp32_size_mb"], 0.0006)
@@ -321,8 +329,6 @@ for k, dl, ds_, hp in [("RR-2", -0.0020, 0.0077, 0.221), ("RR-1", -0.0016, 0.007
     chk("rr " + k + " delta", dl, pp[k]["s_recall_delta_mean"], 0.0001)
     chk("rr " + k + " delta std", ds_, pp[k]["s_recall_delta_std"], 0.0001)
     chk("rr " + k + " holm p", hp, hrr[k], max(0.0002, hp * 0.06))
-chk("rr RR0 V-Rec delta", -0.0745, pp["RR0 (Pre)"]["v_recall_delta_mean"], 0.0001)
-chk("rr RR0 V-Rec delta std", 0.1132, pp["RR0 (Pre)"]["v_recall_delta_std"], 0.0001)
 
 cmx = np.load("results/ablation_no_rr_attn/seed_42/confusion_matrix.npy")
 rn = cmx / cmx.sum(1, keepdims=True)
@@ -528,7 +534,7 @@ print("configs/mitbih_split_counts.json (src/derive_split_counts.py). This table
 print("pre-H16 counts for weeks while every other number was verified, because nothing")
 print("checked it (AUDIT_FINDINGS.md H49).")
 import re as _re  # noqa: E402
-_tex = open("Submission_JBHI/ieee_manuscript_v2.tex", encoding="utf-8").read()
+_tex = open("Submission_Array/manuscript.tex", encoding="utf-8").read()
 _tab = _tex.split(r"\label{tab:class_dist}")[1].split(r"\end{tabular}")[0]
 _gt = json.load(open("configs/mitbih_split_counts.json", encoding="utf-8"))
 
@@ -562,8 +568,8 @@ chk("prose: training fusion beats", 28, _gt["counts"]["train"]["3"], 0)
 _prose = _tex.split(r"\subsection{Inter-Patient Split}")[1].split(r"\subsection")[0]
 _LIST = r"((?:\d{3}, )*\d{3},? and \d{3})"
 for _split, _pat in (("train", r"training uses the (\d+) records " + _LIST),
-                     ("val", r"validation the (\d+) records " + _LIST),
-                     ("test", r"held out, the (\d+) records " + _LIST)):
+                     ("val", r"validation (?:uses )?the (\d+) records " + _LIST),
+                     ("test", r"held out, (?:comprises )?the (\d+) records " + _LIST)):
     _m = _re.search(_pat, _prose)
     chk("split prose lists the %s partition" % _split, 1, 1 if _m else 0, 0)
     if not _m:
@@ -572,6 +578,223 @@ for _split, _pat in (("train", r"training uses the (\d+) records " + _LIST),
     chk("split prose %s record count as stated" % _split, int(_m.group(1)), len(_recs), 0)
     chk("split prose %s records == ground truth" % _split, 1,
         1 if _recs == sorted(_gt["records"][_split]) else 0, 0)
+
+# ---------------------------------------------------------------------------
+# Final-audit claims (2026-09-30): training procedure, validation evidence,
+# protocol artefacts. AUDIT_FINDINGS.md H58-H67.
+# ---------------------------------------------------------------------------
+print("\n" + "=" * 100)
+print("FINAL AUDIT: class-balanced phase, validation evidence, artefacts")
+print("=" * 100)
+
+
+def _best_rows(d):
+    o = {}
+    for pth in sorted(glob.glob(os.path.join(d, "seed_*", "training_history.json"))):
+        h = json.load(open(pth))
+        b_ = max(h, key=lambda e: e["val_macro_f1"])      # first maximum = train_pca's strict '>'
+        o[os.path.basename(os.path.dirname(pth))] = (b_, h[-1])
+    return o
+
+
+# (1) every CBS checkpoint was selected in the class-balanced (WARMUP) phase
+_cbs_arms = ["results/ablation_no_rr_attn", "results/ablation_no_rr_attn_no_augment",
+             "results/wavkan_v2_curriculum"]
+_rows = [r for d in _cbs_arms for r in _best_rows(d).values()]
+chk("CBS runs counted (3 arms x 20)", 60, len(_rows), 0)
+chk("CBS: best epoch in WARMUP phase (all)", 60, sum(1 for b_, _ in _rows if b_.get("phase") == "WARMUP"), 0)
+chk("CBS: earliest best epoch", 2, min(b_["epoch"] for b_, _ in _rows), 0)
+chk("CBS: latest best epoch", 25, max(b_["epoch"] for b_, _ in _rows), 0)
+chk("CBS: earliest stop epoch", 17, min(l_["epoch"] for _, l_ in _rows), 0)
+chk("CBS: latest stop epoch", 40, max(l_["epoch"] for _, l_ in _rows), 0)
+
+# (2) Table tab:sampling, validation rows (CBS vs reweighting, adopted config, no augmentation)
+_cb = _best_rows("results/ablation_no_rr_attn_no_augment")
+_rw = _best_rows("results/ablation_no_rr_attn_no_curriculum_no_augment")
+_sd = sorted(set(_cb) & set(_rw))
+_vp = []
+for _k, _cm_rw, _cs_rw, _cm_cb, _cs_cb, _cd, _cp in [
+        ("val_macro_f1", 0.4285, 0.0125, 0.4195, 0.0098, -0.57, 0.027),
+        ("val_s_recall", 0.2639, 0.0510, 0.2391, 0.0425, -0.53, 0.025)]:
+    a_ = np.array([_cb[k][0][_k] for k in _sd]); b_ = np.array([_rw[k][0][_k] for k in _sd])
+    d_ = a_ - b_
+    pr = wilcoxon(a_, b_)[1]
+    _vp.append(pr)
+    chk("sampling val " + _k + " reweighting mean", _cm_rw, b_.mean(), 0.00006)
+    chk("sampling val " + _k + " reweighting std", _cs_rw, b_.std(ddof=1), 0.00006)
+    chk("sampling val " + _k + " CBS mean", _cm_cb, a_.mean(), 0.00006)
+    chk("sampling val " + _k + " CBS std", _cs_cb, a_.std(ddof=1), 0.00006)
+    chk("sampling val " + _k + " d_z", _cd, d_.mean() / d_.std(ddof=1), 0.006)
+    chk("sampling val " + _k + " raw p", _cp, pr, 0.0006)
+_hv = holm(_vp)
+chk("sampling val: Holm over 2 metrics ~0.05 (not < 0.05)", 0.05, min(_hv), 0.002)
+chk("sampling val: neither significant after Holm", 1, 1 if min(_hv) >= 0.05 else 0, 0)
+
+# (3) augmentation is supported on validation (CBS both arms)
+_ad = _best_rows("results/ablation_no_rr_attn")
+_sd2 = sorted(set(_ad) & set(_cb))
+a_ = np.array([_ad[k][0]["val_macro_f1"] for k in _sd2]); b_ = np.array([_cb[k][0]["val_macro_f1"] for k in _sd2])
+d_ = a_ - b_
+chk("aug val: MF1 gain", 0.020, d_.mean(), 0.0006)
+chk("aug val: d_z", 1.16, d_.mean() / d_.std(ddof=1), 0.006)
+chk("aug val: raw p", 1.7e-4, wilcoxon(a_, b_)[1], 0.05e-4)
+
+# (4) seed-1001 exclusion: unadjusted CI vs B-Spline KAN narrowly excludes zero
+_r1 = {k: v for k, v in load("results/ablation_no_rr_attn", "macro_f1").items() if k != "seed_1001"}
+_b1 = load("results/baseline_bspline_kan", "macro_f1")
+_s1 = sorted(set(_r1) & set(_b1))
+_d1 = np.array([_r1[k] - _b1[k] for k in _s1])
+_h1 = tdist.ppf(0.975, len(_d1) - 1) * _d1.std(ddof=1) / np.sqrt(len(_d1))
+chk("seed-1001-excluded n", 19, len(_d1), 0)
+chk("seed-1001-excluded CI low", -0.031, _d1.mean() - _h1, 0.0006)
+chk("seed-1001-excluded CI high", -0.0002, _d1.mean() + _h1, 0.00006)
+
+# (5) architecture facts stated in Methods
+from src.pwam import PWaveAttentionModule  # noqa: E402
+_pw = PWaveAttentionModule(main_dim=64, p_hidden=32, attn_heads=4, dropout=0.2)
+chk("side branch parameters", 34816, sum(q.numel() for q in _pw.parameters()), 0)
+import src.pwam as _pwm  # noqa: E402
+chk("side branch reads samples 80..160", 1, 1 if (_pwm.P_START, _pwm.P_END) == (80, 160) else 0, 0)
+chk("side branch start = -28 ms (R at sample 90)", -28, round((80 - 90) / 360 * 1000), 1)
+chk("side branch end = +194 ms", 194, round((160 - 90) / 360 * 1000), 1)
+_ra = WavKAN_v2(use_rr_attn=True).rr_branch.self_attn
+chk("alternative rhythm encoder: two attention heads", 2, _ra.num_heads, 0)
+chk("record 208 share of DS1 fusion beats (~90%)", 0.90, 372 / 414, 0.005)
+
+# (6) protocol artefacts (src/protocol_artefacts_report.py, from the annotation files)
+_pa = json.load(open("results/rr_sensitivity/protocol_artefacts.json"))["test"]
+chk("DS2 beats in artefact report", 49684, _pa["beats"], 0)
+chk("DS2 beats with any RR element changed", 4578, _pa["any_rr_element_changed"], 0)
+chk("DS2 any-RR changed pct (9.2)", 9.2, _pa["any_rr_element_changed_pct"], 0.05)
+chk("DS2 beats with RR_0 changed", 1433, _pa["rr0_changed"], 0)
+chk("DS2 RR_0 changed pct (2.9)", 2.9, _pa["rr0_changed_pct"], 0.05)
+chk("DS2 next beat inside window pct (48.8)", 48.8, _pa["next_beat_inside_window_pct"], 0.05)
+
+# (7) four-class N/S/V/F Macro-F1 (exploratory), from the per-seed confusion
+# matrices of the published-RR re-evaluation, which is also the beat-for-beat
+# reproduction check of every checkpoint's saved DS2 predictions.
+_ps_path = "results/rr_sensitivity/published_rr"
+if os.path.exists(os.path.join(_ps_path, "per_seed.json")):
+    _pr = json.load(open(os.path.join(_ps_path, "report.json")))
+    _mm = _pr["published_prediction_mismatches"]
+    chk("reproduction: checkpoints with any differing DS2 prediction", 12, len(_mm), 0)
+    chk("reproduction: all differing checkpoints are CNN+Focal", 1, 1 if all(m[0] == "CNN+Focal" for m in _mm) else 0, 0)
+    chk("reproduction: at most 4 of 49,684 beats differ", 4, max(m[2] for m in _mm), 0)
+    chk("reproduction: at least 1 beat differs where listed", 1, min(m[2] for m in _mm), 0)
+    _pss = json.load(open(os.path.join(_ps_path, "per_seed.json")))
+
+    def _f1_nsvf(cm):
+        cm = np.asarray(cm, float)
+        tp = np.diag(cm)
+        pr_ = np.divide(tp, cm.sum(0), out=np.zeros_like(tp), where=cm.sum(0) > 0)
+        rc_ = np.divide(tp, cm.sum(1), out=np.zeros_like(tp), where=cm.sum(1) > 0)
+        f_ = np.divide(2 * pr_ * rc_, pr_ + rc_, out=np.zeros_like(tp), where=(pr_ + rc_) > 0)
+        return f_[:4].mean(), f_.mean()
+
+    _nsvf = {m: {s_: _f1_nsvf(v["confusion_matrix"]) for s_, v in d.items()} for m, d in _pss.items()}
+    for _m, _cm_, _cs_, _c5 in [("PC-WavKAN", 0.446, 0.023, 0.357), ("ResNet1D", 0.439, 0.023, 0.351),
+                                ("Transformer", 0.441, 0.050, 0.353), ("CNN+Focal", 0.453, 0.019, 0.362),
+                                ("B-Spline KAN", 0.463, 0.030, 0.371)]:
+        _v = np.array([x[0] for x in _nsvf[_m].values()])
+        _v5 = np.array([x[1] for x in _nsvf[_m].values()])
+        chk("4-class MF1 %s mean" % _m, _cm_, _v.mean(), 0.0006)
+        chk("4-class MF1 %s std" % _m, _cs_, _v.std(ddof=1), 0.0006)
+        chk("re-inferred 5-class MF1 %s == published" % _m, _c5, _v5.mean(), 0.0006)
+    _fam4 = holm_family({_m: paired_compare({k: v[0] for k, v in _nsvf["PC-WavKAN"].items()},
+                                            {k: v[0] for k, v in _nsvf[_m].items()}, "mf1_nsvf")
+                         for _m in ["ResNet1D", "Transformer", "CNN+Focal", "B-Spline KAN"]})
+    chk("4-class: min Holm p (>= 0.36)", 0.36, min(r["holm_p"] for r in _fam4.values()), 0.005)
+else:
+    chk("results/rr_sensitivity/published_rr present", 1, 0, 0)
+
+# (8) RR artefact: per-class RR_0 rates and direction (protocol_artefacts.json)
+_pa_c = _pa["per_class"]
+chk("RR_0 changed, V beats pct (6.4)", 6.4, _pa_c["V"]["rr0_pct"], 0.05)
+chk("RR_0 changed, N beats pct (2.7)", 2.7, _pa_c["N"]["rr0_pct"], 0.05)
+chk("RR_0 changed, S beats pct (1.3)", 1.3, _pa_c["S"]["rr0_pct"], 0.05)
+chk("RR_0 changed values almost always shorter (>=99%)", 1,
+    1 if _pa["rr0_changed_and_shorter"] >= 0.99 * _pa["rr0_changed"] else 0, 0)
+
+# (9) A2: beat-to-beat intervals at inference, same checkpoints (Colab GPU run, same backend
+# for both passes; results/rr_sensitivity/{published_rr,beats_only_rr})
+_A2p = json.load(open("results/rr_sensitivity/published_rr/per_seed.json"))
+_A2b = json.load(open("results/rr_sensitivity/beats_only_rr/per_seed.json"))
+_incs = {}
+for _m in _A2p:
+    _d = np.array([_A2b[_m][k]["macro_f1"] - _A2p[_m][k]["macro_f1"] for k in _A2p[_m]])
+    _incs[_m] = _d.mean()
+    chk("A2 %s Macro-F1 rises in all 20 seeds" % _m, 20, int((_d > 0).sum()), 0)
+chk("A2 smallest mean model increase (~+0.002)", 0.002, min(_incs.values()), 0.0006)
+chk("A2 largest mean model increase (~+0.005)", 0.005, max(_incs.values()), 0.0006)
+chk("A2 PC-WavKAN published-RR Macro-F1 (0.357)", 0.357,
+    np.mean([v["macro_f1"] for v in _A2p["PC-WavKAN"].values()]), 0.0006)
+chk("A2 PC-WavKAN beat-to-beat Macro-F1 (0.360)", 0.360,
+    np.mean([v["macro_f1"] for v in _A2b["PC-WavKAN"].values()]), 0.0006)
+chk("A2 PC-WavKAN V-recall change (-0.001)", -0.001,
+    np.mean([_A2b["PC-WavKAN"][k]["v_recall"] - _A2p["PC-WavKAN"][k]["v_recall"] for k in _A2p["PC-WavKAN"]]), 0.0005)
+_fb = holm_family({_m: paired_compare({k: v["macro_f1"] for k, v in _A2b["PC-WavKAN"].items()},
+                                      {k: v["macro_f1"] for k, v in _A2b[_m].items()}, "macro_f1")
+                   for _m in ["ResNet1D", "Transformer", "CNN+Focal", "B-Spline KAN"]})
+chk("A2 beat-to-beat primary: min Holm p >= 0.38", 1, 1 if min(r["holm_p"] for r in _fb.values()) >= 0.38 else 0, 0)
+chk("A2 beat-to-beat primary: every CI includes zero", 1,
+    1 if all(r["ci_low"] <= 0 <= r["ci_high"] for r in _fb.values()) else 0, 0)
+
+# (10) A1: matched-pipeline external evaluation (Table tab:multidataset). Statistics are
+# recomputed here from the per-seed confusion matrices and cross-checked with the report.
+_fpc = json.load(open("results/colab_fingerprint_check.json"))
+for _ds in ("incart_matched", "svdb_matched", "mitdb_test_published_rr", "mitdb_test_beats_only_rr"):
+    for _k in ("n", "y_sha256", "rr_sha256", "X_round4_sha256"):
+        chk("inputs identical to local extraction: %s %s" % (_ds, _k), 1, 1 if _fpc[_ds][_k] else 0, 0)
+_TAB = {  # model: (MF1, std, d_z, holm_p or '<0.001', V, S)
+    "incart": {"PC-WavKAN": (0.390, 0.017, None, None, 0.832, 0.671),
+               "ResNet1D": (0.431, 0.017, -1.80, "<0.001", 0.849, 0.760),
+               "Transformer": (0.398, 0.032, -0.24, 0.245, 0.852, 0.817),
+               "CNN+Focal": (0.431, 0.020, -1.53, "<0.001", 0.807, 0.560),
+               "B-Spline KAN": (0.367, 0.017, 0.83, 0.003, 0.820, 0.606)},
+    "svdb": {"PC-WavKAN": (0.275, 0.012, None, None, 0.788, 0.126),
+             "ResNet1D": (0.350, 0.026, -2.49, "<0.001", 0.832, 0.256),
+             "Transformer": (0.316, 0.031, -1.36, "<0.001", 0.820, 0.305),
+             "CNN+Focal": (0.354, 0.013, -4.86, "<0.001", 0.769, 0.179),
+             "B-Spline KAN": (0.267, 0.016, 0.33, 0.231, 0.791, 0.125)}}
+for _ds, _rows in _TAB.items():
+    _ps_ = json.load(open("results/external_matched/%s/per_seed.json" % _ds))
+    _rep = json.load(open("results/external_matched/%s/report.json" % _ds))
+    chk("%s beats" % _ds, {"incart": 175785, "svdb": 184486}[_ds], _rep["n_beats"], 0)
+    _fam_e = holm_family({_m: paired_compare({k: v["macro_f1"] for k, v in _ps_["PC-WavKAN"].items()},
+                                             {k: v["macro_f1"] for k, v in _ps_[_m].items()}, "macro_f1")
+                          for _m in ["ResNet1D", "Transformer", "CNN+Focal", "B-Spline KAN"]})
+    for _m, (_mf, _sd, _dz, _hp, _vr, _sr) in _rows.items():
+        _v = np.array([x["macro_f1"] for x in _ps_[_m].values()])
+        chk("%s %s Macro-F1" % (_ds, _m), _mf, _v.mean(), 0.0006)
+        chk("%s %s Macro-F1 std" % (_ds, _m), _sd, _v.std(ddof=1), 0.0006)
+        chk("%s %s V-recall" % (_ds, _m), _vr, np.mean([x["v_recall"] for x in _ps_[_m].values()]), 0.0006)
+        chk("%s %s S-recall" % (_ds, _m), _sr, np.mean([x["s_recall"] for x in _ps_[_m].values()]), 0.0006)
+        if _dz is None:
+            continue
+        _r = _fam_e[_m]
+        chk("%s %s d_z" % (_ds, _m), _dz, _r["cohens_d"], 0.006)
+        if _hp == "<0.001":
+            chk("%s %s Holm p < 0.001" % (_ds, _m), 1, 1 if _r["holm_p"] < 0.001 else 0, 0)
+        else:
+            chk("%s %s Holm p" % (_ds, _m), _hp, _r["holm_p"], max(0.0006, _hp * 0.02))
+        chk("%s %s Holm p matches stored report" % (_ds, _m),
+            _rep["macro_f1_vs_reference_holm_family"][_m]["holm_p"], _r["holm_p"], 1e-9)
+_sv = json.load(open("results/external_matched/svdb/per_seed.json"))
+_svm = {m: (np.mean([x["s_to_v_rate"] for x in d.values()]), np.mean([x["v_pred_share"] for x in d.values()]))
+        for m, d in _sv.items()}
+chk("SVDB S->V PC-WavKAN (0.431)", 0.431, _svm["PC-WavKAN"][0], 0.0006)
+chk("SVDB S->V B-Spline KAN (0.451)", 0.451, _svm["B-Spline KAN"][0], 0.0006)
+chk("SVDB S->V others min (0.231)", 0.231, min(_svm[m][0] for m in ("ResNet1D", "Transformer", "CNN+Focal")), 0.0006)
+chk("SVDB S->V others max (0.395)", 0.395, max(_svm[m][0] for m in ("ResNet1D", "Transformer", "CNN+Focal")), 0.0006)
+chk("SVDB V share PC-WavKAN (18.7%)", 0.187, _svm["PC-WavKAN"][1], 0.0006)
+chk("SVDB V share B-Spline KAN (20.7%)", 0.207, _svm["B-Spline KAN"][1], 0.0006)
+chk("SVDB V share others min (8.4%)", 0.084, min(_svm[m][1] for m in ("ResNet1D", "Transformer", "CNN+Focal")), 0.0006)
+chk("SVDB V share others max (17.6%)", 0.176, max(_svm[m][1] for m in ("ResNet1D", "Transformer", "CNN+Focal")), 0.0006)
+# the superseded, unmatched INCART evaluation quoted as a preprocessing-sensitivity example
+_old = json.load(open("results/multidataset_final_stats.json"))["INCART"]
+chk("unmatched INCART PC-WavKAN (0.374)", 0.374, _old["wavkan_v2_final_macro_f1"]["mean"], 0.0006)
+chk("unmatched INCART baselines min (0.316)", 0.316, min(v["mean_b"] for v in _old["comparisons"].values()), 0.0006)
+chk("unmatched INCART baselines max (0.365)", 0.365, max(v["mean_b"] for v in _old["comparisons"].values()), 0.0006)
 
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))

@@ -22,8 +22,9 @@ if hasattr(sys.stdout, "reconfigure"):
 # folder. `Submission_JBHI/references.bib` is the corrected, in-place-fixed bib file
 # (all C14/C7 citation fixes applied directly to it) -- `paper/IEEE PAPER/references.bib`
 # was a duplicate copy, also removed in the same cleanup.
-tex_file = os.path.join('Submission_JBHI', 'ieee_manuscript_v2.tex')
-bib_file = os.path.join('Submission_JBHI', 'references.bib')
+# Repointed 2026-09-30 to the Array submission (Submission_JBHI/ is superseded).
+tex_file = os.path.join('Submission_Array', 'manuscript.tex')
+bib_file = os.path.join('Submission_Array', 'references.bib')
 
 def check_consistency():
     with open(tex_file, 'r', encoding='utf-8') as f:
