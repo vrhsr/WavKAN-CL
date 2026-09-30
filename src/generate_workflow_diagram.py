@@ -1,205 +1,205 @@
 """
-generate_workflow_diagram.py -- PC-WavKAN methodology/workflow figure.
-Method name updated 2026-09-03 (AUDIT_FINDINGS.md H43): the paper no longer
-uses "WavKAN-v2", which read as a second version of Bozorgasl & Chen's Wav-KAN.
+generate_workflow_diagram.py -- Fig. 1 of the manuscript: PC-WavKAN as implemented.
 
-Publication-format pass (2026-09-02): restyled for a submission-grade IEEE
-figure (serif typography matching body text, a restrained/desaturated
-palette, a legend distinguishing data-flow vs. training-only signal arrows,
-row-group labels) on top of the content fix from the same date
-(AUDIT_FINDINGS.md C21) -- this is a visual-polish pass only; no box's text,
-no arrow's real source/target, and no architectural claim was changed here.
-Cross-checked once more against models/wavkan_v2.py before this pass: the
-WavKAN backbone is PCWI-initialized (use_pcwi=True) with a Mexican Hat
-wavelet (wavelet_type="mexican_hat") by default -- now named explicitly in
-the backbone box, since PCWI is one of this paper's own emphasized
-contributions and was previously only named in prose, not the figure.
+Redrawn 2026-09-30 (final pre-submission audit) for print legibility and fidelity to
+the code:
+
+* drawn at its printed size (7.2 in wide, 7-8 pt text) instead of a 16-in canvas that
+  shrank every label to ~4 pt once placed at text width;
+* every block, operation and tensor shape follows models/wavkan_v2.py, src/pwam.py and
+  src/wavkan_pcwi.py (use_rr_attn=False, the evaluated configuration);
+* per-block parameter counts are computed from the instantiated model at run time, so
+  the figure cannot drift from the code;
+* no title inside the image (the caption carries it) and no decorative labels;
+* the training-only mechanisms are drawn as a separate band, because class-balanced
+  sampling acts on the training data stream, not on any block of the network.
+
+Earlier corrections kept: the beat window has the R-peak at 250 ms (sample 90), and the
+side branch reads samples 80-160, i.e. -28 to +194 ms around R (QRS/ST), not the P-wave
+(AUDIT_FINDINGS.md H60); every reported checkpoint was selected in the class-balanced
+phase (H61).
+
+Usage:
+    python src/generate_workflow_diagram.py --output Submission_Array/final_methodology_workflow_v2.pdf
 """
+import argparse
+import os
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.patches import FancyBboxPatch  # noqa: E402
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 plt.rcParams.update({
     "font.family": "serif",
-    "font.serif": ["Times New Roman", "Nimbus Roman", "DejaVu Serif"],
+    "font.serif": ["Times New Roman", "Times", "DejaVu Serif"],
     "mathtext.fontset": "stix",
-    "axes.linewidth": 0.8,
+    "font.size": 7.5,
 })
 
-# Restrained, print-safe palette (fill / edge pairs per functional group)
+# restrained, print-safe palette: fill, edge
 COL = {
-    "input":     ("#EFF5FB", "#2C5F8A"),
-    "morph":     ("#D6E6F5", "#1F4E79"),
-    "rhythm":    ("#F7E0DE", "#9E3A32"),
-    "fusion":    ("#E7E7E7", "#595959"),
-    "output":    ("#DCEEE1", "#2E7D46"),
-    "train":     ("#FBF1D6", "#B8860B"),
+    "input":  ("#F4F6F8", "#4D5B6A"),
+    "morph":  ("#E3ECF6", "#2F5D8C"),
+    "side":   ("#EAF1F8", "#2F5D8C"),
+    "rhythm": ("#F7E8E6", "#9A3B30"),
+    "fuse":   ("#EDEDED", "#555555"),
+    "head":   ("#E5F2E7", "#2E7040"),
+    "train":  ("#FDF6E3", "#A07800"),
 }
+ARROW = "#2B2B2B"
 
 
-def draw_box(ax, center, width, height, text, group, fontsize=10.5, zorder=3):
-    """Box with a subtle drop shadow -- restrained offset/alpha for a print
-    (not slide-deck) look."""
-    fc, ec = COL[group]
-
-    shadow = patches.FancyBboxPatch(
-        (center[0] - width / 2 + 0.045, center[1] - height / 2 - 0.045),
-        width, height,
-        boxstyle="round,pad=0.045,rounding_size=0.06",
-        ec="none", fc="#000000", alpha=0.10, zorder=zorder - 1,
-    )
-    ax.add_patch(shadow)
-
-    box = patches.FancyBboxPatch(
-        (center[0] - width / 2, center[1] - height / 2),
-        width, height,
-        boxstyle="round,pad=0.045,rounding_size=0.06",
-        linewidth=1.3, edgecolor=ec, facecolor=fc, zorder=zorder,
-    )
-    ax.add_patch(box)
-
-    ax.text(center[0], center[1], text, ha="center", va="center",
-             fontsize=fontsize, fontweight="bold", color="#1A1A1A",
-             zorder=zorder + 1, linespacing=1.35)
-    return box
+def param_counts():
+    """Per-block trainable parameters of the evaluated configuration."""
+    from models.wavkan_v2 import WavKAN_v2
+    m = WavKAN_v2(use_rr_attn=False)
+    n = lambda mod: sum(p.numel() for p in mod.parameters() if p.requires_grad)  # noqa: E731
+    counts = {
+        "kan": n(m.kan) + n(m.kan_norm),
+        "gru": n(m.bigru),
+        "side": n(m.pwam),
+        "rr": n(m.rr_branch),
+        "head": n(m.classifier),
+    }
+    counts["total"] = n(m)
+    assert sum(v for k, v in counts.items() if k != "total") == counts["total"], counts
+    return counts
 
 
-def draw_arrow(ax, start, end, text=None, color="#333333", lw=1.5,
-               style="-", fontsize=8.5):
-    ax.annotate(
-        "", xy=end, xytext=start,
-        arrowprops=dict(arrowstyle="-|>", lw=lw, color=color, ls=style,
-                         mutation_scale=13, shrinkA=1, shrinkB=1),
-        zorder=2,
-    )
-    if text:
-        mid_x, mid_y = (start[0] + end[0]) / 2, (start[1] + end[1]) / 2
-        ax.text(mid_x, mid_y + 0.10, text, ha="center", va="bottom",
-                 fontsize=fontsize, fontstyle="italic", color=color, zorder=4)
+def box(ax, x0, y0, w, h, kind, lines, title_bold=True, dashed=False, fs=7.5):
+    fill, edge = COL[kind]
+    ax.add_patch(FancyBboxPatch((x0, y0), w, h, boxstyle="round,pad=0.25,rounding_size=0.9",
+                                fc=fill, ec=edge, lw=0.9, ls=(0, (4, 2.5)) if dashed else "-",
+                                zorder=2))
+    n = len(lines)
+    step = min(h / (n + 0.6), 3.25)
+    top = y0 + h / 2 + step * (n - 1) / 2
+    for i, t in enumerate(lines):
+        bold = title_bold and i == 0
+        ax.text(x0 + w / 2, top - i * step, t, ha="center", va="center", fontsize=fs,
+                fontweight="bold" if bold else "normal", color="#1A1A1A", zorder=3)
 
 
-def draw_curved_arrow(ax, start, end, rad=0.3, text=None, color="#1F4E79"):
-    ax.annotate(
-        "", xy=end, xytext=start,
-        arrowprops=dict(arrowstyle="-|>", lw=1.3, color=color, ls="-",
-                         mutation_scale=11,
-                         connectionstyle=f"arc3,rad={rad}"),
-        zorder=2,
-    )
-    if text:
-        ax.text((start[0] + end[0]) / 2, max(start[1], end[1]) + 0.62, text,
-                 ha="center", va="bottom", fontsize=8, fontstyle="italic",
-                 color=color, zorder=4)
+def note(ax, x, y, t, **kw):
+    ax.text(x, y, t, ha="center", va="top", fontsize=6.6, color="#555555", style="italic", **kw)
 
 
-def group_label(ax, x, y, text):
-    ax.text(x, y, text, ha="left", va="center", fontsize=9.5,
-             fontweight="bold", color="#4D4D4D", style="italic")
+def arrow(ax, p0, p1, color=ARROW, dashed=False, rad=0.0, lw=0.9):
+    ax.annotate("", xy=p1, xytext=p0, zorder=1,
+                arrowprops=dict(arrowstyle="-|>,head_length=0.45,head_width=0.22", lw=lw, color=color,
+                                ls=(0, (4, 2.5)) if dashed else "-",
+                                connectionstyle=f"arc3,rad={rad}", shrinkA=0, shrinkB=0))
+
+
+def label(ax, x, y, t, color="#333333"):
+    ax.text(x, y, t, ha="center", va="bottom", fontsize=6.8, color=color, zorder=3)
 
 
 def generate_workflow_figure(output_path):
-    fig, ax = plt.subplots(figsize=(16.4, 7.6))
-    ax.set_xlim(0, 15.9)
-    ax.set_ylim(0, 7.1)
+    pc = param_counts()
+    fig, ax = plt.subplots(figsize=(7.2, 3.7))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 51.4)          # equal data units per inch in x and y
     ax.axis("off")
-    ax.set_aspect("equal")
 
-    TOP_Y = 5.25
-    BOT_Y = 2.05
+    k = lambda v: f"{v / 1000:.1f}K params"  # noqa: E731
+    YM, YR, H = 29.0, 15.0, 11.0   # lane centre lines and box height
 
-    # ── Row group labels ─────────────────────────────────────────────────
-    group_label(ax, 0.55, TOP_Y + 1.05, "Morphology Branch (beat waveform)")
-    group_label(ax, 0.55, BOT_Y + 0.85, "Rhythm Branch (RR-interval history)")
+    ax.text(0.3, 50.8, "Morphology branch", fontsize=7.2, fontweight="bold",
+            color=COL["morph"][1], va="top")
+    ax.text(0.3, 22.5, "Rhythm branch", fontsize=7.2, fontweight="bold",
+            color=COL["rhythm"][1], va="top")
 
-    # ── 1. Inputs ────────────────────────────────────────────────────────
-    draw_box(ax, (1.3, TOP_Y), 1.85, 0.62, "Beat Window\n(360 samples; R at 250 ms)", "input", fontsize=9)
-    draw_box(ax, (1.3, BOT_Y), 1.85, 0.68, "RR Intervals\n(2 Preceding + Current\n+ 2 Following)", "input", fontsize=9)
+    # ── morphology lane ─────────────────────────────────────────────────────
+    box(ax, 0.5, YM - H / 2, 13.0, H, "input",
+        ["Beat window", r"$\mathbf{x}\in\mathbb{R}^{360}$", "−250 to +750 ms", "z-scored"], fs=7.0)
+    box(ax, 17.5, YM - H / 2, 18.5, H, "morph",
+        ["Wavelet-KAN layer", "PCWI init., Mexican Hat", r"360$\rightarrow$64, + linear path",
+         "LayerNorm, dropout"], fs=7.0)
+    note(ax, 26.75, YM - H / 2 - 0.9, k(pc["kan"]))
+    box(ax, 40.0, YM - H / 2, 11.5, H, "morph",
+        ["BiGRU", "1 step, 2×32", r"$\mathbf{z}_m\in\mathbb{R}^{64}$"], fs=7.0)
+    note(ax, 45.75, YM - H / 2 - 0.9, k(pc["gru"]))
+    box(ax, 55.5, YM - H / 2, 15.0, H, "side",
+        ["Gated fusion", r"$g=\sigma(W[\mathbf{z}_m;\mathbf{a}])$", r"$\mathbf{z}_m+g\odot\mathbf{a}$"],
+        fs=7.0)
+    note(ax, 63.0, YM - H / 2 - 0.9, k(pc["side"]) + " (with encoder)")
 
-    # ── 2. Morphology branch: WavKAN -> single-step BiGRU -> gated side branch ──
-    # The side branch reads raw-beat samples 80-160. With the R-peak at sample 90
-    # (process_data.py: 90 before, 270 after) that spans -28 to +194 ms around R,
-    # i.e. QRS and early ST, not the P-wave its original name implied
-    # (AUDIT_FINDINGS.md H60).
-    draw_box(ax, (3.75, TOP_Y), 2.05, 0.8, "WavKAN Backbone\n(PCWI-init., Mexican Hat)", "morph", fontsize=9.5)
-    draw_box(ax, (6.15, TOP_Y), 1.85, 0.8, "BiGRU\n(single timestep)", "morph", fontsize=9.5)
-    draw_box(ax, (8.55, TOP_Y), 2.0, 0.8, "Gated Peri-R\nSide Branch", "morph", fontsize=9.5)
+    # side-branch encoder above the lane
+    box(ax, 37.0, 38.8, 35.0, 8.6, "side",
+        ["Side-branch encoder", r"samples 80$-$160 of $\mathbf{x}$ ($-$28 to +194 ms)",
+         r"Wavelet-KAN 80$\rightarrow$32, Linear$\rightarrow$64:  $\mathbf{a}\in\mathbb{R}^{64}$"],
+        fs=6.8)
 
-    draw_arrow(ax, (2.23, TOP_Y), (2.72, TOP_Y))
-    draw_arrow(ax, (4.78, TOP_Y), (5.22, TOP_Y))
-    draw_arrow(ax, (7.08, TOP_Y), (7.55, TOP_Y))
+    arrow(ax, (13.8, YM), (17.2, YM))
+    label(ax, 15.5, YM + 0.5, "360")
+    arrow(ax, (36.3, YM), (39.7, YM))
+    label(ax, 38.0, YM + 0.5, "64")
+    arrow(ax, (51.8, YM), (55.2, YM))
+    label(ax, 53.5, YM + 0.5, "64")
+    # beat window -> encoder, routed over the top
+    ax.plot([7.0, 7.0, 36.0], [YM + H / 2 + 0.3, 43.1, 43.1], color=ARROW, lw=0.9, zorder=1)
+    arrow(ax, (35.5, 43.1), (36.7, 43.1))
+    # encoder -> gated fusion
+    arrow(ax, (63.0, 38.5), (63.0, YM + H / 2 + 0.3))
+    label(ax, 64.3, 35.6, r"$\mathbf{a}$")
 
-    draw_curved_arrow(ax, (1.75, TOP_Y + 0.33), (8.15, TOP_Y + 0.58), rad=-0.22,
-                       text="raw beat, −28 to +194 ms around R")
+    # ── rhythm lane ─────────────────────────────────────────────────────────
+    box(ax, 0.5, YR - H / 2, 13.0, H, "input",
+        ["RR intervals", r"$\mathbf{r}\in\mathbb{R}^{5}$",
+         r"RR$_{-2}\ldots$RR$_{+2}$", "seconds"], fs=7.0)
+    box(ax, 17.5, YR - H / 2, 18.5, H, "rhythm",
+        ["Rhythm encoder", r"MLP 5$\rightarrow$64$\rightarrow$32$\rightarrow$16",
+         r"ReLU; $\mathbf{z}_r\in\mathbb{R}^{16}$"], fs=7.0)
+    note(ax, 26.75, YR - H / 2 - 0.9, k(pc["rr"]))
+    arrow(ax, (13.8, YR), (17.2, YR))
+    label(ax, 15.5, YR + 0.5, "5")
 
-    # ── 3. Rhythm branch ─────────────────────────────────────────────────
-    draw_box(ax, (3.75, BOT_Y), 2.05, 0.8, "RR-Timing Encoder\n(MLP on RR-history)", "rhythm", fontsize=9.5)
-    draw_arrow(ax, (2.23, BOT_Y), (2.72, BOT_Y))
+    # ── concatenation and head ──────────────────────────────────────────────
+    xc0, xc1 = 74.5, 79.0
+    fill, edge = COL["fuse"]
+    ax.add_patch(FancyBboxPatch((xc0, YR - H / 2), xc1 - xc0, (YM + H / 2) - (YR - H / 2),
+                                boxstyle="round,pad=0.25,rounding_size=0.9", fc=fill, ec=edge,
+                                lw=0.9, zorder=2))
+    ax.text((xc0 + xc1) / 2, (YM + YR) / 2, r"concatenate  $\mathbb{R}^{80}$", rotation=90,
+            ha="center", va="center", fontsize=7.0, fontweight="bold", color="#1A1A1A", zorder=3)
+    arrow(ax, (70.8, YM), (xc0 - 0.3, YM))
+    label(ax, 72.6, YM + 0.5, "64")
+    ax.plot([36.3, 72.5], [YR, YR], color=ARROW, lw=0.9, zorder=1)
+    arrow(ax, (72.0, YR), (xc0 - 0.3, YR))
+    label(ax, 55.0, YR + 0.5, "16")
 
-    # ── 4. Fusion ─────────────────────────────────────────────────────────
-    draw_box(ax, (11.0, 3.65), 1.0, 3.5, "Feature\nFusion", "fusion", fontsize=10.5)
-    draw_arrow(ax, (9.55, TOP_Y), (10.5, 3.95), "morphology", color="#1F4E79")
-    draw_arrow(ax, (4.78, BOT_Y), (10.5, 3.35), "rhythm", color="#9E3A32")
+    yh = (YM + YR) / 2
+    box(ax, 83.0, yh - H / 2, 16.5, H, "head",
+        ["Classifier head", r"80$\rightarrow$48$\rightarrow$5", "ReLU, dropout", "softmax"], fs=7.0)
+    note(ax, 91.25, yh - H / 2 - 0.9, k(pc["head"]))
+    arrow(ax, (xc1 + 0.3, yh), (82.7, yh))
+    label(ax, 81.0, yh + 0.5, "80")
+    arrow(ax, (91.25, yh + H / 2 + 0.3), (91.25, yh + H / 2 + 3.2))
+    ax.text(91.25, yh + H / 2 + 3.5, "N, S, V, F, Q", ha="center", va="bottom", fontsize=7.2,
+            fontweight="bold", color="#1A1A1A")
 
-    # ── 5. Class-balanced sampler (training-only signal) ────────────────
-    # Every reported checkpoint was selected during the balanced-sampling phase of
-    # train_pca.py (AUDIT_FINDINGS.md H61), so the figure names that, not a curriculum.
-    draw_box(ax, (6.15, 0.62), 3.0, 0.62, "Class-Balanced Sampler\n(training only)", "train", fontsize=9.5)
-    draw_arrow(ax, (7.65, 0.62), (12.75, 2.75), color="#B8860B", lw=1.6, style="--")
-    ax.text(10.15, 1.45, "batch sampling only\n(no effect on inference)",
-             color="#8A6900", fontsize=8, fontweight="bold", ha="center",
-             bbox=dict(facecolor="white", alpha=0.92, edgecolor="none", pad=1.6),
-             zorder=5)
+    # ── training-only band and legend ───────────────────────────────────────
+    box(ax, 17.5, 0.4, 82.0, 5.2, "train",
+        ["Training only: class-balanced sampling with unweighted cross-entropy (every retained checkpoint "
+         "from epochs ≤ 25);",
+         "augmentation of non-N beats; AdamW; checkpoint selection on DS1-validation Macro-F1."],
+        title_bold=False, dashed=True, fs=6.6)
+    ax.plot([0.8, 4.3], [4.5, 4.5], color=ARROW, lw=0.9)
+    ax.text(5.0, 4.5, "data flow", fontsize=6.5, va="center", color="#333333")
+    ax.plot([0.8, 4.3], [1.7, 1.7], color=COL["train"][1], lw=0.9, ls=(0, (4, 2.5)))
+    ax.text(5.0, 1.7, "training only", fontsize=6.5, va="center", color="#333333")
 
-    # ── 6. Output ─────────────────────────────────────────────────────────
-    draw_box(ax, (12.75, 3.65), 1.55, 0.8, "Classifier\n(Softmax)", "output", fontsize=10)
-    draw_arrow(ax, (11.55, 3.65), (11.98, 3.65))
-    ax.text(14.55, 3.65, "Prediction\n(N, S, V, F, Q)", ha="left", va="center",
-             fontsize=11.5, fontweight="bold", color="#1A1A1A")
-    draw_arrow(ax, (13.55, 3.65), (14.25, 3.65))
-
-    # ── Legend ────────────────────────────────────────────────────────────
-    lx, ly = 0.55, 0.65
-    ax.annotate("", xy=(lx + 0.55, ly), xytext=(lx, ly),
-                arrowprops=dict(arrowstyle="-|>", lw=1.5, color="#333333"))
-    ax.text(lx + 0.68, ly, "data flow (train + inference)", fontsize=8.3, va="center", color="#333333")
-    ax.annotate("", xy=(lx + 0.55, ly - 0.32), xytext=(lx, ly - 0.32),
-                arrowprops=dict(arrowstyle="-|>", lw=1.5, color="#B8860B", ls="--"))
-    ax.text(lx + 0.68, ly - 0.32, "training-only signal", fontsize=8.3, va="center", color="#333333")
-
-    # ── Title & framing box ─────────────────────────────────────────────
-    fig.suptitle("PC-WavKAN Architecture  (153,045 params, MLP rhythm encoder)",
-                 fontsize=15.5, y=0.975, fontweight="bold")
-
-    rect = patches.FancyBboxPatch(
-        (0.35, 0.12), 15.45, 6.75,
-        boxstyle="round,pad=0.05,rounding_size=0.08",
-        linewidth=1.4, edgecolor="#8C8C8C", facecolor="none", linestyle=(0, (5, 3)),
-    )
-    ax.add_patch(rect)
-    ax.text(12.9, 0.30, "End-to-End Trainable Framework", ha="center",
-             fontsize=9.5, color="#666666", fontstyle="italic")
-
-    plt.tight_layout()
-    fig.savefig(output_path, dpi=400, bbox_inches="tight")
+    fig.savefig(output_path, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
-    print(f"Generated workflow diagram at {output_path}")
+    print(f"Generated workflow diagram at {output_path} (total {pc['total']:,} parameters)")
 
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=str,
-                        default="results/figures/final_methodology_workflow_v2.pdf",
-                        help="Fixed 2026-09-02 (AUDIT_FINDINGS.md C21): added the "
-                             "missing BiGRU + PWAM stages and corrected the RR-window "
-                             "label from the false '5 Preceding, Causal' to the real "
-                             "'2 Preceding + Current + 2 Following' (matching "
-                             "src/process_data.py). Restyled the same day for "
-                             "publication format: serif typography, a restrained "
-                             "palette, a data-flow/training-signal legend, and an "
-                             "explicit PCWI/Mexican-Hat label on the WavKAN backbone "
-                             "box (previously named only in prose, not the figure).")
-    args = parser.parse_args()
-    generate_workflow_figure(args.output)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--output", default="Submission_Array/final_methodology_workflow_v2.pdf")
+    generate_workflow_figure(ap.parse_args().output)

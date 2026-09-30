@@ -142,7 +142,7 @@ The model (Fig.~\ref{fig:arch}) has a morphology branch and a rhythm branch whos
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{final_methodology_workflow_v2.pdf}
-\caption{PC-WavKAN as implemented. The morphology branch passes the beat window through a wavelet-KAN layer with prior-centred initialisation (PCWI), a bidirectional GRU applied to a single time step, and a gated side branch that reads raw-beat samples 80--160 (28\,ms before to 194\,ms after the R-peak). The rhythm branch encodes the five interval features with an MLP. The class-balanced sampler affects training only.}
+\caption{PC-WavKAN as implemented, with tensor dimensions and per-block trainable parameters (153,045 in total). Morphology branch: the beat window passes through a wavelet-KAN layer with prior-centred initialisation (PCWI) and a linear residual path, followed by layer normalisation, dropout and a bidirectional GRU applied to a single time step. A side branch encodes raw-beat samples 80--160 (28\,ms before to 194\,ms after the R-peak) into $\mathbf{a}$, which is added to the GRU output through a learned sigmoid gate $g$. Rhythm branch: an MLP encodes the five RR intervals. The two branch outputs are concatenated and classified by an $80\rightarrow48\rightarrow5$ head. The mechanisms in the dashed band act during training only.}
 \label{fig:arch}
 \end{figure}
 
