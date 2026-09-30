@@ -6,6 +6,7 @@
 \usepackage{multirow}
 \usepackage{textcomp}
 \usepackage{lineno}
+\usepackage[a4paper,margin=2.5cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
@@ -71,7 +72,7 @@ This paper reports such an evaluation. It is framed as a controlled study, not a
 The evaluated model, PC-WavKAN (153,045 parameters), is a wavelet-KAN morphology branch combined with an interval-feature (rhythm) branch. Its one non-standard ingredient is a prior-centred initialisation of the wavelet translations and dilations (PCWI). Our contributions are empirical:
 \begin{enumerate}
     \item A 20-seed, seed-paired inter-patient comparison against four baselines trained under the same protocol and budget, with architecture selection on validation data only, Holm--Bonferroni correction, effect sizes and confidence intervals. It finds no statistically detectable Macro-F1 difference. Every paired 95\% confidence interval includes zero and lies within $\pm0.03$, and the S-class operating point is poor for all five models (\S\ref{sec:results_primary}, \S\ref{sec:results_perclass}).
-    \item A single-variable component analysis on validation data (\S\ref{sec:results_selection}). Initialising the wavelet parameters around fixed prior values (PCWI) improves validation Macro-F1 relative to an isotropic initialisation inthe configuration in which the components were ablated. The mother wavelet is not measurably consequential. Self-attention over the five interval features is harmful and was removed.
+    \item A single-variable component analysis on validation data (\S\ref{sec:results_selection}). Initialising the wavelet parameters around fixed prior values (PCWI) improves validation Macro-F1 relative to an isotropic initialisation in the configuration in which the components were ablated. The mother wavelet is not measurably consequential. Self-attention over the five interval features is harmful and was removed.
     \item A test of the interpretability premise with explicit null models (\S\ref{sec:results_ppr}). The channel blocks that receive the three priors are exchangeable, so no block can be assigned a waveform component. Training preserves much of the prior-centred structure, but it moves randomly initialised parameters \emph{away} from the prior values, so the parameters do not support a physiological reading.
     \item Inference-only sensitivity analyses of all 100 checkpoints.
     \begin{itemize}
@@ -344,7 +345,7 @@ S-Recall & $0.2639\pm0.0510$ & $0.2391\pm0.0425$ & $-0.53$ (medium) & $0.025$ (r
 \end{tabular}
 \end{table}
 
-On DS2, CBS raises S-recall from $0.137$ to $0.222$ (95\% CI of the difference $[+0.058, +0.112]$). The absolute F-recall gain is negligible ($0.0003\rightarrow0.0022$). V- and N-recall show no corrected change. On the validation partition the direction reverses. CBS is nominally worse on both validation Macro-F1 and S-recall, although after Holm correction across the two validation metrics neither difference is significant ($p \approx 0.05$). The DS2 gain in S-recall is therefore robust across two configurations but is not reproduced on the four-record validation partition for the adopted configuration. We read this as evidence that the benefit of class-balanced sampling for supraventricular beats depends on the patients evaluated, and we do not claim it as a general property. The pre-specified test on the base configuration is the confirmatory evidence, and it is modest in absolute terms: an S-recall of $0.123$.
+On DS2, CBS raises S-recall from $0.137$ to $0.222$, with a 95\% confidence interval of $[+0.058, +0.112]$ on the paired difference. The absolute F-recall gain is negligible ($0.0003\rightarrow0.0022$). V- and N-recall show no corrected change. On the validation partition the direction reverses. CBS is nominally worse on both validation Macro-F1 and S-recall, although after Holm correction across the two validation metrics neither difference is significant ($p \approx 0.05$). The DS2 gain in S-recall is therefore robust across two configurations but is not reproduced on the four-record validation partition for the adopted configuration. We read this as evidence that the benefit of class-balanced sampling for supraventricular beats depends on the patients evaluated, and we do not claim it as a general property. The pre-specified test on the base configuration is the confirmatory evidence, and it is modest in absolute terms: an S-recall of $0.123$.
 
 \subsection{Augmentation}
 \label{sec:results_augmentation}
