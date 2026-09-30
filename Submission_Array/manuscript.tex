@@ -48,7 +48,9 @@ Kolmogorov--Arnold networks \sep wavelets \sep ECG heartbeat classification \sep
 
 \end{frontmatter}
 
-\linenumbers
+% Line numbers are off. Some journals ask for them in the review version;
+% uncomment the next line to turn them back on.
+% \linenumbers
 
 %% ---------------------------------------------------------------------------
 \section{Introduction}
@@ -113,7 +115,7 @@ We use the DS1/DS2 partition of de Chazal \emph{et al.} \cite{chazal_automatic_2
 
 Annotations are mapped to the five AAMI EC57 classes \cite{xiao_deep_2023, luz_survey_2016} (Table~\ref{tab:class_dist}). The Q class has only 15 beats in these records (6 in training, 7 in DS2), so no per-class conclusion can be drawn for it. Record 208 holds 372 of DS1's 414 fusion beats and lies in the validation partition, which leaves 28 F beats for training.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \caption{Class distribution and AAMI mapping.}
 \label{tab:class_dist}
 \centering
@@ -136,7 +138,7 @@ Annotations are mapped to the five AAMI EC57 classes \cite{xiao_deep_2023, luz_s
 \label{sec:model}
 The model (Fig.~\ref{fig:arch}) has a morphology branch and a rhythm branch whose outputs are concatenated and classified.
 
-\begin{figure}[!t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{final_methodology_workflow_v2.pdf}
 \caption{PC-WavKAN as implemented. The morphology branch passes the beat window through a wavelet-KAN layer with prior-centred initialisation (PCWI), a bidirectional GRU applied to a single time step, and a gated side branch that reads raw-beat samples 80--160 (28\,ms before to 194\,ms after the R-peak). The rhythm branch encodes the five interval features with an MLP. The class-balanced sampler affects training only.}
@@ -150,7 +152,7 @@ z^{(k)} = \sum_{j=1}^{360} w_{j,k}\,\psi\!\left(\frac{x_j - \mu_{j,k}}{|\gamma_{
 \end{equation}
 with learnable translation $\mu_{j,k}$, dilation $\gamma_{j,k}$ and weight $w_{j,k}$, and a linear residual path with fixed gate $\lambda = 0.1$. $\psi$ is evaluated on the \emph{amplitude} $x_j$ of input sample $j$, so $\mu$ and $\gamma$ are an amplitude offset and an amplitude width. They are not a temporal position or duration. The output is layer-normalised, passed through dropout ($p = 0.2$), and fed to a bidirectional GRU with 32 units per direction. The 64 activations form a single token, so the GRU executes one step in each direction from a zero state. It therefore acts as a gated transformation of the channel vector and integrates no temporal context. It has 18,816 parameters (12.3\% of the model).
 
-\begin{figure}[!t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.7\textwidth]{wavkan_micro_architecture_v2.pdf}
 \caption{Wavelet-KAN edge parameterisation. Every edge of the $j\times k$ grid carries its own translation and dilation, as in \eqref{eq:kan}.}
@@ -187,7 +189,7 @@ Four architectures spanning 29K--118K parameters are compared (Table~\ref{tab:ba
 
 The baseline labelled B-Spline KAN is the same wavelet-KAN layer with a single cubic B-spline in place of the Mexican Hat on every edge, isotropic initialisation, no side branch, and the same GRU, rhythm MLP and head. It is not the grid-based spline KAN of Liu \emph{et al.} \cite{liu_kan_2024}.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \caption{Baselines. Protocol, split, inputs, optimiser, budget, checkpoint rule and seeds are identical to PC-WavKAN (\S\ref{sec:baselines}).}
 \label{tab:baselines}
 \centering
@@ -230,7 +232,7 @@ Every arm is trained with the same 20 seeds: 42, 101, 777, 2026, 9999, 1234, 202
 \label{sec:results_selection}
 The configuration reported in the rest of this paper was selected using DS1 validation only. Table~\ref{tab:family_ablation} gives the single-variable ablation. The base configuration has the wavelet-KAN layer with PCWI, the gated side branch, the self-attention rhythm encoder and CBS, and each row changes exactly one component. The validation score of each seed is taken at the epoch its checkpoint was saved.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Single-variable component ablation on \textbf{DS1 validation}, 20 seeds per row. Base configuration: PCWI, gated side branch, self-attention rhythm encoder and CBS; validation Macro-F1 $0.4145\pm0.0201$. $\Delta$ and $d_z$ are variant minus base, so positive values favour the variant. $p$ is Holm-adjusted across the seven comparisons.}
 \label{tab:family_ablation}
@@ -257,7 +259,7 @@ Three findings follow. \emph{Initialisation:} replacing PCWI with the isotropic 
 \subsection{Primary Comparison}
 \label{sec:results_primary}
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{\textbf{Primary outcome.} DS2 five-class Macro-F1, PC-WavKAN versus four baselines, 20 paired seeds. $\Delta$, CI and $d_z$ are PC-WavKAN minus baseline; $p$ is Holm-adjusted across the four comparisons.}
 \label{tab:baseline_comparison}
@@ -279,7 +281,7 @@ PC-WavKAN's DS2 Macro-F1 is not statistically distinguishable from any baseline 
 
 Fig.~\ref{fig:confusion} shows the structure behind these values for one seed. N and V separate well, each leaking under 6\% into the other, with V-recall $0.905$. S beats are assigned predominantly to V ($0.42$) and secondarily to N ($0.30$), and F beats are almost entirely predicted as N ($0.87$).
 
-\begin{figure}[!t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.6\textwidth]{final_confusion_matrix_main.pdf}
 \caption{Row-normalised DS2 confusion matrix, PC-WavKAN, seed 42, generated from this checkpoint's own predictions.}
@@ -290,7 +292,7 @@ Fig.~\ref{fig:confusion} shows the structure behind these values for one seed. N
 \label{sec:results_perclass}
 Table~\ref{tab:perclass} gives precision, recall and F1 per class over 20 seeds, recomputed from stored per-seed predictions. The per-class F1 values average to the Macro-F1 of Table~\ref{tab:baseline_comparison} for all five models.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Per-class precision, recall and F1, 20 seeds, DS2. \textbf{(a)} PC-WavKAN, all classes. \textbf{(b)} S class across models, with the Holm-adjusted paired comparison of S-F1 against PC-WavKAN (positive $d_z$ favours PC-WavKAN). S-class differences between models combine architecture and imbalance mechanism (\S\ref{sec:baselines}). Q scores exactly zero for every model.}
 \label{tab:perclass}
@@ -322,7 +324,7 @@ The S-class operating point is poor in both directions. Recall is $0.198$ at pre
 \label{sec:results_sampling}
 The pre-specified test compares CBS with reweighting on the base configuration, with augmentation in both arms. S-recall rises from $0.079\pm0.016$ to $0.123\pm0.052$ (Holm $p = 0.0016$ across five metrics, $d_z = +0.77$). On DS1 validation it rises from $0.218\pm0.048$ to $0.305\pm0.047$ ($d_z = +1.36$, raw $p = 2.4\times10^{-4}$). Table~\ref{tab:sampling} repeats the comparison on the adopted configuration. It uses the two augmentation-free arms trained for \S\ref{sec:results_augmentation}, so the analysis is exploratory.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \caption{CBS versus reweighting on the adopted configuration, both arms without augmentation, 20 paired seeds (exploratory). DS2 rows: $d_z$ and $p$ are CBS minus reweighting, Holm-adjusted across the five metrics. Validation rows: values at each run's retained epoch, raw $p$.}
 \label{tab:sampling}
 \centering
@@ -352,7 +354,7 @@ PC-WavKAN is trained with minority-class augmentation and the baselines are not.
 \label{sec:results_rr}
 Table~\ref{tab:rr_ablation} reports an exploratory leave-one-out analysis in which each interval position is masked at inference. It was run on the base configuration, whose rhythm features are identical to the adopted one's.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Leave-one-out interval ablation, base configuration, 20 seeds, DS2, exploratory. Baseline S-recall with the full vector: $0.1225\pm0.0524$. $p$ is Holm-adjusted across the five positions.}
 \label{tab:rr_ablation}
@@ -376,7 +378,7 @@ Masking $RR_0$ causes by far the largest degradation, as expected, since a short
 \label{sec:results_ppr}
 Table~\ref{tab:ppr} evaluates PPR against its three reference points.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Parameter-space Prior Retention \eqref{eq:ppr}, mean$\pm$std over 20 models, with mean absolute per-edge deviations from the prior values. Untrained rows use 20 initialisation seeds. The trained isotropic row uses the 20 checkpoints of the no-PCWI ablation arm (base configuration).}
 \label{tab:ppr}
@@ -393,7 +395,7 @@ Trained, isotropic & $0.5794\pm0.0173$ & $0.177$ & $0.080$ \\ \bottomrule
 
 Training moves the PCWI parameters substantially: PPR falls from $0.973$ to $0.783$, and the mean per-edge translation deviation grows fivefold. The trained PCWI basis nonetheless remains closer to the prior values than an untrained isotropic basis ($0.783$ against $0.670$). The trained isotropic row decides the interpretation. When training starts from the isotropic initialisation, it moves the parameters \emph{further} from the prior values ($0.670 \rightarrow 0.579$). Both comparisons separate the 20 models completely (two-sided Mann--Whitney $p = 7\times10^{-8}$). The prior values are therefore not where gradient descent leads. The trained PCWI model's proximity to them reflects where it started, not a learned preference. Together with the exchangeability of the channel blocks (\S\ref{sec:pcwi}), this means the wavelet parameters of this model do not support a physiological interpretation. They support the modest statement that the initial structure is partly retained. Fig.~\ref{fig:wavelets} shows the trained functions of one checkpoint against the initial priors. Automated interpretability scores can rate untrained models as highly as trained ones \cite{heap_automated_2025}, and our results show that parameter-space scores for KANs need the same reference points.
 
-\begin{figure}[!t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.5\textwidth]{final_learned_wavelets.pdf}
 \caption{Trained wavelet functions of one checkpoint (seed 42) for each channel block, against the prior each block was initialised at (dashed). Annotated PPR values are for this checkpoint and differ slightly from Table~\ref{tab:ppr}'s 20-seed means.}
@@ -404,7 +406,7 @@ Training moves the PCWI parameters substantially: PPR falls from $0.973$ to $0.7
 \label{sec:results_crossdata}
 Table~\ref{tab:multidataset} evaluates the five models trained on MIT-BIH on two further databases, forward pass only, 20 seeds each. The first is the St Petersburg INCART 12-lead Arrhythmia Database \cite{goldberger_physiobank_2000}, all 75 records, lead II. The second is the MIT-BIH Supraventricular Arrhythmia Database (SVDB) \cite{greenwald_improved_1990}, 78 records, channel 0, whose leads are not labelled. Both were resampled to 360\,Hz and then passed through the same extraction code as the training data. A regression test confirms that this code reproduces the training arrays byte for byte. Neither database was used for any training, tuning or selection decision. SVDB was assembled to enrich supraventricular ectopy and serves as an S-class stress test. The analysis is exploratory.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Zero-shot cross-database evaluation under the training preprocessing, 20 seeds per model. $d_z$ and $p$ compare PC-WavKAN with each baseline on Macro-F1 (positive favours PC-WavKAN), Holm-adjusted within each database.}
 \label{tab:multidataset}
@@ -434,7 +436,7 @@ On SVDB, both KAN-family models also have the highest S$\rightarrow$V confusion 
 \label{sec:results_deploy}
 Table~\ref{tab:deployment} reports inference on an x86 CPU, single-threaded, for the seed-42 checkpoint. Values are the mean of three repeated runs of 1000 timed trials after a 20-iteration warm-up, and $\pm$ is the spread across runs.
 
-\begin{table}[!t]
+\begin{table}[!htbp]
 \centering
 \caption{Measured inference, PC-WavKAN, x86 CPU, single thread, PyTorch 2.6.}
 \label{tab:deployment}
