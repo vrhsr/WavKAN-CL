@@ -110,7 +110,7 @@ def generate_workflow_figure(output_path):
 
     k = lambda v: f"{v / 1000:.1f}K params"  # noqa: E731
     YM, YR, H = 38.0, 18.0, 12.5   # lane centre lines and box height
-    YE0, YE1 = 51.0, 61.0           # side-branch encoder box (bottom, top)
+    YE0, YE1 = 50.0, 62.5           # side-branch encoder box (bottom, top)
     YROUTE = (YE0 + YE1) / 2
 
     ax.text(0.3, 66.5, "Morphology branch", fontsize=7.4, fontweight="bold",
@@ -135,8 +135,9 @@ def generate_workflow_figure(output_path):
 
     # side-branch encoder above the lane
     box(ax, 37.0, YE0, 35.0, YE1 - YE0, "side",
-        ["Side-branch encoder", r"samples 80$-$160 of $\mathbf{x}$ ($-$28 to +194 ms)",
-         r"Wavelet-KAN 80$\rightarrow$32, Linear$\rightarrow$64:  $\mathbf{a}\in\mathbb{R}^{64}$"],
+        ["Side-branch encoder", r"samples 80–159 of $\mathbf{x}$ ($-$28 to +192 ms)",
+         r"Wavelet-KAN 80$\rightarrow$32, Linear$\rightarrow$64",
+         r"1-token attention (affine), LayerNorm:  $\mathbf{a}\in\mathbb{R}^{64}$"],
         fs=7.0)
 
     arrow(ax, (13.8, YM), (17.2, YM))

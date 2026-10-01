@@ -1176,3 +1176,109 @@ On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00
   - LaTeX build 0 errors, 0 undefined references, 0 overfull boxes, 23 pages;
   - `check_manuscript.py` finds all 5 figures;
   - manuscript and split-count tests pass (15).
+
+## 2026-10-01 (continued): corrections from external LLM review
+- **Source.** Reviews of the manuscript by Gemini (reviewer report and internal-consistency audit) and ChatGPT. Every point was checked against the code, the result files and the PhysioNet annotations before any change was made.
+- **ChatGPT's two responses were discarded.** Neither read the files: the comprehension check failed, and the consistency audit quoted text that does not occur in the manuscript.
+- **Changes** are listed in `AUDIT_FINDINGS.md` H70 and H71.
+  - **H70:** the Discussion's self-attention explanation was wrong for the code and has been replaced with the encoder's actual structure, verified numerically.
+  - **H71:** Bae et al.'s venue (ICCE → ICAIIC 2025); "SMOTE" → SMOTE-style, with its citation; the Q-count and fusion-beat arithmetic; two class-table ratios; the ambiguous "only corrected positive effect"; the record-232 and baseline-recipe limitations; the λ and determinism disclosures; first-use definitions.
+- **Not adopted:**
+  - **Zeroing the side branch at inference:** this measures dependence on the branch, not its usefulness, and the trained ablation already answers that question.
+  - **Recovering baseline stopping epochs:** no per-epoch logs exist.
+  - **Dataset amplitude statistics:** these are fixed by per-window z-scoring.
+  - **A post hoc equivalence margin, or retraining for S-recall:** both are excluded by the freeze rules.
+  - **Kept for revision:** S-class AUPRC and per-record S-recall. Both can be computed locally from the saved probabilities and record IDs.
+- **Verification:**
+  - verifier 496 verified, 0 mismatched (17 new checks);
+  - LaTeX build: 0 errors, 0 undefined references, 0 overfull or underfull boxes, 23 pages;
+  - `check_manuscript.py` and `check_citations.py` clean;
+  - manuscript and split-count tests pass.
+
+## 2026-10-01 (continued): final pre-submission review (`AUDIT_FINDINGS.md` Phase 13, H72–H83)
+- **Scope.** An end-to-end review of `Submission_Array/manuscript.tex`, the highlights and the cover letter. It covered claim tracing, the Methods against the code, consistency, statistics, claim strength, citations and figures. No training was run, and no new result was added.
+
+- **Changed reported numbers.** All are corrections; no conclusion changes.
+  - **Rounding (H72):**
+    - Base-configuration CBS S-recall: 0.123 → 0.122 (two places).
+    - V precision: 0.528 → 0.527 (two places).
+  - **Interval-ablation p-values, now two-sided (H73):**
+    - RR₀: Holm p 3×10⁻⁴ → 6×10⁻⁴.
+    - RR₊₂: Holm p 0.014 → 0.028.
+  - **Added to Table 7:** F-recall sd values (0.0008, 0.0019).
+
+- **Description corrections:**
+  - the two-phase schedule's run counts (H75);
+  - the isolated augmentation recipe (H76);
+  - the efficiency settings (H77);
+  - the Code-availability statement (H78);
+  - Methods details: filter, edge beats, Q symbols, side-branch range, inert parameters, B-Spline KAN dropout, comparator, F-recall range, test families (H79).
+
+- **Claim scope and hedging (H80):**
+  - base-configuration scope added to the PCWI and mother-wavelet findings in the abstract, Discussion, Conclusion and cover letter;
+  - highlight 3 reworded;
+  - outcome-hierarchy history corrected, and exploratory labels added;
+  - first-use ECG definitions added;
+  - the seed, not the patient, is declared as the unit of replication (statistics section and Limitation 1).
+
+- **Citations (H83):**
+  - the false MAK-Net Grad-CAM statement and the unverifiable Takalo-Mattila split attribution were removed;
+  - six characterisations corrected;
+  - nine metadata fixes, with formal versions for preprints that have been published.
+
+- **Figures:**
+  - **Figure 1:** relabelled ("Evaluation on DS2"; "5 models + variants"; SVDB channel).
+  - **Figure 2:** side-branch box shows the attention block and samples 80–159.
+  - Both were regenerated from their generators (`src/generate_protocol_figure.py`, `src/generate_workflow_diagram.py`).
+  - **Forest plot:** included at natural size.
+  - **Captions:** Figures 1, 2, 4 and 5 updated.
+
+- **New files:**
+  - `src/reproduce_adopted_checkpoints.py`;
+  - `results/checkpoint_reproduction/adopted_config.json`: 20/20 DS2 predictions identical; 19/20 validation scores reproduced exactly, the exception being seed 1001. This backs the existing test-set-exposure sentence.
+
+- **Verifier (`src/verify_manuscript_numbers.py`):**
+  - `chk()` now enforces rounding to the printed precision;
+  - two new blocks, (13) and (14), cover previously unchecked claims and every change above;
+  - the RR p-values are now computed through `src/paired_stats.py`;
+  - result: **622 verified, 0 mismatched** (was 496).
+
+- **Open, needs the project owner:**
+  - H81: how the selection history is disclosed;
+  - H82: the collapsed-baseline sentence;
+  - the citation additions proposed in H83;
+  - see `FINAL_REVIEW.md`.
+
+- **Verification after all changes:**
+  - verifier 622/0;
+  - pytest 135 passed;
+  - `check_manuscript.py` and `check_citations.py` clean (3 unused bib entries, harmless);
+  - full LaTeX rebuild: 0 errors, 0 undefined references, 0 overfull or underfull boxes, 23 pages.
+
+## 2026-10-01 (continued): owner decisions on the final review (`AUDIT_FINDINGS.md` H81–H84)
+- **D1, selection history (rewrite):**
+  - The test-set-exposure paragraph now says the configuration was first adopted after the DS2 metrics of all eight configurations had been computed. At that point the base configuration was known to be significantly below each baseline (Holm p ≤ 0.005).
+  - It says the validation rule was applied afterwards and that any bias favours PC-WavKAN. The "null result" argument was removed.
+  - "Architecture selection on validation data (only)" was softened in the abstract, contribution 1, the §4.1 opening, Limitation 3, the Conclusion and highlight 2. The cover letter never used it.
+- **D2:** the collapsed-baseline sentence is kept, with "those runs were not retained". The record is C15 (2026-08-17; prediction arrays inspected then, deleted later), noted in `references_provenance.txt`.
+- **D3, citations:**
+  - Added Pollard et al. 2026, PhysioNet's standard citation, at all four PhysioNet citations.
+  - Added Yu, Yu and Wang 2024, one clause in Related Work.
+  - The record-normalised-RR sentence was not added: no primary source was reachable (publishers returned 403; PMC was excluded).
+  - MS-WavKAN skipped.
+- **D4, per-record S-recall:**
+  - New `src/per_record_s_recall.py`, output `results/per_record_s_recall.json`.
+  - PC-WavKAN's S-recall is 0.138 on record 232 and 0.380 on the other records' 455 S beats. Every model is lower on 232, and ResNet1D and CNN+Focal detect almost none of its S beats (0.004, 0.013).
+  - Reported in one sentence in Limitation 2, whatever the result, as decided beforehand.
+  - Verifier checks added.
+- **Verification:**
+  - verifier 642 verified, 0 mismatched;
+  - pytest 135 passed;
+  - `check_manuscript.py` and `check_citations.py` clean (34 citations; 3 unused entries);
+  - full LaTeX rebuild: 0 errors, 0 undefined references, 0 overfull or underfull boxes, 24 pages;
+  - abstract 244 words.
+
+## 2026-10-01 (continued): Sec. 4.3 scoped to the per-record breakdown
+- **Change.** Sec. 4.3 said PC-WavKAN's S-F1 is better than ResNet1D's and CNN+Focal's, with no pointer to the new per-record breakdown (H84). One sentence was added: the S-recall advantage over those two models comes largely from record 232, where they detect almost no S beats (Limitation 2).
+- **Evidence** (`results/per_record_s_recall.json`, 20-seed means): record 232's share of the overall S-recall difference is above 100% against ResNet1D, which is slightly higher on the other records (0.391 against 0.380), and about 76% against CNN+Focal.
+- **Verification.** A new verifier check requires the record-232 share to exceed one half for both comparisons. No number changed.

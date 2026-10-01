@@ -1,0 +1,43 @@
+{
+  "model_params": 153045,
+  "fp32_size_mb": 0.5958,
+  "int8_size_mb": 0.5514,
+  "compression_ratio": 1.08,
+  "latency_fp32": {
+    "mean_ms": 3.370437800002719,
+    "std_ms": 2.257709744389302,
+    "median_ms": 3.120749999993677,
+    "p95_ms": 4.817504999903121,
+    "throughput": 296.697360799595,
+    "n_samples": 1000,
+    "batch_size": 1
+  },
+  "latency_int8": {
+    "mean_ms": 4.38923760000489,
+    "std_ms": 0.7426580012468372,
+    "median_ms": 4.433750000089276,
+    "p95_ms": 5.494230000135757,
+    "throughput": 227.82999945113156,
+    "n_samples": 1000,
+    "batch_size": 1
+  },
+  "speedup_int8": 0.77,
+  "throughput_fp32": {
+    "1": {
+      "throughput_bps": 341.80543682478435,
+      "latency_ms": 2.9256410000073174
+    },
+    "16": {
+      "throughput_bps": 29242.23266042835,
+      "latency_ms": 0.5471538437505075
+    },
+    "64": {
+      "throughput_bps": 152136.12528388726,
+      "latency_ms": 0.4206758906247643
+    }
+  },
+  "peak_rss_mb": 237.9,
+  "co2": {},
+  "hardware": "CPU (standard x86)",
+  "framework": "PyTorch 2.6.0+cpu"
+}

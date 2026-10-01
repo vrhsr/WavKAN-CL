@@ -1,4 +1,4 @@
-Bibliography provenance notes for Submission_JBHI/references.bib
+Bibliography provenance notes for Submission_Array/references.bib (carried over from Submission_JBHI/references.bib)
 ======================================================================
 These notes documented citation-integrity corrections made during the
 project's reference audit. They were previously stored in BibTeX 'note'
@@ -40,3 +40,31 @@ from the .bib so that they cannot appear in the compiled PDF.
 [goldberger_physiobank_2000]
   Standard PhysioNet citation, required by the St Petersburg INCART and SVDB database landing pages. Added 2026-09-03.
 
+[bae_handling_2025]
+  Corrected 2026-10-01: the entry gave the venue as IEEE ICCE. Crossref (DOI 10.1109/ICAIIC64266.2025.10920651) records it as 2025 International Conference on Artificial Intelligence in Information and Communication (ICAIIC), pp. 656-660, authors Jungwoo Bae and Jitae Shin. Title and authors were already correct. The abstract (Semantic Scholar) confirms a two-phase curriculum with class-distribution-based sampling, so the citation's use in Related Work is apt.
+
+[chawla_smote_2002]
+  Added 2026-10-01 for the SMOTE-style augmentation arm. Verified: J. Artif. Intell. Res. 16:321-357, DOI 10.1613/jair.953 (ACM DL, Semantic Scholar, arXiv:1106.1813). The paper's augmentation is SMOTE-style, not SMOTE: it interpolates each minority beat with a random same-class beat of the mini-batch (src/noise_augmentation.py, aug_smote_batch), and the manuscript says so.
+
+[final review 2026-10-01: changes verified against Crossref, arXiv and PMC]
+  akan_ecgformer_2024: title corrected to the published "ECGformer: Leveraging Transformer for ECG Heartbeat Arrhythmia Classification" and cited in its formal version, 2023 CSCI pp. 1412-1417, DOI 10.1109/CSCI62032.2023.00231 (Crossref).
+  liu_kan_2024: cited as ICLR 2025 (arXiv 2404.19756 comment: "Accepted by ICLR 2025", OpenReview Ozo7qJ5vZi).
+  silva_systematic_2025: formal version, Research on Biomedical Engineering 42(3), article 42, 2026, DOI 10.1007/s42600-026-00485-z, six authors (Crossref; the arXiv record lists the same DOI). Key unchanged.
+  farag_tiny_2023: first name Mohammed (Crossref).
+  bahrami_investigation_2025: issue 3 added (Crossref). Manuscript sentence softened: the abstract compares the three training paradigms but no quantified gap was verified.
+  schmale_curriculum_2025: pages 1-5 (Crossref).
+  zhou_inter-patient_2024: volume 90, not 89 (Crossref, April 2024).
+  takalo-mattila_inter-patient_2018: entry type corrected to inproceedings (Crossref). The manuscript's "splitting DS1 into training and validation records following Takalo-Mattila et al." could not be verified (IEEE Xplore not accessible; no audit had verified it; src/split.py gives its own rationale), so the attribution was removed and the key is no longer cited. Its use as an example of high-accuracy literature was also removed: it is an inter-patient paper.
+  zhao_mak-net_2025: "reports Grad-CAM attributions" was false; the full text (PMC12252100) contains no Grad-CAM and states that no visualisations of the learned spline activations were included. Removed. Intra-patient protocol verified (60/20/20 split). Now also cited as an example of high-accuracy (intra-patient) literature.
+  xiao_deep_2023: no longer cited for the AAMI EC57 mapping (the review lists the five classes but does not name EC57 or give the mapping); replaced there by chazal_automatic_2004.
+  chazal_automatic_2004: "interval features normalised to a record-level average" removed; it could not be verified against the primary text, and secondary sources describe average and local-average RR as separate features. SVEB 75.9%/38.5% and VEB 77.7%/81.9% verified against the abstract (PubMed 15248536).
+  kim_wavelnet_2023: "learns only scale and translation" is verified for WaveletKernelNet (arXiv 1911.07925) but not for WavelNet (paywalled); the sentence now attributes it to WaveletKernelNet only.
+  dai_angular_2026: "record-level" replaced by the paper's "long-tailed multi-label"; arXiv DOI 10.48550/arXiv.2607.14613 added (resolves).
+  heap_automated_2025: sentence narrowed to the paper's subject (sparse-autoencoder metrics, random vs trained transformers); arXiv DOI added (resolves). A reported ICLR 2026 acceptance could not be confirmed (OpenReview blocked automated access), so the arXiv version is kept.
+  bozorgasl_wavkan_2024: arXiv DOI 10.48550/arXiv.2405.12832 added (resolves); no formal version found.
+
+[owner decisions D2/D3, 2026-10-01]
+  pollard_physionet_2026: added alongside goldberger_physiobank_2000 at every PhysioNet citation. It is the standard citation that the mitdb, incartdb and svdb PhysioNet pages now request. Crossref (DOI 10.1038/s44360-026-00096-z): Pollard T, Moody BE, Lehman L-wH, Gow BJ, Fernandes C, Xie C, Johnson A, Mark RG, Heldt T. "PhysioNet as a global platform for biomedical research". Nature Health 1(8):792-795, 2026.
+  yu_kan_2024: added for one clause in Related Work. arXiv 2407.16674 (export.arxiv.org API; technical report; no formal version found). The abstract says that with parameters and FLOPs controlled, "except for symbolic formula representation tasks, MLP generally outperforms KAN". The DOI 10.48550/arXiv.2407.16674 resolves.
+  Not added: a sentence citing record-normalised-RR inter-patient methods (Lin and Yang 2014; Wang et al. 2020 PeerJ CS; Farag 2023). The owner required every number to be verified against the primary papers' own tables. All three publishers (Hindawi/Wiley, PeerJ, MDPI) returned HTTP 403 to automated access, directly and through Unpaywall's links, and the only reachable copies were on PMC, which the owner excluded. Unverifiable from the primary source, so dropped.
+  Collapsed-baseline sentence (manuscript, Baselines section): kept, and now states that those runs were not retained. The contemporaneous record is AUDIT_FINDINGS.md C15 (2026-08-17), which states that the prediction arrays of all four baselines were inspected at the time: ResNet1D, Transformer and CNN+Focal never predicted class N on the 49,684 DS2 beats. Only the arrays were deleted afterwards.

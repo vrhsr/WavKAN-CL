@@ -18,12 +18,12 @@ Deep networks for ECG heartbeat classification often report high accuracy under 
 The study is an empirical evaluation rather than a method proposal. Its main findings are:
 
 1. Under the de Chazal DS1/DS2 protocol, with 20 paired seeds, Holm-Bonferroni correction, effect sizes and confidence intervals, a 153,045-parameter wavelet KAN is not statistically distinguishable in Macro-F1 from four baselines trained under the same protocol and budget. Every paired 95% interval lies within +/-0.03, and no equivalence claim is made.
-2. On validation data, a structured initialisation of the wavelet parameters helped relative to an isotropic one, the mother wavelet did not measurably matter, and self-attention over RR-interval features was harmful.
+2. On validation data, in the configuration in which components were ablated, a structured initialisation of the wavelet parameters helped relative to an isotropic one, the mother wavelet did not measurably matter, and self-attention over inter-beat (RR) interval features was harmful.
 3. Null models show that the trained wavelet parameters do not support a physiological interpretation: the channel groups are exchangeable, and training moves randomly initialised parameters away from the prior values.
 4. Class-balanced sampling raised supraventricular recall on the held-out set but not on the validation partition, and all models share a poor supraventricular operating point, which we report against the protocol's original linear-discriminant results.
 5. Re-evaluating all published checkpoints without retraining shows that an annotation-derived artefact in the interval features does not inflate performance. Under preprocessing matched to training, the wavelet KAN transfers worse than both convolutional baselines to two external databases (INCART, SVDB). An unmatched evaluation had suggested the opposite, which we report as a caution about preprocessing sensitivity.
 
-We believe the work fits Array's interest in rigorous, reproducible computing research with biomedical applications. The code, per-seed results, checkpoints and a script that re-derives every reported number are publicly available.
+We believe the work fits Array's interest in rigorous, reproducible computing research with biomedical applications. The code, per-seed results, the evaluated model's checkpoints and a script that re-derives the reported numbers are publicly available.
 
 This manuscript is original, has not been published, and is not under consideration elsewhere. All authors approved the submission. The authors declare no competing interests.
 

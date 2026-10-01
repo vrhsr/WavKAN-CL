@@ -1,0 +1,169 @@
+{
+ "arm": "results/ablation_no_rr_attn",
+ "data_dir": "data/processed_rr_history",
+ "device": "cpu",
+ "batch_size": 256,
+ "note": "Forward pass only. Validation is reproduced exactly when |reproduced - logged| < 1e-9.",
+ "rows": [
+  {
+   "seed": "seed_1001",
+   "test_macro_f1_saved": 0.35275288141623323,
+   "test_macro_f1_reproduced": 0.35275288141623323,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.418272640692963,
+   "val_macro_f1_reproduced": 0.3945390208592007
+  },
+  {
+   "seed": "seed_101",
+   "test_macro_f1_saved": 0.3472334523567155,
+   "test_macro_f1_reproduced": 0.3472334523567155,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4452462021940553,
+   "val_macro_f1_reproduced": 0.4452462021940553
+  },
+  {
+   "seed": "seed_11",
+   "test_macro_f1_saved": 0.3590649506030644,
+   "test_macro_f1_reproduced": 0.3590649506030644,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.420142442676865,
+   "val_macro_f1_reproduced": 0.420142442676865
+  },
+  {
+   "seed": "seed_1234",
+   "test_macro_f1_saved": 0.39435684640147134,
+   "test_macro_f1_reproduced": 0.39435684640147134,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4621280505215088,
+   "val_macro_f1_reproduced": 0.4621280505215088
+  },
+  {
+   "seed": "seed_13",
+   "test_macro_f1_saved": 0.3388226538977018,
+   "test_macro_f1_reproduced": 0.3388226538977018,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.46456602284315035,
+   "val_macro_f1_reproduced": 0.46456602284315035
+  },
+  {
+   "seed": "seed_1998",
+   "test_macro_f1_saved": 0.40398581441751225,
+   "test_macro_f1_reproduced": 0.40398581441751225,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4409997018640407,
+   "val_macro_f1_reproduced": 0.4409997018640407
+  },
+  {
+   "seed": "seed_2024",
+   "test_macro_f1_saved": 0.36677525150419893,
+   "test_macro_f1_reproduced": 0.36677525150419893,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.44758144086042745,
+   "val_macro_f1_reproduced": 0.44758144086042745
+  },
+  {
+   "seed": "seed_2026",
+   "test_macro_f1_saved": 0.34576037154995687,
+   "test_macro_f1_reproduced": 0.34576037154995687,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4369644566246597,
+   "val_macro_f1_reproduced": 0.4369644566246597
+  },
+  {
+   "seed": "seed_27182",
+   "test_macro_f1_saved": 0.3503517833948155,
+   "test_macro_f1_reproduced": 0.3503517833948155,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4484772434911897,
+   "val_macro_f1_reproduced": 0.4484772434911897
+  },
+  {
+   "seed": "seed_31415",
+   "test_macro_f1_saved": 0.343617317394642,
+   "test_macro_f1_reproduced": 0.343617317394642,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.41884072802626165,
+   "val_macro_f1_reproduced": 0.41884072802626165
+  },
+  {
+   "seed": "seed_333",
+   "test_macro_f1_saved": 0.34827547526118724,
+   "test_macro_f1_reproduced": 0.34827547526118724,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.46816793217690894,
+   "val_macro_f1_reproduced": 0.46816793217690894
+  },
+  {
+   "seed": "seed_42",
+   "test_macro_f1_saved": 0.36508364656293174,
+   "test_macro_f1_reproduced": 0.36508364656293174,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.43797854214664345,
+   "val_macro_f1_reproduced": 0.43797854214664345
+  },
+  {
+   "seed": "seed_5050",
+   "test_macro_f1_saved": 0.34314328378194,
+   "test_macro_f1_reproduced": 0.34314328378194,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4429611445787228,
+   "val_macro_f1_reproduced": 0.4429611445787228
+  },
+  {
+   "seed": "seed_555",
+   "test_macro_f1_saved": 0.3498842769794631,
+   "test_macro_f1_reproduced": 0.3498842769794631,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4259923515593046,
+   "val_macro_f1_reproduced": 0.4259923515593046
+  },
+  {
+   "seed": "seed_7",
+   "test_macro_f1_saved": 0.32920022612506195,
+   "test_macro_f1_reproduced": 0.32920022612506195,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.43302202332521594,
+   "val_macro_f1_reproduced": 0.43302202332521594
+  },
+  {
+   "seed": "seed_777",
+   "test_macro_f1_saved": 0.37077529795174047,
+   "test_macro_f1_reproduced": 0.37077529795174047,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4370124963198158,
+   "val_macro_f1_reproduced": 0.4370124963198158
+  },
+  {
+   "seed": "seed_8080",
+   "test_macro_f1_saved": 0.3740082100780205,
+   "test_macro_f1_reproduced": 0.3740082100780205,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.44296447139365347,
+   "val_macro_f1_reproduced": 0.44296447139365347
+  },
+  {
+   "seed": "seed_888",
+   "test_macro_f1_saved": 0.3669244547889222,
+   "test_macro_f1_reproduced": 0.3669244547889222,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.43473175398488806,
+   "val_macro_f1_reproduced": 0.43473175398488806
+  },
+  {
+   "seed": "seed_99",
+   "test_macro_f1_saved": 0.34345355548373824,
+   "test_macro_f1_reproduced": 0.34345355548373824,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.43710488738746067,
+   "val_macro_f1_reproduced": 0.43710488738746067
+  },
+  {
+   "seed": "seed_9999",
+   "test_macro_f1_saved": 0.34417591694895733,
+   "test_macro_f1_reproduced": 0.34417591694895733,
+   "test_predictions_identical": true,
+   "val_macro_f1_logged_best_epoch": 0.4316896134325991,
+   "val_macro_f1_reproduced": 0.4316896134325991
+  }
+ ]
+}

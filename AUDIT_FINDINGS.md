@@ -516,3 +516,314 @@ Neither survives Holm correction across the two metrics (p≈0.051). On DS2, S-r
 - titles moved out of the images;
 - drawn at print size;
 - manuscript layout changed to 2.5 cm margins and no line numbers.
+
+### H70 — The Discussion explained the self-attention result with a mechanism the code does not have — MAJOR (claim) — RESOLVED 2026-10-01
+
+**What was wrong.** The paragraph "Why self-attention over interval features fails" said that self-attention is close to permutation-equivariant without positional information, while an MLP has the positional distinction "for free". In `models/wavkan_v2.py::RRBranch` the attended tokens are flattened in order (5×16) into a position-specific linear layer, so position does reach the classifier. The stated mechanism was wrong for the evaluated encoder.
+
+**What the code actually does.**
+- Every interval is embedded by the same affine map (`nn.Linear(1, 16)`).
+- The attention block has no residual connection.
+- So each output token of the block is an affine function of two attention-weighted averages of the five intervals, one per head, whatever the weights. This was verified numerically: the centred outputs have rank 2 over 3 random initialisations.
+- The value of RR0 therefore reaches the classifier only to the extent that attention concentrates on it.
+
+**Fix.** The paragraph was retitled "Self-attention over interval features". It now states this property as consistent with the observed harm, and says it was not tested as the cause. `verify_manuscript_numbers.py` checks both the absence of a residual connection and the rank.
+
+### H71 — Smaller corrections from external review, 2026-10-01 (batched)
+
+**Bibliography: wrong venue.** `bae_handling_2025` gave the venue as IEEE ICCE. Crossref records it as ICAIIC 2025, pp. 656–660, DOI 10.1109/ICAIIC64266.2025.10920651. Corrected; logged in `Submission_Array/references_provenance.txt`.
+
+**"SMOTE" was misnamed.** The augmentation arm (`noise_augmentation.py::aug_smote_batch`) interpolates each minority beat with a random same-class beat of the mini-batch, rather than with nearest neighbours. It also replaces the beat instead of adding a sample. It is now called SMOTE-style, described as implemented, and cited (Chawla et al. 2002, verified).
+
+**Arithmetic and counts in the text.**
+- The Q count read "6 in training, 7 in DS2", which totals 13 of 15; the 2 validation beats were missing.
+- The fusion sentence read as 414 − 372 = 28; it now gives the 386 validation beats.
+- Two class-table ratios were not rounded: 12.8 → 12.9 and 6004 → 6004.7.
+
+**Ambiguous claim.** PCWI was called "the only corrected positive effect among the components ablated", although the adjacent rhythm-encoder change also had a corrected positive effect. It is now "the only component whose removal significantly reduced validation Macro-F1".
+
+**Added disclosures.**
+- Record 232 holds 75% of DS2's S beats (Limitations 2).
+- The baselines were trained without PC-WavKAN's sampler and augmentation (Limitations 8).
+- λ = 0.1 is the untuned implementation default.
+- GPU re-evaluation ran with TF32 disabled and without deterministic algorithms.
+- The artefact conclusion is now limited to removal at inference.
+
+**Terms.** First-use definitions were added for AAMI, CNN, BiGRU, MLP, SVEB/VEB, DOG and the five AAMI classes, and for MLII and V5. Two other changes: the P-wave is now described as preceding the QRS complex, and "Weighted CE" in Table 3 is spelled out as "Weighted cross-entropy".
+
+No reported result changed. The new numbers (the 75%, the 386 validation F beats, the class ratios) are checked by the verifier.
+
+## Phase 13 — final pre-submission review (2026-10-01)
+
+Scope: an end-to-end review of `Submission_Array/manuscript.tex`, the highlights and the cover letter. It covered claim-to-evidence tracing, the Methods against the code, internal consistency, statistics, claim strength, citations and figures. No model was trained.
+
+Two new artefacts support existing claims; neither adds a result:
+- a forward-only reproduction of the 20 adopted checkpoints (`src/reproduce_adopted_checkpoints.py` → `results/checkpoint_reproduction/adopted_config.json`);
+- a two-sided recomputation of the interval-ablation p-values with `src/paired_stats.py`.
+
+Subagent reports were re-verified against the files before any change.
+
+### H72 — Two rounding errors passed the verifier's tolerance — MINOR — RESOLVED
+
+**Errors:**
+- The base-configuration CBS S-recall is 0.12246, printed as 0.123 in two places (§4.4); it should be 0.122.
+- PC-WavKAN's V precision is 0.52748, printed as 0.528 (Table 6a and the de Chazal paragraph); it should be 0.527.
+
+**Why they passed:** `chk()` accepted |claim − real| ≤ 0.0006, which tolerates off-by-one rounding at the third decimal.
+
+**Fix:**
+- Both values were corrected.
+- `chk()` now also requires the printed value to equal the real value rounded to the printed number of decimals (1–4 dp; cross-implementation checks are exempt). Confirmed: it rejects both old values.
+
+### H73 — Interval-ablation p-values were one-sided under a two-sided declaration — MAJOR (statistics) — RESOLVED
+
+**What was wrong.** `src/rr_ablation.py:212` runs `wilcoxon(s_deltas, alternative="less")`. The verifier applied Holm to those one-sided p-values, and the manuscript printed them (RR₀ Holm p = 3×10⁻⁴, RR₊₂ 0.014). The Statistical Methodology section declares every test two-sided.
+
+**Fix.** The values were recomputed two-sided with `src/paired_stats.py` (deltas against zero, Holm over the five positions): RR₀ 6×10⁻⁴, RR₊₂ 0.028. The other three positions are ≥ 0.44. The text now says "two-sided tests", and the verifier recomputes through `paired_stats`.
+
+**Effect.** No conclusion changes. `rr_ablation.py` and its report were left as they are, because the report is a historical artefact.
+
+### H74 — Figure 1 and one sentence overstated how untouched DS2 was — MAJOR (consistency) — RESOLVED
+
+**Figure 1 contradicted §4.1.** The protocol figure's box read "Single evaluation on DS2", and its caption said "DS2 is evaluated once with the selected models". This contradicted §4.1, which says DS2 should be read "rather than a single-shot test" (every run is evaluated on DS2 at the end of training, `train_pca.py:489`).
+- **Fix:** box relabelled "Evaluation on DS2". The training box now reads "5 models + variants, 20 seeds each", and SVDB's channel was added.
+- **Caption:** now says that DS2 reports the selected models, with a cross-reference to the disclosure.
+- **Generator:** `src/generate_protocol_figure.py` was updated and the figure regenerated.
+
+**The ranking sentence was overbroad.** "The DS2 ranking agrees with the validation ranking" holds only for the top rank: the eight configurations are ordered differently on DS2.
+- **Fix:** the sentence now says the configuration first on validation is also first of the eight on DS2. The verifier checks both rankings.
+
+### H75 — The two-phase schedule was miscounted — MAJOR (description) — RESOLVED
+
+**What the manuscript said.** "In all 60 runs that used this schedule (three configurations)… the second phase therefore did not contribute to any reported model."
+
+**What the training histories show.**
+- 160 runs used the schedule: eight configurations, including the five class-balanced ablation arms of Table 4.
+- 158 of them retained a first-phase checkpoint.
+- Two ablation runs retained second-phase checkpoints: Morlet seed 333 (epoch 26) and no-side-branch seed 13 (epoch 27). Both enter Table 4's validation values.
+- 20 of the 60 reported-configuration runs stopped before the switch.
+
+**Fix.** The text now states all of this, and the claim is scoped to models whose DS2 result is reported. The stop-epoch range (17–40) is likewise scoped to those 60 runs. "The learning rate changed little" became "had fallen by at most 15%" (cosine at epoch ≤ 25). The verifier checks every count.
+
+### H76 — The isolated augmentation study was described with the wrong recipe — MAJOR (description) — RESOLVED
+
+**What was wrong.** The manuscript said "an isolated 60-epoch recipe without CBS". The study actually used:
+- class-balanced sampling combined with class-weighted CE, in every epoch;
+- patience 12;
+- a baseline-wander amplitude of 0.02–0.08;
+- no amplitude scaling.
+
+The source is `src/noise_augmentation.py`: lines 192, 211 and 222, `aug_baseline_wander` and `aug_combined`.
+
+**Fix.** The recipe is described as implemented, and "That penalty" became "the Macro-F1 penalty of the noise-based strategies".
+
+### H77 — The efficiency section described settings that were not measured — MODERATE — RESOLVED
+
+**What was wrong.**
+- **Single thread:** "single-threaded" appears nowhere in the code or the records, and `export_quantize.py` never calls `set_num_threads`.
+- **Trial count:** the batch-64 row used 200 trials, not 1000.
+- **Memory:** on Windows, "peak resident memory" is the current process RSS (psutil fallback, `export_quantize.py:150-158`).
+- **Units:** sizes are MiB.
+- **Quantisation:** the `nn.Linear`-only restriction is the script's `qconfig_spec`, not a PyTorch limitation.
+
+**Fix.**
+- Thread count now stated as the PyTorch default; inputs as random.
+- Trial counts stated per row.
+- Memory row renamed "process resident memory after benchmarking"; units changed to MiB.
+- The quantisation scope is now quantified: `nn.Linear` holds 11.4% of the parameters, the wavelet-KAN layers and GRU 77.5%.
+
+### H78 — The Code-availability statement overstated what is released, and the verifier failed on a fresh clone — MAJOR (reproducibility) — RESOLVED locally; owner action needed
+
+**Overstatement.**
+- "Per-seed records of every arm (test metrics, training histories, confusion matrices)" is true only for PC-WavKAN arms.
+- Baselines have tracked test metrics only. They never logged histories, and their confusion matrices exist only in the inference re-evaluations.
+- **Fix:** the statement now lists what each part of the release contains.
+
+**Fresh-clone failure.** The verifier opens three untracked files, `results/deployment_final_runs/run{1,2,3}/benchmark_report.json`; `results/` is gitignored. So did the new `results/checkpoint_reproduction/adopted_config.json`.
+- **Fix:** `git add -f` commands are in `FINAL_REVIEW.md`.
+
+**Owner action.** The repository now resolves publicly (HTTP 200, `private:false`, 2026-10-01). Its remote HEAD is 78d82d7, two commits behind local `main`, and none of this review's changes are pushed. Push before submission.
+
+### H79 — Smaller Methods-versus-code corrections (batched) — RESOLVED
+
+Each item was verified against the code. All are checked by the verifier unless marked otherwise.
+
+**Imbalance handling**
+- **Comparator:** "used by all four baselines" became three of four; CNN+Focal uses unweighted focal loss. "The class-weight formula" is now qualified as "wherever class weights are used".
+- **Collapsed baseline recipe:** it was a class-balanced sampler combined with inverse-frequency-weighted **focal** loss (`baselines_extended.py:19-26`). The outcome sentence is H81.
+
+**Preprocessing and features**
+- **Filter:** the NeuroKit2 moving average (7 taps, forward and backward) is also a low-pass filter: −3 dB at 16.5 Hz and 34 dB at 60 Hz. Stated.
+- **Edge beats:** 57 labelled beats are skipped at record boundaries, and the variance guard dropped none (100,733 → 100,676, from the annotations). Stated.
+- **Q class:** no '/' or 'f' symbol occurs in the 44 records; all 15 Q beats are 'Q'.
+- **RR edge fill:** applies before the first or after the last *annotation*.
+- **Non-beat entries:** the list now includes comment and non-conducted-P markers.
+
+**Model**
+- **Side branch:** the slice 80:160 covers samples 80–159 (−28 to +192 ms). The single-token attention is an affine map that does not depend on the query.
+  - Inert parameters: its 8,320 query/key parameters, and the GRU's 6,144 recurrent weights (zero initial state), do not affect the output. The verifier confirms this by perturbation.
+  - Figure 2's side-branch box now shows the attention block and LayerNorm (`generate_workflow_diagram.py`).
+- **B-Spline KAN:** no dropout after LayerNorm.
+- **Eq. 1:** the implementation adds 10⁻⁶ to |γ|.
+- **Parameter scope:** "All results outside §4.1 use 153,045 parameters" was false. Three analyses use the base configuration, and they are now named.
+- **Self-attention mechanism:** the RR₀ wording now covers the attention weights and the absence of positional encoding.
+
+**Statistics**
+- **F-recall:** "0.0003 to 0.0061 in every configuration" was false (no-side-branch arm 0.0080; baselines 0.0000–0.0015). It now reads "below 0.01 for every model and configuration".
+- **Mann–Whitney:** labelled raw, normal approximation.
+- **Power:** stated for the paired t-test.
+- **Test families:** the seven-variant ablation and five-position interval families are now declared, as are Cohen's thresholds and "negl.".
+- **Augmentation Holm family:** stated as four metrics.
+
+**Evaluation details**
+- **Masking:** masked RR positions are set to 0.8 s.
+- **External extraction:** the regression test compares against the training extraction on MIT-BIH records; the regenerated DS2 arrays are identical.
+- **TF32:** the wording now refers to the re-evaluation.
+- **SMOTE-style partner:** may be the beat itself.
+
+**Typography**
+- −0.00 became 0.00.
+- 6004.7 became 6,004.7.
+- Bold now marks Holm p < 0.05 in Table 9 as in the other tables, and the unexplained bold on the best S-F1 was removed.
+- Table 7 F-recall now has its sd.
+- p-value formats in Table 4 now match the text.
+- Abbreviations made consistent.
+- **CBS sampler:** the Methods now state that it gives each class equal probability (`train_pca.py:173-182`), so each of the 6 Q and 28 F training beats is redrawn many times per epoch.
+- **Abstract:** INCART and SVDB are written out in full, as Array requires abbreviations to be defined (245 words; the limit is 250).
+- The forest plot is included at its natural size (6.6 pt minimum font), and its caption describes the dashed line.
+- The Figure 4 caption names the base-configuration null and the density normalisation.
+
+### H80 — Claim scope and strength (batched) — RESOLVED
+
+**Base-configuration scope.** The PCWI and mother-wavelet findings were stated without "in the configuration in which components were ablated" in the abstract, Discussion, Conclusion and cover letter. All four now carry it.
+
+**Highlight 3.** "Mother wavelet did not matter" was evidence-of-absence language. It now reads "No measurable effect of the mother wavelet".
+
+**Outcome-hierarchy history.** The paper said the post hoc analyses were "added during a final audit". That is inaccurate for the interval ablation, which ran on 2026-08-16, before the primary result. The sentence now says "added or revised after the primary results were known". Four exploratory analyses that were not labelled are now labelled: the S-F1 comparisons, augmentation, the artefact analysis and PPR.
+
+**Hedges:**
+- "establishes"/"established" → "shows"/"found".
+- "robust across two configurations" → "replicates in".
+- "evidence that … depends" → "indicating that … may depend".
+- "rarely reported" → "not always reported".
+- "our results show" → "indicate".
+- "cannot support a learned class" → "consistent with its 6 training beats".
+- "the data exclude a large difference" → "the intervals exclude differences larger than 0.03".
+- "the intervals bound a true difference" → "are compatible only with".
+- "the problem therefore lies in the encoder" → "appears to lie".
+- "affects all models identically" → "present identically in every model's input".
+- "verified identical to training" → "extraction code verified byte-identical on MIT-BIH".
+- The abstract's "have not been evaluated" now begins "To our knowledge".
+
+**Definitions.** First-use definitions were added for the P wave, QRS complex, T wave, R-peak, RR interval and SNR.
+
+**Unit of replication.** The statistics section and Limitation 1 now say that tests and intervals vary the training seed over the fixed 22 DS2 records, so they exclude patient-sampling variability. The "within ±0.03" statements are bounded accordingly. A record-level bootstrap is proposed in `FINAL_REVIEW.md`, not run.
+
+### H81 — Selection history of the adopted configuration is understated — MAJOR (disclosure) — RESOLVED 2026-10-01 (owner decision D1)
+
+**Timeline:**
+- **2026-08-18:** the base configuration's DS2 Macro-F1 (0.323) was known to be significantly below all four baselines (C16).
+- **2026-08-27:** the MLP-encoder configuration was promoted to headline after its DS2 results were seen ("headline architecture swap", CHANGELOG 2026-08-27).
+- **2026-09-03:** the validation-only selection of Table 4 was constructed afterwards ("A legitimate validation-only selection route exists", CHANGELOG 2026-09-03).
+
+**What the manuscript says:**
+- "The configuration … was selected using DS1 validation only."
+- "Table 4 alone determines the selection."
+- Its conclusion is "a null result, which selection on DS2 would not be expected to produce".
+
+The last argument does not hold. Any bias from DS2 exposure favours PC-WavKAN, and the move from a significant loss to parity is the kind of change it could produce.
+
+**Proposed fix:** the project owner's decision; wording is proposed in `FINAL_REVIEW.md`.
+
+### H82 — The collapsed-baseline outcome sentence has no surviving artefact — MINOR — RESOLVED 2026-10-01 (owner decision D2)
+
+"Three of the four baselines then never predicted class N" rests on C15's narrative alone. The invalid outputs were deleted. The `baselines_extended.py` docstring says "all 4 baselines collapsed… (v_recall=0.0 for 3 of 4 models)", which is internally inconsistent.
+
+**Proposed fix:** a softened sentence that states the records were not retained (`FINAL_REVIEW.md`).
+
+### H83 — Citation errors found by checking every cited work against Crossref, arXiv and PMC — MAJOR (one false characterisation) — RESOLVED
+
+All changes are logged in `Submission_Array/references_provenance.txt`.
+
+**False statement.** MAK-Net "reports Grad-CAM attributions". The full text (PMC12252100) contains no Grad-CAM and states that no visualisations were included. Removed.
+
+**Unverifiable attribution.** "Splitting DS1 into training and validation records following Takalo-Mattila et al." was never verified. Two different validation lists (pre- and post-H16) were each described this way, and `src/split.py` gives its own rationale. The attribution was removed.
+
+**Mis-characterised citations:**
+- **Inter-patient papers as intra-patient examples:** Takalo-Mattila and Guo were cited as examples of the high-accuracy literature, which the next sentence describes as intra-patient. They are inter-patient papers; MAK-Net (verified intra-patient) replaces them.
+- **Xiao for AAMI EC57:** Xiao was cited for the mapping, but it lists the classes without naming EC57; de Chazal replaces it.
+- **Bahrami:** "quantify that optimism directly" was not supported by the abstract; softened.
+- **WavelNet:** the "only scale and translation" claim was verified for WaveletKernelNet only; re-scoped.
+- **Dai:** "record-level" became the paper's own "multi-label".
+- **Heap:** narrowed to sparse-autoencoder metrics on transformers.
+- **de Chazal:** "interval features normalised to a record-level average" could not be verified from the primary text and was removed. The SVEB/VEB numbers were verified.
+
+**Metadata:**
+- **ECGformer:** wrong title; now its CSCI 2023 formal version with DOI.
+- **KAN (Liu et al.):** now ICLR 2025.
+- **Silva:** journal version with full author list (Research on Biomedical Engineering 2026).
+- **Zhou:** volume 90, not 89.
+- **Farag:** "Mohammed".
+- **Bahrami:** issue 3 added.
+- **Schmale:** pages 1–5 added.
+- **Takalo-Mattila:** now `@inproceedings`.
+- **Preprint DOIs:** arXiv DOIs added for Wav-KAN, Dai and Heap.
+- **Dashes:** "Kolmogorov–Arnold" now uses an en dash in all titles.
+
+**Proposed, not added (owner decision):**
+- PhysioNet's current standard citation (Pollard et al., *Nature Health* 2026, DOI 10.1038/s44360-026-00096-z, Crossref-verified).
+- Yu et al., "KAN or MLP: a fairer comparison".
+- Inter-patient methods with record-normalised RR features and much higher S sensitivity (Wang et al. 2020; Lin and Yang 2014; Farag 2023, already cited).
+
+### Phase 13 owner decisions (2026-10-01)
+
+**H81 — resolved by owner decision D1: rewrite.**
+- The 2026-08-27 adoption was made from the DS2 results of **all eight** configurations (the family-ablation table was then a DS2 table; CHANGELOG 2026-08-27). The paper now says so.
+- The paper now also says the base configuration was then known to be significantly below each baseline on DS2. Recomputed with `paired_stats`: Holm p ≤ 0.0042, d_z −0.69 to −1.68.
+- **Test-set exposure paragraph:**
+  - says the validation rule of Table 4 was applied afterwards and is the only rule reported;
+  - says any bias from the exposure would favour PC-WavKAN;
+  - no longer argues that a null result is not what DS2 selection would produce.
+- **"Architecture selection on validation data (only)"** became a validation-based selection rule in:
+  - the abstract;
+  - contribution 1 (with "applied after DS2 had been inspected");
+  - the §4.1 opening;
+  - Limitation 3 ("first adopted after the DS2 metrics of all eight configurations had been seen, and the rule was formalised afterwards");
+  - the Conclusion;
+  - highlight 2.
+- **Cover letter:** never used the phrase, so it needed no change.
+- **Verifier:** checks the base configuration's DS2 loss.
+
+**H82 — resolved by owner decision D2.** The sentence is kept, with "those runs were not retained" added.
+- The contemporaneous record is C15 (2026-08-17): the prediction arrays of all four baselines were inspected then, and ResNet1D, Transformer and CNN+Focal never predicted class N on the 49,684 DS2 beats. Only the arrays were deleted afterwards.
+- The `baselines_extended.py` docstring's "all 4 baselines collapsed to never predicting it" is looser than C15. C15 is the record relied on.
+- Noted in `Submission_Array/references_provenance.txt`.
+
+**H83 — updated by owner decision D3.**
+- **Added:**
+  - Pollard et al. 2026 (*Nature Health* 1(8):792–795, DOI 10.1038/s44360-026-00096-z), alongside Goldberger 2000 at all four PhysioNet citations;
+  - Yu, Yu and Wang 2024 (arXiv:2407.16674), one clause in Related Work, worded from the abstract.
+- **Not added:** the record-normalised-RR sentence (Lin and Yang 2014; Wang et al. 2020; Farag 2023). The owner required verification against each primary paper's own tables. Hindawi/Wiley, PeerJ and MDPI all returned HTTP 403 to automated access, directly and through Unpaywall's links. Only PMC copies were reachable, and PMC was excluded, so none could be verified and the sentence was dropped.
+- **Not added:** MS-WavKAN.
+
+### H84 — Per-record S-recall breakdown (record 232 against the other DS2 records) — ADDED (owner decision D4; reporting decided before the result was seen) — RESOLVED
+
+**Method.** `src/per_record_s_recall.py` → `results/per_record_s_recall.json`, from the predictions saved at test time and `data/processed_rr_history/ids_test.npy`. Label order was checked against `y_test.npy` for all 100 runs.
+
+**Result (20-seed mean S-recall):**
+
+| Model | Record 232 (1,382 S beats) | Other records (455 S beats) |
+|---|---|---|
+| PC-WavKAN | 0.138 | 0.380 |
+| ResNet1D | 0.004 | 0.391 |
+| Transformer | 0.140 | 0.500 |
+| CNN+Focal | 0.013 | 0.263 |
+| B-Spline KAN | 0.268 | 0.317 |
+
+Every model is lower on record 232. PC-WavKAN's S-F1 advantage over ResNet1D and CNN+Focal (Table 6b) therefore comes largely from record 232, where those two detect almost no S beats.
+
+**In the paper.** One sentence in Limitation 2, labelled exploratory. The outcome-hierarchy sentence lists the breakdown among the post hoc additions.
+
+**Verifier.** Checks the printed values and recomputes them from the predictions when they are present.
+
+S-class AUPRC and a patient-level bootstrap are held for revision (owner decision).

@@ -37,8 +37,21 @@ OK = []
 BAD = []
 
 
+def _ndp(x):
+    s_ = repr(float(x))
+    if "e" in s_ or "." not in s_:
+        return 0
+    return len(s_.split(".")[1].rstrip("0"))
+
+
 def chk(label, claimed, actual, tol):
     good = abs(claimed - actual) <= tol
+    # A printed value must also equal the real value rounded to the printed number of
+    # decimals. A bare 0.0006 tolerance let 0.12246 pass as "0.123" and 0.52748 as
+    # "0.528" (AUDIT_FINDINGS.md H72). Cross-implementation checks are exempt.
+    _n = _ndp(claimed)
+    if good and 0 < tol < 0.01 and 1 <= _n <= 4 and not label.startswith("xcheck"):
+        good = abs(claimed - actual) <= 0.5 * 10 ** -_n + 1e-9
     (OK if good else BAD).append((label, claimed, actual))
     print("%-58s claim=%-10s real=%-12s %s" %
           (label, round(claimed, 5), round(actual, 5), "ok" if good else "MISMATCH"))
@@ -110,7 +123,7 @@ for i, k in enumerate(order):
     prev = holm[k] = h
 claims = {"macro_f1": (0.351, 0.014, 0.364, 0.021, 0.52, 0.098),
           "s_recall": (0.137, 0.037, 0.222, 0.057, 1.47, 2.9e-5),
-          "f_recall": (0.0003, None, 0.0022, None, 0.88, 0.013),
+          "f_recall": (0.0003, 0.0008, 0.0022, 0.0019, 0.88, 0.013),
           "v_recall": (0.880, 0.024, 0.880, 0.017, -0.00, 0.756),
           "n_recall": (0.927, 0.021, 0.917, 0.024, -0.32, 0.228)}
 for k, c in claims.items():
@@ -319,15 +332,16 @@ chk("dep peak rss", 235, dep[0]["peak_rss_mb"], 0.6)
 rr = json.load(open("results/rr_ablation_real/rr_ablation_report.json"))
 pp = rr["per_position"]
 assert len(pp) == 5
-srt = sorted(pp, key=lambda k: pp[k]["p_value_s"])
-prev, hrr = 0.0, {}
-for i, k in enumerate(srt):
-    h = min(1.0, max(prev, pp[k]["p_value_s"] * (5 - i)))
-    prev = hrr[k] = h
+from src.paired_stats import paired_compare as _pc2, holm_family as _hf2  # noqa: E402
+_rrf = _hf2({k: _pc2({str(i): x for i, x in enumerate(pp[k]["per_seed_s_delta"])},
+                     {str(i): 0.0 for i in range(len(pp[k]["per_seed_s_delta"]))}, "s_delta")
+             for k in pp})
+hrr = {k: _rrf[k]["holm_p"] for k in pp}
+chk("rr two-sided tests (paired_stats)", 1, 1 if all(_rrf[k]["alternative"] == "two-sided" for k in pp) else 0, 0)
 for k in pp:
     if k not in ("RR0 (Pre)", "RR+2 (Post)"):
         chk("rr " + k + " no corrected effect", 1, 1 if hrr[k] >= 0.05 else 0, 0)
-for k, dl, ds_, hp in [("RR0 (Pre)", -0.0323, 0.0492, 3e-4), ("RR+2 (Post)", -0.0045, 0.0103, 0.014)]:
+for k, dl, ds_, hp in [("RR0 (Pre)", -0.0323, 0.0492, 6e-4), ("RR+2 (Post)", -0.0045, 0.0103, 0.028)]:
     chk("rr " + k + " delta", dl, pp[k]["s_recall_delta_mean"], 0.0001)
     chk("rr " + k + " delta std", ds_, pp[k]["s_recall_delta_std"], 0.0001)
     chk("rr " + k + " holm p", hp, hrr[k], max(0.0002, hp * 0.06))
@@ -349,7 +363,7 @@ for _i, _r in enumerate([0.905, 0.198, 0.898, 0.006, 0.0]):   # diagonal == Tabl
 old = json.load(open("results/wavkan_v2_20seed_comparison.json"))["metrics"]
 chk("replication S-Rec no-RAC", 0.079, old["s_recall"]["baseline_mean"], 0.0006)
 chk("replication S-Rec no-RAC std", 0.016, old["s_recall"]["baseline_std"], 0.0006)
-chk("replication S-Rec RAC", 0.123, old["s_recall"]["curriculum_mean"], 0.0006)
+chk("replication S-Rec RAC", 0.122, old["s_recall"]["curriculum_mean"], 0.0006)
 chk("replication S-Rec RAC std", 0.052, old["s_recall"]["curriculum_std"], 0.0006)
 chk("replication holm p", 0.0016, old["s_recall"]["holm_adjusted_p"], 0.0002)
 chk("replication d", 0.77, abs(old["s_recall"]["cohens_d"]), 0.006)
@@ -452,7 +466,7 @@ if os.path.exists(_pc_path):
     # (a) PC-WavKAN per class, as printed in the manuscript
     for _c, _p, _r, _f in [("N", 0.971, 0.905, 0.936),
                            ("S", 0.175, 0.198, 0.180),
-                           ("V", 0.528, 0.898, 0.663),
+                           ("V", 0.527, 0.898, 0.663),
                            ("F", 0.005, 0.006, 0.005),
                            ("Q", 0.000, 0.000, 0.000)]:
         _g = _pc["PC-WavKAN"]["aggregate"][_c]
@@ -663,7 +677,8 @@ chk("side branch parameters", 34816, sum(q.numel() for q in _pw.parameters()), 0
 import src.pwam as _pwm  # noqa: E402
 chk("side branch reads samples 80..160", 1, 1 if (_pwm.P_START, _pwm.P_END) == (80, 160) else 0, 0)
 chk("side branch start = -28 ms (R at sample 90)", -28, round((80 - 90) / 360 * 1000), 1)
-chk("side branch end = +194 ms", 194, round((160 - 90) / 360 * 1000), 1)
+chk("side branch last sample 159 = +192 ms", 192, round((159 - 90) / 360 * 1000), 0)
+chk("side branch slice is 80:160 (samples 80-159)", 80, _pwm.P_END - _pwm.P_START, 0)
 _ra = WavKAN_v2(use_rr_attn=True).rr_branch.self_attn
 chk("alternative rhythm encoder: two attention heads", 2, _ra.num_heads, 0)
 chk("record 208 share of DS1 fusion beats (~90%)", 0.90, 372 / 414, 0.005)
@@ -825,6 +840,353 @@ for _lbl, _pat, _src in [
         ("settings: baselines cosine schedule", r'CosineAnnealingLR\(optimizer,\s*T_max=epochs\)', _bl),
         ("settings: baselines grad clip 1.0", r'clip_grad_norm_\(model\.parameters\(\),\s*1\.0\)', _bl)]:
     chk(_lbl, 1, 1 if _re.search(_pat, _src) else 0, 0)
+
+# (12) Claims added 2026-10-01 after external review.
+_sc = json.load(open("configs/mitbih_split_counts.json"))
+_pr = _sc["per_record"]
+_cls_tot = [sum(_pr[str(r)][c] for sp in ("train", "val", "test") for r in _sc["records"][sp]) for c in range(5)]
+for _lbl, _ci, _claim in [("S", 1, 32.4), ("V", 2, 12.9), ("F", 3, 112.3), ("Q", 4, 6004.7)]:
+    chk("class table ratio N:" + _lbl, _claim, _cls_tot[0] / _cls_tot[_ci], 0.05)
+_val_f = [_pr[str(r)][3] for r in _sc["records"]["val"]]
+chk("F beats in validation records", 386, sum(_val_f), 0)
+chk("F beats in record 208", 372, _pr["208"][3], 0)
+chk("F beats in DS1", 414, sum(_pr[str(r)][3] for sp in ("train", "val") for r in _sc["records"][sp]), 0)
+chk("Q beats in validation", 2, sum(_pr[str(r)][4] for r in _sc["records"]["val"]), 0)
+_s_ds2 = sum(_pr[str(r)][1] for r in _sc["records"]["test"])
+chk("DS2 S beats in record 232", 1382, _pr["232"][1], 0)
+chk("DS2 S beats total", 1837, _s_ds2, 0)
+chk("DS2 S share of record 232 (%)", 75, 100.0 * _pr["232"][1] / _s_ds2, 0.5)
+_wk = open("src/wavkan_pcwi.py", encoding="utf-8").read()
+chk("lambda default 0.1 (residual_w)", 1, 1 if _re.search(r"residual_w:\s*float\s*=\s*0\.1\b", _wk) else 0, 0)
+_ev = open("src/eval_inference_sensitivity.py", encoding="utf-8").read()
+chk("GPU re-evaluation: TF32 disabled", 1,
+    1 if ("matmul.allow_tf32 = False" in _ev and "cudnn.allow_tf32 = False" in _ev) else 0, 0)
+chk("GPU re-evaluation: deterministic algorithms not enforced", 1,
+    0 if "use_deterministic_algorithms(True)" in _ev else 1, 0)
+_na = open("src/noise_augmentation.py", encoding="utf-8").read()
+_sm = _na[_na.index("def aug_smote_batch"):_na.index("AUGMENTATION_STRATEGIES")]
+chk("SMOTE-style arm: random same-class in-batch partner, uniform convex weight", 1,
+    1 if ("uniform_(0, 1)" in _sm and "minority_indices.get(cls" in _sm and "lam * X[i] + (1.0 - lam) * X[j]" in _sm) else 0, 0)
+# Discussion: the self-attention rhythm encoder has no residual connection, and each output token of
+# its attention block lies in a fixed two-dimensional affine subspace whatever the weights.
+from models.wavkan_v2 import RRBranch  # noqa: E402
+import inspect as _inspect  # noqa: E402
+_src_rr = _inspect.getsource(RRBranch.forward)
+chk("RR attention block has no residual connection", 1,
+    1 if ("tokens = self.attn_norm(attn_out)" in _src_rr and "+ tokens" not in _src_rr and "tokens +" not in _src_rr) else 0, 0)
+_ranks = []
+for _seed in (0, 1, 2):
+    torch.manual_seed(_seed)
+    _m = RRBranch(use_attention=True).eval()
+    _x = torch.rand(512, 5) * 1.5 + 0.3
+    with torch.no_grad():
+        _out, _ = _m.self_attn(*([_m.rr_proj(_x.unsqueeze(-1))] * 3))
+    _A = _out.reshape(-1, 16).numpy().astype(np.float64)
+    _sv = np.linalg.svd(_A - _A.mean(0), compute_uv=False)
+    _ranks.append(int((_sv > 1e-4 * _sv[0]).sum()))
+chk("RR attention outputs span 2 dims (one per head), 3 random inits", 2, max(_ranks), 0)
+
+# (13) Final review 2026-10-01 (AUDIT_FINDINGS.md H72-H80): claims that were in the
+# manuscript but had no check, and claims changed in that review.
+print("\n" + "=" * 100)
+print("FINAL REVIEW: previously unchecked claims")
+print("=" * 100)
+# Methods: data and preprocessing
+_all_recs = [r for sp in ("train", "val", "test") for r in _sc["records"][sp]]
+chk("44 non-paced records in the three partitions", 44, len(set(_all_recs)), 0)
+chk("paced records 102/104/107/217 excluded", 1,
+    0 if {"102", "104", "107", "217"} & {str(r) for r in _all_recs} else 1, 0)
+_pd = open("src/process_data.py", encoding="utf-8").read()
+for _lbl, _pat in [
+        ("window: 90 samples before R (0.25 s at 360 Hz)", r"PRE_SAMPLES\s*=\s*int\(0\.25\s*\*\s*FS\)"),
+        ("window: 270 samples after R (0.75 s at 360 Hz)", r"POST_SAMPLES\s*=\s*int\(0\.75\s*\*\s*FS\)"),
+        ("sampling rate 360 Hz", r"\bFS\s*=\s*360\b"),
+        ("filter: nk.ecg_clean method neurokit", r'nk\.ecg_clean\(ecg,\s*sampling_rate=FS,\s*method="neurokit"\)'),
+        ("per-window z-score", r"beat\s*=\s*\(beat\s*-\s*np\.mean\(beat\)\)\s*/\s*\(np\.std\(beat\)"),
+        ("degenerate-variance windows discarded", r"if np\.std\(beat\)\s*<\s*1e-7"),
+        ("RR clipped to [0.2, 3.0] s", r"np\.clip\(val,\s*0\.2,\s*3\.0\)"),
+        ("RR set to 0.8 s past record edges", r"return 0\.8\b")]:
+    chk(_lbl, 1, 1 if _re.search(_pat, _pd) else 0, 0)
+# Methods: PCWI priors and the isotropic initialisation (Eq. pcwi and the text after it)
+from src.wavkan_pcwi import ECG_PRIORS as _EP  # noqa: E402
+for _blk, _ch, _mu, _ga, _eps, _dl in [("QRS", (0, 32), 0.0, 0.05, 0.02, 0.005),
+                                      ("P", (32, 48), -0.10, 0.12, 0.03, 0.01),
+                                      ("T", (48, 64), 0.10, 0.10, 0.03, 0.01)]:
+    _e = _EP[_blk]
+    chk("PCWI %s channels %d-%d" % (_blk, _ch[0] + 1, _ch[1]), 1, 1 if tuple(_e["channels"]) == _ch else 0, 0)
+    chk("PCWI %s prior mu" % _blk, _mu, _e["mu_center"], 1e-12)
+    chk("PCWI %s prior gamma" % _blk, _ga, _e["gamma"], 1e-12)
+    chk("PCWI %s half-width epsilon" % _blk, _eps, _e["mu_noise"], 1e-12)
+    chk("PCWI %s half-width delta" % _blk, _dl, _e["gamma_jitter"], 1e-12)
+for _lbl, _pat in [("isotropic init mu ~ U(-0.3, 0.3)", r"uniform_\(self\.translation,\s*-0\.3,\s*0\.3\)"),
+                   ("isotropic init gamma ~ U(0.05, 0.20)", r"uniform_\(self\.scale,\s*0\.05,\s*0\.20\)"),
+                   ("Kaiming-uniform init of w", r"kaiming_uniform_\(self\.weights"),
+                   ("Kaiming-uniform init of v", r"kaiming_uniform_\(self\.linear_w")]:
+    chk(_lbl, 1, 1 if _re.search(_pat, _wk) else 0, 0)
+# Methods: layer sizes stated in the text and in Fig. arch
+_mm = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=False)
+_mlp = [l_ for l_ in _mm.rr_branch.modules() if isinstance(l_, torch.nn.Linear)]
+chk("rhythm MLP 5->64->32->16", 1,
+    1 if [(l_.in_features, l_.out_features) for l_ in _mlp] == [(5, 64), (64, 32), (32, 16)] else 0, 0)
+_hd = [l_ for l_ in _mm.classifier.modules() if isinstance(l_, torch.nn.Linear)]
+chk("classifier head 80->48->5", 1,
+    1 if [(l_.in_features, l_.out_features) for l_ in _hd] == [(80, 48), (48, 5)] else 0, 0)
+chk("dropout p = 0.2", 0.2, _mm.kan_drop.p, 1e-12)
+chk("BiGRU 32 units per direction", 32, _mm.bigru.hidden_size, 0)
+chk("BiGRU bidirectional", 1, 1 if _mm.bigru.bidirectional else 0, 0)
+chk("side branch removes 34,816 of the base model's 154,325 parameters (22.6%)", 22.6,
+    100.0 * 34816 / 154325, 0.05)
+# Methods: augmentation constants (train_pca.py::augment_minority_batch, used by the adopted arm)
+_ag = _tp[_tp.index("def augment_minority_batch"):_tp.index("def make_balanced_sampler")]
+for _lbl, _pat in [("augmentation: 25 dB SNR", r"snr_db:\s*float\s*=\s*25\.0"),
+                   ("augmentation: wander 0.5-2.5 Hz", r"uniform_\(0\.5,\s*2\.5\)"),
+                   ("augmentation: wander amplitude 0.01-0.05", r"uniform_\(0\.01,\s*0\.05\)"),
+                   ("augmentation: scaling U(0.9, 1.1)", r"uniform_\(0\.90,\s*1\.10\)"),
+                   ("augmentation: every non-N beat (skip class 0 only)", r"if y\[i\]\.item\(\) == 0:\s*#")]:
+    chk(_lbl, 1, 1 if _re.search(_pat, _ag) else 0, 0)
+# Statistical methodology: the 20 seed labels printed in the text are the seeds of every arm
+_stx = _tex.split(r"\subsection{Statistical Methodology}")[1].split(r"\emph{Outcome hierarchy.}")[0]
+_seeds_tex = sorted(int(x) for x in _re.search(r"20 seeds: ([\d, and]+)\.", _stx).group(1)
+                    .replace(" and ", ", ").split(", "))
+chk("seed list printed in the text has 20 seeds", 20, len(_seeds_tex), 0)
+for _d in ["ablation_no_rr_attn", "ablation_no_pcwi", "ablation_no_pwam", "ablation_no_rr_attn_no_augment",
+           "ablation_no_rr_attn_no_curriculum_no_augment", "ablation_wavelet_bspline", "ablation_wavelet_dog",
+           "ablation_wavelet_morlet", "baseline_bspline_kan", "baseline_cnn_focal", "baseline_resnet1d",
+           "baseline_transformer", "wavkan_v2_baseline", "wavkan_v2_curriculum"]:
+    _got = sorted(int(os.path.basename(p_)[5:]) for p_ in glob.glob("results/%s/seed_*" % _d))
+    chk("seeds of %s == printed list" % _d, 1, 1 if _got == _seeds_tex else 0, 0)
+# Power statement: 80% power at n = 20, alpha 0.05 two-sided (paired t-test)
+from scipy.stats import nct as _nct  # noqa: E402
+from scipy.optimize import brentq as _brentq  # noqa: E402
+_tc = tdist.ppf(0.975, 19)
+_pw = lambda d: 1 - _nct.cdf(_tc, 19, d * np.sqrt(20)) + _nct.cdf(-_tc, 19, d * np.sqrt(20))  # noqa: E731
+chk("power: d_z for 80% power at n=20 (0.66)", 0.66, _brentq(lambda d: _pw(d) - 0.8, 0.2, 2.0), 0.005)
+# Training: learning rate at the retained epoch (cosine over 100 epochs, best epoch <= 25)
+_lr = 0.5 * (1 + np.cos(np.pi * 25 / 100))
+chk("lr fallen by at most 15% at retained epoch (<= 25)", 1, 1 if 1 - _lr <= 0.15 else 0, 0)
+# Results: abstract / text "every paired 95% interval within +-0.03"
+_maxb = 0.0
+for _d in ("results/baseline_resnet1d", "results/baseline_transformer",
+           "results/baseline_cnn_focal", "results/baseline_bspline_kan"):
+    _b = load(_d, "macro_f1")
+    _sd_ = sorted(set(ref) & set(_b))
+    _dz = np.array([ref[k] - _b[k] for k in _sd_])
+    _h = tdist.ppf(0.975, len(_dz) - 1) * _dz.std(ddof=1) / np.sqrt(len(_dz))
+    _maxb = max(_maxb, abs(_dz.mean() - _h), abs(_dz.mean() + _h))
+chk("every primary 95% CI bound within 0.03", 1, 1 if _maxb < 0.03 else 0, 0)
+# Results: mother-wavelet substitutions change validation Macro-F1 by at most 0.010
+chk("basis variants: largest |delta| (0.010)", 0.010,
+    max(abs(res[k][2]) for k in ("Morlet", "DOG", "B-spline")), 0.0006)
+# Test-set exposure: the configuration first on validation is also first of the eight on DS2
+_eight = {"adopted": "results/ablation_no_rr_attn", **_alts}
+_ds2 = {k: np.mean(list(load(v, "macro_f1").values())) for k, v in _eight.items()}
+_val8 = {"adopted": np.mean(list(_adopted.values())), **{k: np.mean(list(pv(v).values())) for k, v in _alts.items()}}
+chk("adopted configuration first of eight on validation", 1, 1 if max(_val8, key=_val8.get) == "adopted" else 0, 0)
+chk("adopted configuration first of eight on DS2", 1, 1 if max(_ds2, key=_ds2.get) == "adopted" else 0, 0)
+# Test-set exposure: forward-only reproduction of the 20 adopted checkpoints
+# (src/reproduce_adopted_checkpoints.py; AUDIT_FINDINGS.md H50)
+_rp = json.load(open("results/checkpoint_reproduction/adopted_config.json"))["rows"]
+chk("reproduction: adopted checkpoints checked", 20, len(_rp), 0)
+chk("reproduction: DS2 predictions identical", 20, sum(r_["test_predictions_identical"] for r_ in _rp), 0)
+_vx = [r_["seed"] for r_ in _rp if abs(r_["val_macro_f1_reproduced"] - r_["val_macro_f1_logged_best_epoch"]) < 1e-9]
+chk("reproduction: validation Macro-F1 reproduced exactly", 19, len(_vx), 0)
+chk("reproduction: the exception is seed 1001", 1,
+    1 if sorted({r_["seed"] for r_ in _rp} - set(_vx)) == ["seed_1001"] else 0, 0)
+# Per-class table (b): S-class precision and recall of every baseline; (a) supports
+for _name, _sp, _sr in [("ResNet1D", 0.173, 0.100), ("Transformer", 0.219, 0.229),
+                        ("CNN+Focal", 0.306, 0.075), ("B-Spline KAN", 0.237, 0.280)]:
+    chk("S-precision %s" % _name, _sp, _pc[_name]["aggregate"]["S"]["precision"]["mean"], 0.0006)
+    chk("S-recall %s" % _name, _sr, _pc[_name]["aggregate"]["S"]["recall"]["mean"], 0.0006)
+for _i, (_c, _n) in enumerate([("N", 44232), ("S", 1837), ("V", 3220), ("F", 388), ("Q", 7)]):
+    chk("perclass support %s" % _c, _n, _gt["counts"]["test"][str(_i)], 0)
+chk("Q F1 exactly zero for every model and seed", 1,
+    1 if all(_pc[m_]["per_seed"][s_]["Q"]["f1"] == 0 for m_ in _pc for s_ in _pc[m_]["seeds"]) else 0, 0)
+chk("every model below de Chazal on S recall (0.759) and precision (0.385)", 1,
+    1 if all(_pc[m_]["aggregate"]["S"]["recall"]["mean"] < 0.759 and
+             _pc[m_]["aggregate"]["S"]["precision"]["mean"] < 0.385
+             for m_ in _pc) else 0, 0)
+# Limitation (2): F-recall below 0.01 for every model and configuration
+_fr = {}
+for _d in glob.glob("results/*/"):
+    _fs = glob.glob(os.path.join(_d, "seed_*", "test_metrics.json"))
+    if len(_fs) == 20 and "f_recall" in json.load(open(_fs[0])):
+        _fr[_d] = np.mean([json.load(open(f_))["f_recall"] for f_ in _fs])
+chk("F-recall arms found (14)", 14, len(_fr), 0)
+chk("F-recall below 0.01 for every model and configuration", 1, 1 if max(_fr.values()) < 0.01 else 0, 0)
+# Augmentation: DS2 Holm family is the four metrics of the H36 report
+_h36 = json.load(open("results/h36_no_augment_ablation_report.json"))["headline_curriculum_augment_vs_no_augment"]["per_metric"]
+chk("augmentation DS2 Holm family size (4 metrics)", 4, len(_h36), 0)
+_fa = holm_family({m_: paired_compare(load("results/ablation_no_rr_attn", m_),
+                                       load("results/ablation_no_rr_attn_no_augment", m_), m_)
+                   for m_ in ("macro_f1", "v_recall", "s_recall", "f_recall")})
+chk("augmentation Macro-F1 Holm p via paired_stats (0.46)", 0.46, _fa["macro_f1"]["holm_p"], 0.006)
+chk("augmentation F-recall Holm p via paired_stats (0.043)", 0.043, _fa["f_recall"]["holm_p"], 0.002)
+# External data: record counts (needs the regenerated arrays; skipped if absent)
+for _ds, _nr in (("incart", 75), ("svdb", 78)):
+    _p = "data/%s_matched/ids_test.npy" % _ds
+    if os.path.exists(_p):
+        chk("%s records evaluated" % _ds, _nr, len(np.unique(np.load(_p, allow_pickle=True))), 0)
+    else:
+        print("  (skipped: %s absent; regenerate with src/extract_matched.py)" % _p)
+# Efficiency: measurement settings (src/export_quantize.py; results/deployment_final_runs)
+_eq = open("src/export_quantize.py", encoding="utf-8").read()
+chk("latency: 20-iteration warm-up", 1, 1 if _re.search(r"for _ in range\(20\):", _eq) else 0, 0)
+chk("latency: 1000 timed trials", 1000, dep[0]["latency_fp32"]["n_samples"], 0)
+chk("latency: batch 1", 1, dep[0]["latency_fp32"]["batch_size"], 0)
+chk("latency: PyTorch 2.6", 1, 1 if all(d_["framework"].startswith("PyTorch 2.6") for d_ in dep) else 0, 0)
+chk("latency: thread count not fixed by the script", 1, 0 if "set_num_threads" in _eq else 1, 0)
+
+# (14) Final review 2026-10-01, second batch (AUDIT_FINDINGS.md H72-H80).
+print("\n" + "=" * 100)
+print("FINAL REVIEW: methods-versus-code corrections")
+print("=" * 100)
+# Two-phase schedule: 160 class-balanced runs, 158 retained a first-phase checkpoint
+_cbs8 = ["results/wavkan_v2_curriculum", "results/ablation_no_pcwi", "results/ablation_no_pwam",
+         "results/ablation_wavelet_morlet", "results/ablation_wavelet_dog", "results/ablation_wavelet_bspline",
+         "results/ablation_no_rr_attn", "results/ablation_no_rr_attn_no_augment"]
+_r8 = {(d_, k): v for d_ in _cbs8 for k, v in _best_rows(d_).items()}
+chk("schedule: class-balanced runs (8 configurations x 20)", 160, len(_r8), 0)
+chk("schedule: runs retaining a first-phase checkpoint", 158, sum(1 for b_, _ in _r8.values() if b_.get("phase") == "WARMUP"), 0)
+chk("schedule: the two exceptions are Morlet seed 333 and no side branch seed 13", 1,
+    1 if sorted((os.path.basename(d_), k) for (d_, k), (b_, _) in _r8.items() if b_.get("phase") != "WARMUP")
+    == [("ablation_no_pwam", "seed_13"), ("ablation_wavelet_morlet", "seed_333")] else 0, 0)
+chk("schedule: the exceptions retained epoch 26 or 27", 1,
+    1 if sorted(b_["epoch"] for b_, _ in _r8.values() if b_.get("phase") != "WARMUP") == [26, 27] else 0, 0)
+chk("schedule: reported-config runs that stopped before the switch", 20,
+    sum(1 for d_ in _cbs_arms for _b, _l in _best_rows(d_).values() if _l["epoch"] < 26), 0)
+chk("schedule: phase 2 starts at epoch 26", 1,
+    1 if all(e_["epoch"] >= 26 for d_ in _cbs8 for p_ in glob.glob(os.path.join(d_, "seed_*", "training_history.json"))
+             for e_ in json.load(open(p_)) if e_.get("phase") != "WARMUP") else 0, 0)
+# Preprocessing filter as implemented by NeuroKit2's "neurokit" method at 360 Hz: a moving
+# average of int(360/50) = 7 taps applied forward and backward (squared magnitude response)
+from scipy.signal import freqz as _freqz  # noqa: E402
+_w, _h = _freqz(np.ones(7) / 7, 1, worN=200000, fs=360)
+_H2 = np.abs(_h) ** 2
+chk("moving average length int(360/50)", 7, int(360 / 50), 0)
+chk("moving average -3 dB near 16.5 Hz", 16.5, _w[np.argmax(_H2 <= 10 ** (-3 / 20))], 0.05)
+chk("moving average attenuation at 60 Hz (34 dB)", 34, -20 * np.log10(_H2[np.argmin(abs(_w - 60))]), 0.5)
+# Model: parameters that cannot affect the output, and the dynamic-quantisation coverage
+torch.manual_seed(0)
+_m0 = WavKAN_v2(use_pcwi=True, use_pwam=True, use_rr_attn=False).eval()
+_x0, _r0 = torch.randn(64, 360), torch.rand(64, 5) + 0.5
+with torch.no_grad():
+    _y0 = _m0(_x0, _r0)
+    for _n in ("weight_hh_l0", "weight_hh_l0_reverse"):
+        getattr(_m0.bigru, _n).add_(torch.randn_like(getattr(_m0.bigru, _n)))
+    _ca = _m0.pwam.cross_attn
+    _ca.in_proj_weight[:128].add_(torch.randn(128, 64))
+    _ca.in_proj_bias[:128].add_(torch.randn(128))
+    _y1 = _m0(_x0, _r0)
+chk("GRU recurrent weights (6,144) do not affect the output", 1, 1 if (_y0 - _y1).abs().max().item() == 0 else 0, 0)
+chk("GRU recurrent weight count", 6144, _m0.bigru.weight_hh_l0.numel() + _m0.bigru.weight_hh_l0_reverse.numel(), 0)
+chk("side-branch query/key parameter count", 8320, 128 * 64 + 128, 0)
+_tot = sum(p_.numel() for p_ in _m0.parameters())
+_lin = sum(p_.numel() for mod in _m0.modules() if type(mod) is torch.nn.Linear for p_ in mod.parameters(recurse=False))
+from src.wavkan_pcwi import PCWIWavKANLinear as _PK  # noqa: E402
+_kan = sum(p_.numel() for mod in _m0.modules() if isinstance(mod, _PK) for p_ in mod.parameters(recurse=False))
+chk("quantised nn.Linear share of parameters (11.4%)", 11.4, 100.0 * _lin / _tot, 0.05)
+chk("wavelet-KAN layers + GRU share (77.5%)", 77.5, 100.0 * (_kan + 18816) / _tot, 0.05)
+chk("export_quantize quantises nn.Linear only", 1, 1 if _re.search(r"qconfig_spec\s*=\s*\{nn\.Linear\}", _eq) else 0, 0)
+chk("latency: batch-64 row uses 200 trials", 1, 1 if "benchmark_latency(model, n_beats=200, batch=bs)" in _eq else 0, 0)
+chk("memory: RSS via psutil when resource is unavailable", 1,
+    1 if "psutil.Process().memory_info().rss" in _eq else 0, 0)
+# Isolated augmentation study (noise_augmentation.py): its recipe as now described
+for _lbl, _pat in [("isolated study: patience 12", r"patience:\s*int\s*=\s*12"),
+                   ("isolated study: class-balanced sampler", r"sampler\s*=\s*make_balanced_sampler\(train_labels\)"),
+                   ("isolated study: class-weighted cross-entropy", r"nn\.CrossEntropyLoss\(weight=class_weights\)"),
+                   ("isolated study: wander amplitude differs (0.02-0.08)", r"uniform_\(0\.02,\s*0\.08\)")]:
+    chk(_lbl, 1, 1 if _re.search(_pat, _na) else 0, 0)
+_cmb = _na[_na.index("def aug_combined"):_na.index("def aug_smote_batch")]
+chk("isolated study: combined strategy has no amplitude scaling", 1, 0 if "scale" in _cmb else 1, 0)
+chk("isolated study: 60 epochs (CLI default; phase-7 run passes none)", 1,
+    1 if _re.search(r'"--epochs",\s*type=int,\s*default=60', _na) and "--epochs" not in
+    open("run_gpu_pipeline_phase7.sh", encoding="utf-8").read().split("[3] Augmentation study")[1].split("else")[0] else 0, 0)
+# Data-dependent checks (skipped when the regenerated arrays or raw records are absent)
+if os.path.exists("data/raw/100.atr"):
+    import wfdb as _wfdb  # noqa: E402
+    _M = set("NLRejAaJSVEF/fQ")
+    _lab = _edge = 0
+    _qsym = {"/": 0, "f": 0, "Q": 0}
+    for _r_ in _all_recs:
+        _a = _wfdb.rdann(os.path.join("data/raw", str(_r_)), "atr")
+        _L = _wfdb.rdheader(os.path.join("data/raw", str(_r_))).sig_len
+        for _smp, _sym in zip(_a.sample, _a.symbol):
+            if _sym in _M:
+                _lab += 1
+                _edge += int(_smp - 90 < 0 or _smp + 270 > _L)
+            if _sym in _qsym:
+                _qsym[_sym] += 1
+    chk("beats skipped at record boundaries (57)", 57, _edge, 0)
+    chk("no window dropped for degenerate variance", sum(_gt["totals"].values()), _lab - _edge, 0)
+    chk("Q beats are all 'Q' (no paced symbols)", 1, 1 if _qsym == {"/": 0, "f": 0, "Q": 15} else 0, 0)
+else:
+    print("  (skipped: data/raw absent)")
+if os.path.exists("data/mitdb_test_published_rr/X_test.npy"):
+    chk("matched extraction: DS2 arrays identical to the training pipeline", 1,
+        1 if all(np.array_equal(np.load("data/mitdb_test_published_rr/%s_test.npy" % k_),
+                                np.load("data/processed_rr_history/%s_test.npy" % k_)) for k_ in ("X", "X_rr", "y")) else 0, 0)
+else:
+    print("  (skipped: data/mitdb_test_published_rr absent)")
+chk("matched extraction regression test exists", 1, 1 if os.path.exists("tests/test_extract_matched.py") else 0, 0)
+# CBS sampler weights each beat by 1/(its class count): every class has equal probability
+chk("CBS sampler: per-class weight 1/count (equal class probability)", 1,
+    1 if _re.search(r"class_weight\s*=\s*1\.0\s*/\s*counts", _tp) else 0, 0)
+chk("CBS sampler: 5 classes in training (one fifth each)", 5,
+    sum(1 for _c in range(5) if _gt["counts"]["train"][str(_c)] > 0), 0)
+
+# (15) Owner decisions D1/D4, 2026-10-01 (AUDIT_FINDINGS.md H81, H84).
+print("\n" + "=" * 100)
+print("OWNER DECISIONS: selection history and per-record S-recall")
+print("=" * 100)
+# D1: "at that point the base configuration was known to be significantly below each of the
+# four baselines on DS2 (Holm-adjusted p <= 0.005)"
+_base_ds2 = load("results/wavkan_v2_curriculum", "macro_f1")
+_fb2 = holm_family({k_: paired_compare(_base_ds2, load("results/baseline_" + k_, "macro_f1"), "macro_f1")
+                    for k_ in ("resnet1d", "transformer", "cnn_focal", "bspline_kan")})
+chk("base config below every baseline on DS2 Macro-F1", 1,
+    1 if all(r_["mean_diff"] < 0 for r_ in _fb2.values()) else 0, 0)
+chk("base config vs baselines: max Holm p <= 0.005", 1,
+    1 if max(r_["holm_p"] for r_ in _fb2.values()) <= 0.005 else 0, 0)
+# D4: per-record S-recall (src/per_record_s_recall.py -> results/per_record_s_recall.json)
+_prs = json.load(open("results/per_record_s_recall.json"))
+chk("per-record: S beats in record 232", 1382, _prs["s_beats_record"], 0)
+chk("per-record: S beats in the other records", 455, _prs["s_beats_other_records"], 0)
+chk("per-record: models x 20 seeds", 100, sum(v_["n_seeds"] for v_ in _prs["models"].values()), 0)
+chk("per-record: PC-WavKAN S-recall on 232 (0.138)", 0.138, _prs["models"]["PC-WavKAN"]["record_mean"], 0.0006)
+chk("per-record: PC-WavKAN S-recall elsewhere (0.380)", 0.380, _prs["models"]["PC-WavKAN"]["other_mean"], 0.0006)
+chk("per-record: ResNet1D S-recall on 232 (0.004)", 0.004, _prs["models"]["ResNet1D"]["record_mean"], 0.0006)
+chk("per-record: CNN+Focal S-recall on 232 (0.013)", 0.013, _prs["models"]["CNN+Focal"]["record_mean"], 0.0006)
+chk("per-record: every model lower on record 232", 1,
+    1 if all(v_["record_mean"] < v_["other_mean"] for v_ in _prs["models"].values()) else 0, 0)
+# Recompute from the saved predictions when they are present (they are not git-tracked)
+if os.path.exists("data/processed_rr_history/ids_test.npy") and \
+        os.path.exists("results/ablation_no_rr_attn/seed_42/test_predictions.npy"):
+    _ids = np.load("data/processed_rr_history/ids_test.npy", allow_pickle=True).astype(str)
+    _yt = np.load("data/processed_rr_history/y_test.npy")
+    _m232, _mo = (_ids == "232") & (_yt == 1), (_ids != "232") & (_yt == 1)
+    _arms = {"PC-WavKAN": ("results/ablation_no_rr_attn", "test_predictions.npy"),
+             "ResNet1D": ("results/baseline_resnet1d", "predictions.npy"),
+             "Transformer": ("results/baseline_transformer", "predictions.npy"),
+             "CNN+Focal": ("results/baseline_cnn_focal", "predictions.npy"),
+             "B-Spline KAN": ("results/baseline_bspline_kan", "predictions.npy")}
+    for _nm, (_d, _f) in _arms.items():
+        _r = [((np.load(p_) [_m232]) == 1).mean() for p_ in sorted(glob.glob(os.path.join(_d, "seed_*", _f)))]
+        _o = [((np.load(p_)[_mo]) == 1).mean() for p_ in sorted(glob.glob(os.path.join(_d, "seed_*", _f)))]
+        chk("per-record recomputed %s record mean" % _nm, _prs["models"][_nm]["record_mean"], float(np.mean(_r)), 1e-12)
+        chk("per-record recomputed %s other mean" % _nm, _prs["models"][_nm]["other_mean"], float(np.mean(_o)), 1e-12)
+else:
+    print("  (skipped recomputation: saved predictions or ids_test.npy absent)")
+
+# (13) Sec. 4.3: PC-WavKAN's S-recall advantage over ResNet1D and CNN+Focal "comes largely from
+# record 232": record 232's share of the overall S-recall difference must exceed one half.
+_psr = json.load(open("results/per_record_s_recall.json"))
+_n232, _noth = _psr["s_beats_record"], _psr["s_beats_other_records"]
+_pm = _psr["models"]
+for _b in ("ResNet1D", "CNN+Focal"):
+    _d232 = _n232 * (_pm["PC-WavKAN"]["record_mean"] - _pm[_b]["record_mean"])
+    _doth = _noth * (_pm["PC-WavKAN"]["other_mean"] - _pm[_b]["other_mean"])
+    chk("S-recall advantage over " + _b + " mostly from record 232", 1,
+        1 if (_d232 + _doth) > 0 and _d232 / (_d232 + _doth) > 0.5 else 0, 0)
 
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))

@@ -3,8 +3,10 @@ generate_protocol_figure.py -- evaluation-protocol flowchart for the manuscript
 (Submission_Array/manuscript.tex, \\label{fig:protocol}).
 
 Added 2026-09-30. Shows which data each step uses: training records for fitting,
-validation records for every checkpoint and configuration decision, DS2 for a single
-evaluation, and the external databases for forward passes only.
+validation records for every checkpoint and configuration decision, DS2 for reporting
+the selected models (DS2 metrics of non-adopted variants were also computed during
+development, as the manuscript discloses; the box was relabelled from "Single evaluation
+on DS2" in the 2026-10-01 final review), and the external databases for forward passes only.
 
 Every count is read from a file, not typed: MIT-BIH partitions from
 configs/mitbih_split_counts.json (derived from the PhysioNet annotations), external
@@ -87,9 +89,9 @@ def generate(output_path):
         arrow(ax, (XP1 + 0.3, y + H / 2), (XT0 - 0.3, y + H / 2))
 
     # ── steps ───────────────────────────────────────────────────────────────
-    box(ax, XT0, YT, XT1 - XT0, H, "step", ["Training", "5 models × 20 seeds, one protocol"])
+    box(ax, XT0, YT, XT1 - XT0, H, "step", ["Training", "5 models + variants, 20 seeds each"])
     box(ax, XT0, YV, XT1 - XT0, H, "step", ["Model selection", "best validation Macro-F1"])
-    box(ax, XT0, YD, XT1 - XT0, H, "step", ["Single evaluation on DS2", "primary outcome: Macro-F1"])
+    box(ax, XT0, YD, XT1 - XT0, H, "step", ["Evaluation on DS2", "primary outcome: Macro-F1"])
     xm = (XT0 + XT1) / 2
     arrow(ax, (xm, YT - 0.3), (xm, YV + H + 0.3))
     arrow(ax, (xm, YV - 0.3), (xm, YD + H + 0.3))
@@ -106,7 +108,7 @@ def generate(output_path):
     box(ax, XS0, 1.0, XP1 - XS0, 14.0, "ext",
         ["External databases", "never used for training or selection",
          f"INCART: 75 records · {ext['incart']:,} beats (lead II)",
-         f"SVDB: 78 records · {ext['svdb']:,} beats",
+         f"SVDB: 78 records · {ext['svdb']:,} beats (channel 0)",
          "resampled to 360 Hz; same extraction code"], fs=6.9)
     box(ax, XT0, 1.0, XT1 - XT0, 14.0, "step",
         ["Forward pass only", "cross-database evaluation",
