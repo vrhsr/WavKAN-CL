@@ -827,3 +827,21 @@ Every model is lower on record 232. PC-WavKAN's S-F1 advantage over ResNet1D and
 **Verifier.** Checks the printed values and recomputes them from the predictions when they are present.
 
 S-class AUPRC and a patient-level bootstrap are held for revision (owner decision).
+
+### H85 — Array decision on ARRAY-D-26-02633: major revision, due 2026-10-20 — RESOLVED (revision package built 2026-10-01)
+
+**Context.** The version Array reviewed was the pre-audit manuscript, `elsarticle_manuscript.tex` as it stood before commit 66683a7. Its title, numbers and author list match the decision letter. Reviewer #3 asked for reframing as a negative result; this is the reframing already done in `Submission_Array/manuscript.tex`. Every point raised by Reviewers #3 and #4 corresponds to an audit finding already fixed, with one exception.
+
+**New finding (R4.4).** The original said that separating records 201 and 202 (same subject) across DS1/DS2 *prevents* leakage. It does the opposite. The revision states the one-subject overlap (Section 3.2). It adds an exploratory sensitivity analysis (Section 4.2; `src/sensitivity_exclude_202.py`, output `results/sensitivity_exclude_202.json`) in which record 202 (2,135 beats) is removed from DS2 for all five models and 20 seeds. Every model's Macro-F1 falls by 0.002–0.006 (PC-WavKAN 0.357 → 0.354), and the comparison is unchanged: all Holm p ≥ 0.25 and every paired CI within ±0.03. The verifier checks all of this, recomputing through `paired_stats`.
+
+**Manuscript additions for the editor and R4.**
+- A "what is new / what is not" passage in the Introduction.
+- A sentence limiting the interpretability analysis to basis-function parameters (Section 3.6).
+
+**Revision package.** All files are in `Submission_Array/`.
+- `response_to_reviewers.tex` and `.pdf`: point by point.
+- `cover_letter_array.txt`: rewritten as a revision letter.
+- `graphical_abstract.pdf` and `.tiff` (`src/generate_graphical_abstract.py`): every value is computed from result files.
+- `manuscript_highlighted.pdf` (`src/build_highlighted_version.py`): latexdiff against the original. Use latexdiff-so, because MiKTeX's latexdiff wrapper refuses to run until updates are checked and plain latexdiff lacks Algorithm::Diff.
+
+**Rebuild after any edit to the manuscript text.** Re-run the highlighted version after any wording change, and check that the response letter's section, table and figure numbers still hold.

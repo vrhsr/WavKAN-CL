@@ -1,0 +1,296 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\definecolor{revcol}{HTML}{3B4A5A}
+\newenvironment{reviewer}{\begin{quote}\itshape\color{revcol}}{\end{quote}}
+\newcommand{\resp}{\textbf{Response.}~}
+\newcommand{\chg}{\textbf{Changes.}~}
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries Response to the Editor and Reviewers}\\[4pt]
+Manuscript ARRAY-D-26-02633\\[2pt]
+Revised title: \emph{Wavelet Kolmogorov--Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation}\\[2pt]
+(original title: \emph{WavKAN-CL: An Interpretable and Parameter-Efficient Curriculum Learning Framework for Inter-Patient Arrhythmia Detection})
+\end{center}
+
+Dear Dr Aswal,
+
+We thank you and the two reviewers for careful and constructive reports. They identified real errors in the original manuscript, and we agree with every major point. The revision is a substantial rewrite. Section, table and figure numbers below refer to the revised manuscript.
+
+\section*{Summary of the revision}
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{Reframed as a controlled evaluation.} Following Reviewer~\#3's suggestion, the paper now reports what the experiments show, including null and negative findings, rather than proposing a superior method. The title, abstract and highlights were rewritten accordingly.
+\item \textbf{Unsupported claims withdrawn.} The claims of interpretability, of a reduced generalisation gap, of a beneficial curriculum and of real-time or wearable suitability are removed. Where a claim could be tested, it is now tested, and the result is reported whether or not it favours the model.
+\item \textbf{One protocol for every comparison.} Five models (the evaluated model and four baselines) are trained with the same data, split, inputs, optimiser, budget, early-stopping rule, checkpoint rule and 20 seeds. They are compared with seed-paired two-sided Wilcoxon tests, Holm--Bonferroni correction, effect sizes and 95\% confidence intervals. Architecture choices are made on DS1 validation data.
+\item \textbf{Every number is re-derived by script.} A verification script released with the code recomputes every quantitative claim in the manuscript from the per-seed result files and fails on any mismatch. This removes the class of inconsistency listed in Reviewer~\#3's comment~5.
+\item \textbf{Methods match the code.} The description of the model, preprocessing, interval features and training now follows the released implementation, including properties that limit the conclusions (Section~3).
+\item \textbf{Required items added.} A graphical abstract, five highlights, and the data availability, CRediT, competing interest, funding, ethics, code availability and generative-AI statements.
+\end{itemize}
+
+\textbf{Changes to the evaluated model and to the reported numbers.} We state these openly because they affect how the revision should be read.
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item The original manuscript described a 95,189-parameter model and reported results drawn from runs of different configurations and seed counts. This is why its numbers disagreed across the abstract, tables and figures.
+\item The revision evaluates the architecture whose checkpoints produced the reported results. The configuration reported is the one selected on DS1 validation by a single-variable ablation (Table~4): 153,045 parameters, with a multilayer-perceptron rhythm encoder in place of self-attention. We renamed the model PC-WavKAN (prior-centred wavelet KAN), because its one non-standard ingredient is a prior-centred initialisation of the wavelet parameters.
+\item The adopted configuration is one of the alternatives that, as Reviewer~\#3 observed, outperformed the originally proposed configuration on the test set (DS2). It was first adopted after the DS2 results of all eight configurations had been seen. The validation analysis was applied afterwards and selects the same configuration. We disclose this in Section~4.1 (``Test-set exposure'') and Limitation~(3), read the primary result as a held-out estimate under a validation-based rule applied after DS2 had been inspected, and note that any bias from this exposure would favour our model.
+\item Even so, the primary result is a null one. PC-WavKAN's DS2 Macro-F1 ($0.357\pm0.019$) is not statistically distinguishable from any of the four baselines.
+\item The ``minority-first curriculum'' of the original manuscript is now described by what determined the reported models. In every run of the configurations whose test results are reported (and in 158 of all 160 runs that used the schedule), the retained checkpoint came from the curriculum's first, class-balanced phase, so the later phases did not shape any reported test result. We therefore evaluate it as class-balanced sampling (CBS) against inverse-frequency reweighting (Sections~3.4 and~4.4).
+\end{itemize}
+
+Because the text was rewritten, the highlighted version marks most of the manuscript as changed. This letter therefore states, comment by comment, where each point is addressed.
+
+%% ======================================================================
+\section*{Comments from the Scientific Handling Editor}
+
+\begin{reviewer}
+The revisions required are significant, and it is important that all the revisions are addressed for your manuscript to be considered suitable for this journal.
+\end{reviewer}
+\resp Every comment from both reviewers and from you is addressed below. We made no change that we could not support from the released code and result files.
+
+\begin{reviewer}
+Please note that we do not allow the addition or removal of authors at this stage.
+\end{reviewer}
+\resp The author list and order are unchanged: Venkateramanan Manivannan and Ramanathan Lakshmanan (corresponding author).
+
+\begin{reviewer}
+Please ensure that you elaborate on the novel aspects and limitations of your work. [\ldots] More explanation about the novelty of the method is required.
+\end{reviewer}
+\resp We agree that the original manuscript overstated its novelty. Reviewer~\#4 characterised it accurately: it combined existing components rather than introducing a new KAN formulation, wavelet parameterisation or curriculum algorithm. The revision states this plainly and locates the contribution in the evaluation.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item A new paragraph in the Introduction (Section~1) states what is not new: the wavelet-KAN layer and its Mexican Hat basis are those of Wav-KAN, and interval features and class-balanced sampling are long established. It then states what is new. To our knowledge, this is the first assessment of a wavelet KAN under the de Chazal protocol with repeated seeds, protocol-matched baselines and multiplicity-corrected paired statistics, and the first test of the wavelet-KAN interpretability premise against explicit null models.
+\item The contribution list (Section~1) gives the four empirical findings.
+\item The Limitations (Section~5.1) now has eight items: parity rather than equivalence, minority-class performance, the selection history of the test set, the scope of the component evidence, the validation partition, non-causal inputs, external data, and baselines and hardware.
+\item The Discussion closes with three concrete questions for future work.
+\end{itemize}
+
+\begin{reviewer}
+Please note that you should evaluate the references suggested based on their relevance and appropriateness in supporting your current work.
+\end{reviewer}
+\resp The reviews we received did not suggest specific references. We revised the bibliography for accuracy:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item we verified every entry against Crossref, the publisher or arXiv;
+\item we cite the published versions of works first available as preprints;
+\item we corrected metadata errors and removed one characterisation that the cited work does not support;
+\item we added references where the text needed them, for example the SMOTE paper, the fair KAN--MLP comparison of Yu et al., and PhysioNet's current standard citation.
+\end{itemize}
+
+\begin{reviewer}
+A graphical abstract is required.
+\end{reviewer}
+\resp Provided (\texttt{graphical\_abstract.pdf} and \texttt{.tiff}, 1980\,$\times$\,792 pixels). It summarises the protocol, the accuracy result in and out of distribution, and the interpretability null. Every value in it is computed from the released result files.
+
+\begin{reviewer}
+Please provide 3--5 concise and clear Highlights.
+\end{reviewer}
+\resp Provided: five highlights, each under 85 characters, summarising the main findings.
+
+\begin{reviewer}
+If you have used generative AI or AI-assisted tools to support the writing process [\ldots], please ensure this is disclosed clearly in your manuscript.
+\end{reviewer}
+\resp The manuscript contains a ``Declaration of generative AI and AI-assisted technologies in the manuscript preparation process'' that names the tool and its use (writing and code development), and states that the authors reviewed and edited the content and take full responsibility for it.
+
+\begin{reviewer}
+Please confirm that all required statements are included in your manuscript, such as: Data availability statement, CRediT author statement, Conflict of interest statement, Funding statement, Ethics approval (if applicable).
+\end{reviewer}
+\resp Confirmed. The manuscript contains:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item a CRediT authorship contribution statement;
+\item a declaration of competing interest;
+\item a funding statement;
+\item an ethics statement: only public, de-identified PhysioNet data were used, so no review-board approval was required;
+\item a data availability statement listing every database with its URL;
+\item a code availability statement;
+\item the generative-AI declaration.
+\end{itemize}
+
+%% ======================================================================
+\section*{Reviewer \#3}
+
+\begin{reviewer}
+The paper is honest and well organized.
+\end{reviewer}
+\resp We thank the reviewer. The comments below led to the largest changes in the revision.
+
+\subsection*{Comment 3.1}
+\begin{reviewer}
+The ablation table refutes the proposed configuration: Table 4 shows the proposed model (Macro-F1 0.362, V-Rec 0.898, S-Rec 0.260) is beaten by three of its own alternatives. The defense offered (Section 6.2) is interpretability, implicit regularization, and physiological grounding. None of the three is measured. Unless one of them is turned into evidence, the paper's conclusion should be that wavelet edges and minority-first curricula did not work as hypothesized, which is publishable as a negative result but requires reframing the title, abstract, and highlights.
+\end{reviewer}
+\resp We agree, and we followed the reviewer's suggestion.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{Reframed.} The paper is now a controlled evaluation reporting null and negative results. The title, abstract and highlights were rewritten. The Conclusion states that we report the null and negative findings because they are the more transferable part of the study.
+\item \textbf{The unmeasured defences are removed.} The original Section~6.2 is gone.
+\item \textbf{One defence is now tested.} Physiological grounding is tested with explicit null models (Sections~3.6 and~4.7, Table~8, Fig.~4), and the result is negative.
+\item \textbf{The ablation is a single-variable analysis on DS1 validation} (Table~4), with 20 seeds and Holm correction. The evaluated configuration is the one that ranks first on validation, and its selection history is disclosed (Section~4.1, Limitation~3). The three analyses that use the base configuration are labelled as such (Section~3.3).
+\item \textbf{Wavelet edges.} PC-WavKAN's DS2 Macro-F1 is not statistically distinguishable from four protocol-matched baselines (Table~5): all Holm-adjusted $p\geq0.36$, and every paired 95\% interval lies within $\pm0.03$. The choice of mother wavelet had no measurable effect (Table~4). Under matched preprocessing, the model transfers worse than both convolutional baselines to INCART and SVDB (Section~4.8).
+\item \textbf{The curriculum.} Evaluated as class-balanced sampling, it raised DS2 supraventricular recall (from $0.137$ to $0.222$ on the adopted configuration), but this gain did not reproduce on the validation partition (Section~4.4, Table~7). We do not claim it as a general property.
+\end{itemize}
+
+\subsection*{Comment 3.2}
+\begin{reviewer}
+The ``generalization gap'' claim is an artifact: Table 5: baseline val 0.43, test 0.37 (gap 0.06, ``Overfitting''); WavKAN-CL val 0.36, test 0.36 (gap 0.00, ``Stable''). The gap closed because validation performance fell to the test level, not because test performance rose [\ldots]. A model that is uniformly worse has a smaller gap; that is not evidence of better generalization.
+\end{reviewer}
+\resp We agree. The claim was wrong for the reason the reviewer gives.
+
+\chg The generalisation-gap table and every claim based on it are removed. The revision makes no claim about a validation--test gap.
+
+\subsection*{Comment 3.3}
+\begin{reviewer}
+``Interpretable'' never demonstrated: Figure 7 plots six Mexican Hat wavelets at different scales. That is the parametric family itself, not evidence that the learned bases correspond to ECG morphology. There is no overlay on real beats, no edge, feature, class attribution, no case study, and no clinician assessment.
+\end{reviewer}
+\resp We agree. The interpretability claim is withdrawn, the word ``interpretable'' is removed from the title, and Fig.~7 is removed. We tested the premise instead, and the test is negative.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{A test with reference points.} Section~3.6 defines a parameter-space prior-retention score (PPR) and evaluates it against three reference points (Table~8).
+  \begin{itemize}[itemsep=0pt]
+  \item Training moves the prior-centred parameters substantially, from PPR $0.973$ untrained to $0.783$ trained.
+  \item Training from an isotropic initialisation moves the parameters \emph{away} from the prior values, from $0.670$ to $0.579$.
+  \item The prior values are therefore not where gradient descent leads.
+  \end{itemize}
+\item \textbf{Exchangeable channels.} The channel blocks that receive the priors are exchangeable. Permuting them leaves the network function unchanged, as we verified numerically, so no block can be assigned to a waveform component (Section~3.3).
+\item \textbf{Real distributions.} Fig.~4 now shows the per-edge distributions of the trained parameters over 20 models against the trained null, not the parametric family.
+\item \textbf{Why an overlay on beats would not help.} The wavelet acts on the \emph{amplitude} of an individual input sample (Eq.~2). Its translation and dilation are therefore an amplitude offset and width, not a position or duration in time (Section~3.3). We now say so explicitly.
+\item \textbf{Scope.} The analysis is stated to be at the parameter level only (Section~3.6). The Discussion concludes that an inspectable parameter is not thereby an interpretable one.
+\end{itemize}
+
+\subsection*{Comment 3.4}
+\begin{reviewer}
+The RR feature definition is inconsistent and non-causal: Eq. (2) defines a centered window containing two future beats. Section 7.3 and Fig. 6 instead analyze positions t$-$5 \ldots t$-$1, a purely causal history. These are different features; the abstract calls it ``RR-interval history.''
+\end{reviewer}
+\resp We agree. The implementation uses the centred window: two preceding intervals, the interval ending at the beat, and two following intervals. The labels $t-5,\ldots,t-1$ in the original analysis were wrong.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item Eq.~1 defines the vector as $[RR_{-2},RR_{-1},RR_0,RR_{+1},RR_{+2}]$. The leave-one-out analysis (Section~4.6) uses the same five positions with the same labels, and now uses two-sided tests with Holm correction. Masking the future interval $RR_{+2}$ has a small but significant effect, so the model does use lookahead information.
+\item A ``Temporal scope'' paragraph (Section~3.1) states that the task is \emph{offline} beat classification for three reasons: two interval features follow the beat, the window often contains the next beat, and the filter is zero-phase.
+\item ``RR-interval history'' and every real-time and wearable claim are removed.
+\item Section~4.6 also reports an annotation-derived artefact in the interval features that we found during the revision, and shows that it does not inflate the results.
+\end{itemize}
+
+\subsection*{Comment 3.5}
+\begin{reviewer}
+Numbers do not agree across abstract tables and figures: (a) V-recall appears as 0.88 $\pm$ 0.03 (abstract, highlights, conclusion), 0.898 $\pm$ 0.011 (Table 6), 0.858 (Table 7), 0.86 (Table 9), and a peak of 0.93 (conclusion). The two standard deviations differ threefold. (b) Table 7 is described as best-seed performance but reports V-recall (0.858) below the 20-seed mean (0.898). Best-seed by which criterion? (c) Figure 5's confusion matrix gives N 0.79 / S 0.44 / V 0.88, but its own caption says 0.82 and 0.86, and Table 7 reports S-recall 0.290 versus 0.44 in the matrix. The figure appears to come from a different run than the table. (d) Figure 3's caption says n = 20 seeds; the in-figure annotation says ``mean across 10 random seeds.'' (e) Section 3.1 sets T = 360 samples = 1000 ms; Figure 1 labels the input a ``5 s Window.''
+\end{reviewer}
+\resp We agree with every item. The inconsistencies arose because the original numbers came from runs of different configurations and seed counts. In the revision every reported number is recomputed from the per-seed result files of the reported runs by a released verification script, which fails on any mismatch.
+
+\chg
+\begin{enumerate}[label=(\alph*),leftmargin=1.6em,itemsep=2pt]
+\item The evaluated model's DS2 V-recall is $0.898\pm0.020$ over the same 20 runs (Table~6), wherever it is reported. The other V-recall values in the paper belong to explicitly labelled arms (Table~7) or databases (Table~9). There is no ``peak'' value, and no single-run number is presented as representative.
+\item The best-seed table is removed. No result is selected by test performance. All results are means and standard deviations over the 20 seeds.
+\item The confusion matrix (Fig.~3) is now the mean of the 20 per-seed matrices of the same runs as Table~6, and its diagonal equals the per-class recall in Table~6.
+\item The figure is removed. Every analysis uses the same 20 seeds, which are listed in Section~3.7.
+\item The window is 360 samples, which is 1\,s at 360\,Hz (Section~3.1). The architecture figure (Fig.~2) was redrawn with the actual tensor dimensions and parameter counts.
+\end{enumerate}
+
+\subsection*{Comment 3.6}
+\begin{reviewer}
+Baselines defined but never reported: Table 3 defines four models (1D-CNN ResNet, CNN+RR, Pure WavKAN, and WavKAN-CL) [\ldots]. No table reports the CNN baselines. The comparison that would justify the KAN backbone at all is missing. ``Baseline'' in Tables 5 and 6 is also undefined---it appears to mean WavKAN without curriculum, but this must be stated.
+\end{reviewer}
+\resp We agree; this comparison was missing.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{Four baselines, fully reported.} ResNet1D, a Transformer, a CNN with focal loss, and a B-Spline KAN that uses the same KAN layer with a different basis (Section~3.5, Table~3). All are trained under the same protocol, inputs, budget and 20 seeds as PC-WavKAN (Table~2), and every one is reported with paired statistics (Tables~5, 6 and~9, Fig.~5).
+\item \textbf{What is matched and what is not.} Section~3.5 states both: the imbalance mechanism and augmentation differ. Limitation~(8) notes that a common imbalance recipe could change the comparison.
+\item \textbf{The KAN backbone does not win.} The comparison gives parity in distribution and worse transfer than both convolutional baselines out of distribution.
+\item \textbf{``Baseline'' is no longer ambiguous.} It refers only to the four comparison models. The comparison of the sampling mechanism within PC-WavKAN is named explicitly as CBS versus reweighting (Section~4.4).
+\end{itemize}
+
+%% ======================================================================
+\section*{Reviewer \#4}
+
+\subsection*{Comment 4.1}
+\begin{reviewer}
+[\ldots] the main novelty of the current WavKAN-CL framework appears to lie in combining a wavelet-based KAN, RR-based rhythm encoding, and minority-first curriculum learning within a strict DS1/DS2 inter-patient evaluation setting, rather than in introducing a new KAN formulation, a novel wavelet parameterization, or a new curriculum optimization framework. The authors are therefore encouraged to define the novelty of the proposed method more precisely [\ldots].
+\end{reviewer}
+\resp We agree with this characterisation.
+
+\chg The revision no longer presents a new method.
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{What is not new.} A new Introduction paragraph (Section~1) states that we propose no new KAN formulation, wavelet parameterisation or training algorithm, and credits the wavelet-KAN layer and its basis to Wav-KAN.
+\item \textbf{What is new.} The contribution is the controlled evaluation:
+  \begin{itemize}[itemsep=0pt]
+  \item to our knowledge, the first assessment of a wavelet KAN under the de Chazal protocol with repeated seeds, protocol-matched baselines and multiplicity-corrected statistics;
+  \item the first test of the interpretability premise of wavelet KANs against null models;
+  \item inference-only analyses of a feature artefact and of preprocessing sensitivity in cross-database evaluation.
+  \end{itemize}
+\item \textbf{PCWI.} The one non-standard ingredient, the prior-centred initialisation, is evaluated against an isotropic initialisation (Table~4). Its scope is stated in Limitation~(4).
+\end{itemize}
+
+\subsection*{Comment 4.2}
+\begin{reviewer}
+The central rationale for adopting the Mexican Hat wavelet is that [\ldots] it provides a strong localized response to sharp transients and QRS morphology [\ldots]. However, the manuscript does not yet establish a rigorous mechanism [\ldots]. More importantly, the experimental results show that the B-spline KAN achieves higher Macro-F1, V-recall, and S-recall than the Mexican Hat configuration. The authors should therefore clearly distinguish between a ``physiologically plausible basis'' and an ``empirically superior representation'' [\ldots].
+\end{reviewer}
+\resp We agree. Our data do not support an empirical advantage for the Mexican Hat, and the revision says so.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item \textbf{The basis does not matter.} Replacing the Mexican Hat with a Morlet wavelet, the first derivative of Gaussian or a B-spline changes validation Macro-F1 by at most $0.010$, and no difference approaches significance (Table~4).
+\item \textbf{The B-Spline KAN is reported as it is.} It is numerically higher on DS2 Macro-F1 ($0.371$ against $0.357$; not significant, Table~5) and significantly higher on supraventricular F1 (Table~6b).
+\item \textbf{No claim of superiority.} The QRS-suitability rationale is no longer presented as a reason to expect better performance. The Mexican Hat is retained only as the Wav-KAN default.
+\item \textbf{What the wavelet parameters are.} Section~3.3 states that the wavelet is evaluated on the amplitude of a single input sample, so its translation and dilation are an amplitude offset and width, not a temporal position or duration.
+\end{itemize}
+
+\subsection*{Comment 4.3}
+\begin{reviewer}
+[\ldots] even if every WavKAN edge function can be visualized, this does not directly imply that the overall decision function is a ``glass-box'' or intrinsically interpretable model. [\ldots] The authors should clarify the level at which interpretability is being claimed---whether at the basis-function level, feature level, or prediction level [\ldots].
+\end{reviewer}
+\resp We agree, and the revision makes no interpretability claim at any level.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item ``Glass-box'' and ``interpretable'' are removed.
+\item Section~3.6 states that our analysis is at the level of basis-function parameters only. It makes no claim about features, attributions or individual predictions, which also pass through the GRU, the side branch, the rhythm branch and the classifier head.
+\item Even at the parameter level, the null models show that the trained parameters do not support a physiological reading (Section~4.7).
+\item The Discussion states that an inspectable parameter is not thereby an interpretable one. It also names the behavioural evidence that a stronger claim would require: a selective loss of one class when one block's functions are perturbed.
+\end{itemize}
+
+\subsection*{Comment 4.4}
+\begin{reviewer}
+The manuscript explicitly states that records 201 and 202 ``originate from the same subject,'' while also claiming that placing them separately in DS1 and DS2 is intended to prevent data leakage. [\ldots] If the statement that records 201 and 202 belong to the same subject is correct, then separating them across the training and test sets would in fact introduce patient-level leakage rather than prevent it. [\ldots] The authors should therefore clarify whether this is a textual error, an incorrect patient-identity annotation, or whether the actual data partition was indeed constructed in this way.
+\end{reviewer}
+\resp The reviewer is right, and we thank them for catching it. Records 201 and 202 come from the same subject, according to the MIT-BIH Arrhythmia Database documentation. The standard de Chazal partition, which we use unmodified, places record 201 in DS1 and record 202 in DS2. The original sentence claiming that this separation \emph{prevents} leakage was a textual error. Separating them introduces a one-subject overlap, as the reviewer says.
+
+\chg
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item Section~3.2 now states the overlap directly. We retain the standard partition for comparability with prior work, so DS2 is patient-disjoint from training for 21 of its 22 records. The claim that all test patients are unseen is removed.
+\item As a sensitivity analysis (Section~4.2), we removed record 202 (2,135 beats) from DS2 and repeated the primary comparison for all five models and 20 seeds. Every model's Macro-F1 decreases slightly, by $0.002$ to $0.006$ (PC-WavKAN: $0.357\rightarrow0.354$). The comparison is unchanged: all Holm-adjusted $p\geq0.25$, and every paired interval lies within $\pm0.03$. The overlap therefore does not inflate the reported results or affect the conclusions.
+\end{itemize}
+
+\subsection*{Comment 4.5}
+\begin{reviewer}
+The rhythm sequence defined in Section 3.2.2 includes future RR information occurring after the current heartbeat. However, the RR leave-one-out ablation in Section 7.3 describes all five RR features as historical intervals. The authors must clarify which definition was actually used in the implementation. If future RR intervals were used, the resulting system would no longer constitute a strictly online real-time classifier [\ldots].
+\end{reviewer}
+\resp Future intervals were used. The implementation uses two following intervals, and the historical labels in the original analysis were wrong.
+
+\chg As described under Comment~3.4:
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt]
+\item the interval vector is defined consistently (Eq.~1, Section~4.6);
+\item the leave-one-out analysis shows that the model uses the future interval $RR_{+2}$;
+\item the task is described as offline beat classification (Section~3.1);
+\item every real-time, streaming and wearable claim is removed;
+\item latency is reported for offline processing on an x86 CPU only, with no on-device claim (Section~4.9).
+\end{itemize}
+Whether a causal variant preserves the results is listed as future work.
+
+\bigskip
+We thank you and the reviewers again. The comments substantially improved the accuracy of the paper.
+
+Sincerely,\\
+Venkateramanan Manivannan and Ramanathan Lakshmanan
+
+\end{document}

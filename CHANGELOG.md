@@ -1282,3 +1282,22 @@ On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00
 - **Change.** Sec. 4.3 said PC-WavKAN's S-F1 is better than ResNet1D's and CNN+Focal's, with no pointer to the new per-record breakdown (H84). One sentence was added: the S-recall advantage over those two models comes largely from record 232, where they detect almost no S beats (Limitation 2).
 - **Evidence** (`results/per_record_s_recall.json`, 20-seed means): record 232's share of the overall S-recall difference is above 100% against ResNet1D, which is slightly higher on the other records (0.391 against 0.380), and about 76% against CNN+Focal.
 - **Verification.** A new verifier check requires the record-232 share to exceed one half for both comparisons. No number changed.
+
+## 2026-10-01 (continued): revision package for Array (ARRAY-D-26-02633, due 2026-10-20)
+- **The decision letter** (major revision) reviewed the pre-audit manuscript. See `AUDIT_FINDINGS.md` H85 for the mapping of reviewer comments to the revision.
+- **Manuscript additions:**
+  - Introduction: what is and is not new;
+  - Section 3.2: the 201/202 same-subject overlap stated directly;
+  - Section 4.2: the primary comparison repeated without record 202 (exploratory; conclusions unchanged);
+  - Section 3.6: the interpretability analysis limited to the parameter level.
+- **New scripts:**
+  - `src/sensitivity_exclude_202.py`, with output in `results/sensitivity_exclude_202.json`;
+  - `src/generate_graphical_abstract.py`;
+  - `src/build_highlighted_version.py`.
+- **New files in `Submission_Array/`:** `response_to_reviewers.tex` and `.pdf`, `graphical_abstract.pdf` and `.tiff`, `manuscript_highlighted.pdf`. `cover_letter_array.txt` was rewritten for the revision. `build/` was added to `.gitignore`.
+- **Verification:**
+  - verifier 659 verified, 0 mismatched (15 new checks for the record-202 analysis and the split facts);
+  - pytest 135 passed;
+  - manuscript build: 0 errors, 0 undefined references, 0 overfull boxes, 24 pages;
+  - response letter: 0 errors, 9 pages;
+  - highlighted version: 0 errors, 32 pages; its 15 undefined references are labels of removed tables and figures inside deleted text, as its first-page note explains.

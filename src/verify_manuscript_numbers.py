@@ -1188,6 +1188,34 @@ for _b in ("ResNet1D", "CNN+Focal"):
     chk("S-recall advantage over " + _b + " mostly from record 232", 1,
         1 if (_d232 + _doth) > 0 and _d232 / (_d232 + _doth) > 0.5 else 0, 0)
 
+# (14) Sec. 4.2 and 3.2: record 202 (same subject as training record 201) removed from DS2
+# (reviewer #4, ARRAY-D-26-02633). Per-seed values from src/sensitivity_exclude_202.py; the
+# comparison is recomputed here from those values with the canonical paired_stats module.
+_sx = json.load(open("results/sensitivity_exclude_202.json"))
+chk("split: record 201 in DS1 training", 1, 1 if 201 in [int(r) for r in _sc["records"]["train"]] else 0, 0)
+chk("split: record 202 in DS2", 1, 1 if 202 in [int(r) for r in _sc["records"]["test"]] else 0, 0)
+chk("split: DS2 records", 22, len(_sc["records"]["test"]), 0)
+_sx_full = {m: np.mean([v["full"] for v in d.values()]) for m, d in _sx["models"].items()}
+_sx_wo = {m: np.mean([v["without"] for v in d.values()]) for m, d in _sx["models"].items()}
+_drops = [_sx_full[m] - _sx_wo[m] for m in _sx["models"]]
+chk("excl. 202: every model lower", 1, 1 if min(_drops) > 0 else 0, 0)
+chk("excl. 202: smallest drop (3 dp)", 0.002, round(min(_drops), 3), 0)
+chk("excl. 202: largest drop (3 dp)", 0.006, round(max(_drops), 3), 0)
+chk("excl. 202: PC-WavKAN full (3 dp)", 0.357, round(_sx_full["PC-WavKAN"], 3), 0)
+chk("excl. 202: PC-WavKAN without (3 dp)", 0.354, round(_sx_wo["PC-WavKAN"], 3), 0)
+_sx_fam = {b: paired_compare({s_: v["without"] for s_, v in _sx["models"]["PC-WavKAN"].items()},
+                             {s_: v["without"] for s_, v in _sx["models"][b].items()}, "macro_f1")
+           for b in _sx["models"] if b != "PC-WavKAN"}
+holm_family(_sx_fam)
+chk("excl. 202: min Holm p >= 0.25", 1, 1 if min(r["holm_p"] for r in _sx_fam.values()) >= 0.25 else 0, 0)
+chk("excl. 202: every paired CI within +-0.03", 1,
+    1 if max(max(abs(r["ci_low"]), abs(r["ci_high"])) for r in _sx_fam.values()) < 0.03 else 0, 0)
+chk("excl. 202: every paired CI includes zero", 1,
+    1 if all(r["ci_low"] <= 0 <= r["ci_high"] for r in _sx_fam.values()) else 0, 0)
+for _b, _r in _sx_fam.items():
+    chk("excl. 202: stored Holm p matches recomputation " + _b, round(_sx["comparisons_without_record"][_b]["holm_p"], 6),
+        round(_r["holm_p"], 6), 0)
+
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))
 if BAD:

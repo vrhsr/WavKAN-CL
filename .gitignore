@@ -124,3 +124,6 @@ reference_arm_for_equivalence.tar.gz
 # 2026-09-30 final audit: Colab bundle (checkpoints + code), regenerable, not for git
 colab/final_audit_bundle.zip
 final_audit_colab_results.zip
+
+# Highlighted-version build directory (src/build_highlighted_version.py)
+build/

@@ -6,6 +6,10 @@ This file orients an LLM (or a new contributor) working in this repository. It r
 
 > **2026-09-30: FINAL PRE-SUBMISSION FREEZE. Read this before anything below; much of the rest of this file is now history.**
 >
+> - **2026-10-01: THIS IS A REVISION, NOT A NEW SUBMISSION.**
+>   - Array reviewed the pre-audit manuscript as ARRAY-D-26-02633 and asked for a major revision, **due 2026-10-20**. The author list must not change.
+>   - The revision package is in `Submission_Array/`: the manuscript, a response letter, a revision cover letter, a graphical abstract (required) and a highlighted version.
+>   - After ANY wording change, re-run `python src/verify_manuscript_numbers.py` and `python src/build_highlighted_version.py`, and check the response letter's section, table and figure numbers. See `AUDIT_FINDINGS.md` H85.
 > - **Live manuscript:** `Submission_Array/manuscript.tex`, in Elsevier `elsarticle` format for **Array**.
 >   - **Title:** *Wavelet Kolmogorov–Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation*.
 >   - The paper is framed as a controlled evaluation, not a method proposal.
@@ -35,10 +39,7 @@ This file orients an LLM (or a new contributor) working in this repository. It r
 >   - **External data:** under the matched pipeline, PC-WavKAN transfers **worse** than both CNN baselines on INCART and SVDB. The old "leads on INCART" finding was a preprocessing artefact.
 >   - **Verification:** 465/465 claims verified, 135 tests pass, and the manuscript compiles cleanly (29 pages).
 > - **Local-machine limit:** the Transformer baseline needs ~2 GB per layer of attention maps at batch 1,024. Never run several CPU evaluations in parallel at that batch size; five workers exhausted the 15.8 GB RAM on 2026-09-30. Use `--batch 64–256` or a GPU.
-> - **Before submission, the project owner must still:**
->   - make the GitHub repo public or archive it (the cited URL currently returns 404);
->   - `git add -f` the new `results/` files and `results/README.md`;
->   - confirm the AI-use declaration.
+> - **Repository:** public and resolving as of 2026-10-01. Result files the verifier reads must be `git add -f`'d, because `results/` is gitignored. The AI-use declaration is kept in its one-sentence Elsevier form.
 
 ---
 

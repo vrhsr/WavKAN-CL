@@ -4,28 +4,39 @@ School of Computer Science and Engineering
 Vellore Institute of Technology (VIT), Vellore, Tamil Nadu 632014, India
 Email: lramanathan@vit.ac.in
 
-1 October 2026
+October 2026
 
-To the Editor-in-Chief,
+Dr Manisha Aswal
+Scientific Handling Editor
 Array
 
-Dear Editor,
+Re: Revision of manuscript ARRAY-D-26-02633
 
-We submit the manuscript "Wavelet Kolmogorov-Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation" for consideration as a research article in Array.
+Dear Dr Aswal,
 
-Deep networks for ECG heartbeat classification often report high accuracy under intra-patient evaluation, where beats from one patient appear in both training and test sets. Wavelet Kolmogorov-Arnold networks (KANs) are additionally promoted as inspectable. We asked whether a wavelet KAN differs from standard architectures under the stricter inter-patient protocol, which of its design choices matter, and whether its parameters support the physiological reading its parameterisation invites.
+Thank you for the opportunity to revise our manuscript, originally titled "WavKAN-CL: An Interpretable and Parameter-Efficient Curriculum Learning Framework for Inter-Patient Arrhythmia Detection". We submit the revised version, now titled "Wavelet Kolmogorov-Arnold Networks for Inter-Patient ECG Heartbeat Classification: A Controlled Multi-Seed Evaluation".
 
-The study is an empirical evaluation rather than a method proposal. Its main findings are:
+The reviewers identified real errors, and we agree with all of their major points. Reviewer #3 suggested that the work would be publishable as a negative result if the title, abstract and highlights were reframed. We followed that suggestion and rewrote the manuscript as a controlled evaluation. The main changes are:
 
-1. Under the de Chazal DS1/DS2 protocol, with 20 paired seeds, Holm-Bonferroni correction, effect sizes and confidence intervals, a 153,045-parameter wavelet KAN is not statistically distinguishable in Macro-F1 from four baselines trained under the same protocol and budget. Every paired 95% interval lies within +/-0.03, and no equivalence claim is made.
-2. On validation data, in the configuration in which components were ablated, a structured initialisation of the wavelet parameters helped relative to an isotropic one, the mother wavelet did not measurably matter, and self-attention over inter-beat (RR) interval features was harmful.
-3. Null models show that the trained wavelet parameters do not support a physiological interpretation: the channel groups are exchangeable, and training moves randomly initialised parameters away from the prior values.
-4. Class-balanced sampling raised supraventricular recall on the held-out set but not on the validation partition, and all models share a poor supraventricular operating point, which we report against the protocol's original linear-discriminant results.
-5. Re-evaluating all published checkpoints without retraining shows that an annotation-derived artefact in the interval features does not inflate performance. Under preprocessing matched to training, the wavelet KAN transfers worse than both convolutional baselines to two external databases (INCART, SVDB). An unmatched evaluation had suggested the opposite, which we report as a caution about preprocessing sensitivity.
+1. Claims withdrawn. The interpretability claim, the reduced generalisation gap, the benefit of the curriculum, and suitability for real-time or wearable use are removed. Where a claim could be tested, it is now tested and reported whatever the outcome.
+2. One protocol for every comparison. The evaluated model and four baselines are trained with the same data, split, inputs, optimiser, budget, checkpoint rule and 20 seeds. They are compared with seed-paired Wilcoxon tests, Holm-Bonferroni correction, effect sizes and confidence intervals. The result is parity: no statistically detectable Macro-F1 difference.
+3. Every number re-derived. A verification script released with the code recomputes every reported number from the per-seed result files. This resolves the inconsistencies Reviewer #3 listed.
+4. Methods matched to the code. This includes the interval features, which use two following intervals; the task is therefore described as offline. The ablation of interval positions is now labelled correctly.
+5. The interpretability premise tested. Null models show that the trained wavelet parameters do not support a physiological reading. The analysis is stated to be at the parameter level only.
+6. Records 201 and 202. These come from the same subject, as Reviewer #4 noted. The overlap is now stated, and removing record 202 leaves the comparison unchanged.
+7. Novelty stated precisely. We claim no new KAN formulation or training algorithm. The contribution is the controlled evaluation.
+8. The evaluated configuration and its selection history. The reported configuration is the one selected on validation data. Its selection history, including that test-set results of all configurations had been seen, is disclosed in the manuscript.
 
-We believe the work fits Array's interest in rigorous, reproducible computing research with biomedical applications. The code, per-seed results, the evaluated model's checkpoints and a script that re-derives the reported numbers are publicly available.
+The submission includes:
+- a point-by-point response to every reviewer and editor comment;
+- the revised manuscript (clean version);
+- a highlighted version comparing it with the original submission;
+- a graphical abstract;
+- five highlights.
 
-This manuscript is original, has not been published, and is not under consideration elsewhere. All authors approved the submission. The authors declare no competing interests.
+The manuscript contains data availability, code availability, CRediT, competing interest, funding, ethics and generative-AI statements. The author list is unchanged.
+
+This manuscript is original, has not been published, and is not under consideration elsewhere. Both authors approved the revision. The authors declare no competing interests.
 
 Sincerely,
 Ramanathan Lakshmanan (corresponding author)
