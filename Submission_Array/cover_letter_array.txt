@@ -4,7 +4,7 @@ School of Computer Science and Engineering
 Vellore Institute of Technology (VIT), Vellore, Tamil Nadu 632014, India
 Email: lramanathan@vit.ac.in
 
-[DATE]
+1 October 2026
 
 To the Editor-in-Chief,
 Array
@@ -25,7 +25,7 @@ The study is an empirical evaluation rather than a method proposal. Its main fin
 
 We believe the work fits Array's interest in rigorous, reproducible computing research with biomedical applications. The code, per-seed results, checkpoints and a script that re-derives every reported number are publicly available.
 
-This manuscript is original, has not been published, and is not under consideration elsewhere. All authors approved the submission. The authors declare no competing interests. Generative AI assistance used in preparing the manuscript and code is disclosed in the manuscript's declaration and Methods.
+This manuscript is original, has not been published, and is not under consideration elsewhere. All authors approved the submission. The authors declare no competing interests.
 
 Sincerely,
 Ramanathan Lakshmanan (corresponding author)

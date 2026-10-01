@@ -1148,3 +1148,31 @@ On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00
 - **Figure 4** (`src/generate_prior_retention_figure.py`): per-edge μ and |γ| histograms over 20 seeds with the trained isotropic null, replacing single-seed channel-mean curves mislabelled as edges (H69). The text now states that retention is mainly in the translations.
 - **Manuscript layout:** A4 with 2.5 cm margins, line numbers off (one line to re-enable), floats placed nearer their first reference, Figures 1, 2 and 4 at full text width, and a typo fixed ("inthe").
 - **Verification:** verifier 471 verified, 0 mismatched. Full LaTeX build: 0 errors, 0 undefined references, 0 overfull boxes, 21 pages. Manuscript tests pass.
+
+### 2026-09-30 (continued): two figures and one table added, from existing data only
+- **New Figure 1, evaluation protocol** (`src/generate_protocol_figure.py`, output `Submission_Array/evaluation_protocol.pdf`).
+  - Shows which data each step uses: training records to fit, validation records for every selection, one evaluation on DS2, and forward passes only for the external databases.
+  - Counts are read from `configs/mitbih_split_counts.json` and `results/external_matched/*/report.json`.
+- **New forest plot of paired Macro-F1 differences** (`src/generate_forest_plot.py`, output `Submission_Array/macro_f1_forest.pdf`).
+  - Covers DS2, INCART and SVDB, using `src/paired_stats.py` with the same Holm families as the primary and cross-database tables.
+  - Its plotted values reproduce those tables' CIs and p-values.
+- **New Table 2, training and evaluation settings.**
+  - Collects the shared protocol and the by-design differences.
+  - `verify_manuscript_numbers.py` checks each value against the code's defaults (16 new checks).
+- **Verification:** verifier 487 verified, 0 mismatched. LaTeX build: 0 errors, 0 undefined references, 0 overfull boxes, 24 pages. `check_manuscript.py` finds all 6 figures. Manuscript tests pass.
+- **Not added, deliberately:** a comparison table of published inter-patient accuracies (non-comparable protocols and unverified secondary numbers), calibration or per-patient analyses (new analyses would reopen the frozen research), and decorative graphics.
+
+## 2026-10-01: edge diagram and RR table removed; AI disclosure reduced to the required declaration; cover letter dated
+- **Wavelet-KAN edge diagram removed** from `Submission_Array/manuscript.tex`, together with its in-text reference.
+  - It was the least essential figure: the architecture figure and Eq. 1 already specify the layer.
+  - `Submission_Array/wavkan_micro_architecture_v2.pdf` is now unreferenced; its deletion is left to the project owner.
+- **RR leave-one-out table replaced by one paragraph.**
+  - The paragraph keeps the two corrected effects ($RR_0$ and $RR_{+2}$, Holm across the five positions) and states that the other three have none.
+  - No number changed. In `src/verify_manuscript_numbers.py`, checks for values no longer printed (baseline S-recall; $RR_{-2}$, $RR_{-1}$, $RR_{+1}$ deltas) were replaced by a check that those three positions have Holm p >= 0.05.
+- **AI disclosure.** The Elsevier "Declaration of generative AI and AI-assisted technologies" is mandatory for Array and stays, cut to the standard one-sentence form. The duplicate sentence in Methods (Software) and in the cover letter was removed.
+- **Cover letter dated** 1 October 2026.
+- **Verification:**
+  - verifier 479 verified, 0 mismatched;
+  - LaTeX build 0 errors, 0 undefined references, 0 overfull boxes, 23 pages;
+  - `check_manuscript.py` finds all 5 figures;
+  - manuscript and split-count tests pass (15).

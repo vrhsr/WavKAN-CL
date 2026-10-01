@@ -314,18 +314,20 @@ chk("dep speedup", 0.73, f32 / i8, 0.006)
 chk("dep batch64", 0.429, np.mean([d["throughput_fp32"]["64"]["latency_ms"] for d in dep]), 0.0006)
 chk("dep peak rss", 235, dep[0]["peak_rss_mb"], 0.6)
 
+# RR leave-one-out: the table was replaced by prose on 2026-10-01, which reports only RR0 and
+# RR+2. Holm is still applied across all five positions (the family the prose states).
 rr = json.load(open("results/rr_ablation_real/rr_ablation_report.json"))
-chk("rr baseline S-Rec", 0.1225, rr["baseline"]["s_recall"]["mean"], 0.0002)
-chk("rr baseline S-Rec std", 0.0524, rr["baseline"]["s_recall"]["std"], 0.0002)
 pp = rr["per_position"]
+assert len(pp) == 5
 srt = sorted(pp, key=lambda k: pp[k]["p_value_s"])
 prev, hrr = 0.0, {}
 for i, k in enumerate(srt):
     h = min(1.0, max(prev, pp[k]["p_value_s"] * (5 - i)))
     prev = hrr[k] = h
-for k, dl, ds_, hp in [("RR-2", -0.0020, 0.0077, 0.221), ("RR-1", -0.0016, 0.0075, 0.221),
-                       ("RR0 (Pre)", -0.0323, 0.0492, 3e-4), ("RR+1 (Post)", 0.0022, 0.0095, 0.358),
-                       ("RR+2 (Post)", -0.0045, 0.0103, 0.014)]:
+for k in pp:
+    if k not in ("RR0 (Pre)", "RR+2 (Post)"):
+        chk("rr " + k + " no corrected effect", 1, 1 if hrr[k] >= 0.05 else 0, 0)
+for k, dl, ds_, hp in [("RR0 (Pre)", -0.0323, 0.0492, 3e-4), ("RR+2 (Post)", -0.0045, 0.0103, 0.014)]:
     chk("rr " + k + " delta", dl, pp[k]["s_recall_delta_mean"], 0.0001)
     chk("rr " + k + " delta std", ds_, pp[k]["s_recall_delta_std"], 0.0001)
     chk("rr " + k + " holm p", hp, hrr[k], max(0.0002, hp * 0.06))
@@ -800,6 +802,29 @@ _old = json.load(open("results/multidataset_final_stats.json"))["INCART"]
 chk("unmatched INCART PC-WavKAN (0.374)", 0.374, _old["wavkan_v2_final_macro_f1"]["mean"], 0.0006)
 chk("unmatched INCART baselines min (0.316)", 0.316, min(v["mean_b"] for v in _old["comparisons"].values()), 0.0006)
 chk("unmatched INCART baselines max (0.365)", 0.365, max(v["mean_b"] for v in _old["comparisons"].values()), 0.0006)
+
+# (11) Table tab:settings: the stated hyperparameters are the ones in the training code
+# (the published runs used the CLI defaults of train_pca.py and baselines_extended.py).
+_tp = open("src/train_pca.py", encoding="utf-8").read()
+_bl = open("src/baselines_extended.py", encoding="utf-8").read()
+for _lbl, _pat, _src in [
+        ("settings: PC-WavKAN lr 1e-3 (CLI)", r'"--lr",\s*type=float,\s*default=1e-3', _tp),
+        ("settings: PC-WavKAN batch 64 (CLI)", r'"--batch-size",\s*type=int,\s*default=64', _tp),
+        ("settings: PC-WavKAN epochs 100 (CLI)", r'"--epochs",\s*type=int,\s*default=100', _tp),
+        ("settings: PC-WavKAN patience 15 (CLI)", r'"--patience",\s*type=int,\s*default=15', _tp),
+        ("settings: PC-WavKAN warm-up 0.25 (CLI)", r'"--warmup",\s*type=float,\s*default=0\.25', _tp),
+        ("settings: PC-WavKAN weight decay 1e-4", r'weight_decay:\s*float\s*=\s*1e-4', _tp),
+        ("settings: PC-WavKAN cosine schedule", r'CosineAnnealingLR\(optimizer,\s*T_max=epochs\)', _tp),
+        ("settings: PC-WavKAN grad clip 1.0", r'clip_grad_norm_\(model\.parameters\(\),\s*max_norm=1\.0\)', _tp),
+        ("settings: PC-WavKAN S weight x8 (CLI)", r'"--s-weight",\s*type=float,\s*default=8\.0', _tp),
+        ("settings: baselines epochs 100 (CLI)", r'"--epochs",\s*type=int,\s*default=100', _bl),
+        ("settings: baselines lr 1e-3", r'lr:\s*float\s*=\s*1e-3', _bl),
+        ("settings: baselines batch 64", r'batch_size:\s*int\s*=\s*64', _bl),
+        ("settings: baselines patience 15", r'patience:\s*int\s*=\s*15', _bl),
+        ("settings: baselines AdamW wd 1e-4", r'optim\.AdamW\(model\.parameters\(\),\s*lr=lr,\s*weight_decay=1e-4\)', _bl),
+        ("settings: baselines cosine schedule", r'CosineAnnealingLR\(optimizer,\s*T_max=epochs\)', _bl),
+        ("settings: baselines grad clip 1.0", r'clip_grad_norm_\(model\.parameters\(\),\s*1\.0\)', _bl)]:
+    chk(_lbl, 1, 1 if _re.search(_pat, _src) else 0, 0)
 
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))

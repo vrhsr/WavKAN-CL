@@ -114,7 +114,14 @@ where $RR_0$ is the interval ending at beat $i$, $RR_{-1}$ and $RR_{-2}$ are the
 \label{sec:split}
 We use the DS1/DS2 partition of de Chazal \emph{et al.} \cite{chazal_automatic_2004}, splitting DS1 into training and validation records following Takalo-Mattila \emph{et al.} \cite{takalo-mattila_inter-patient_2018}. DS1 training uses the 18 records 101, 106, 108, 109, 112, 114, 115, 116, 118, 119, 122, 124, 201, 203, 205, 207, 215 and 220. DS1 validation uses the 4 records 208, 209, 223 and 230, which carry every model and architecture selection decision. DS2, held out, comprises the 22 records 100, 103, 105, 111, 113, 117, 121, 123, 200, 202, 210, 212, 213, 214, 219, 221, 222, 228, 231, 232, 233 and 234. The partition is by record, and record disjointness is asserted programmatically and covered by a regression test. One subject contributes to two partitions: records 201 (training) and 202 (DS2) were taken from the same analogue tape, a known property of the de Chazal partition that we retain unmodified.
 
-Annotations are mapped to the five AAMI EC57 classes \cite{xiao_deep_2023, luz_survey_2016} (Table~\ref{tab:class_dist}). The Q class has only 15 beats in these records (6 in training, 7 in DS2), so no per-class conclusion can be drawn for it. Record 208 holds 372 of DS1's 414 fusion beats and lies in the validation partition, which leaves 28 F beats for training.
+Annotations are mapped to the five AAMI EC57 classes \cite{xiao_deep_2023, luz_survey_2016} (Table~\ref{tab:class_dist}). The Q class has only 15 beats in these records (6 in training, 7 in DS2), so no per-class conclusion can be drawn for it. Record 208 holds 372 of DS1's 414 fusion beats and lies in the validation partition, which leaves 28 F beats for training. Fig.~\ref{fig:protocol} summarises how each partition and each external database is used.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{evaluation_protocol.pdf}
+\caption{Evaluation protocol. Training records fit the models, the four validation records determine every checkpoint and configuration choice, and DS2 is evaluated once with the selected models. The external databases and the RR-feature sensitivity analysis use forward passes of the selected models only. Counts are read from the split definition and the extraction outputs.}
+\label{fig:protocol}
+\end{figure}
 
 \begin{table}[!htbp]
 \caption{Class distribution and AAMI mapping.}
@@ -146,19 +153,12 @@ The model (Fig.~\ref{fig:arch}) has a morphology branch and a rhythm branch whos
 \label{fig:arch}
 \end{figure}
 
-\paragraph{Wavelet-KAN layer} Following Wav-KAN \cite{bozorgasl_wavkan_2024}, every edge $(j,k)$ carries its own Mexican Hat function $\psi(u) = (1-u^2)e^{-u^2/2}$ (Fig.~\ref{fig:wavkan_micro}). The layer maps $x_i \in \mathbb{R}^{360}$ to $\mathbb{R}^{64}$:
+\paragraph{Wavelet-KAN layer} Following Wav-KAN \cite{bozorgasl_wavkan_2024}, every edge $(j,k)$ carries its own Mexican Hat function $\psi(u) = (1-u^2)e^{-u^2/2}$. The layer maps $x_i \in \mathbb{R}^{360}$ to $\mathbb{R}^{64}$:
 \begin{equation}
 z^{(k)} = \sum_{j=1}^{360} w_{j,k}\,\psi\!\left(\frac{x_j - \mu_{j,k}}{|\gamma_{j,k}|}\right) + \lambda \sum_{j=1}^{360} v_{j,k}\,x_j, \qquad k = 1,\dots,64,
 \label{eq:kan}
 \end{equation}
 with learnable translation $\mu_{j,k}$, dilation $\gamma_{j,k}$ and weight $w_{j,k}$, and a linear residual path with fixed gate $\lambda = 0.1$. $\psi$ is evaluated on the \emph{amplitude} $x_j$ of input sample $j$, so $\mu$ and $\gamma$ are an amplitude offset and an amplitude width. They are not a temporal position or duration. The output is layer-normalised, passed through dropout ($p = 0.2$), and fed to a bidirectional GRU with 32 units per direction. The 64 activations form a single token, so the GRU executes one step in each direction from a zero state. It therefore acts as a gated transformation of the channel vector and integrates no temporal context. It has 18,816 parameters (12.3\% of the model).
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{wavkan_micro_architecture_v2.pdf}
-\caption{Wavelet-KAN layer, drawn as a schematic with three inputs and three outputs; the actual layer has $360\times64$ edges, and the parameter values shown are illustrative. Every edge $(j,k)$ applies its own function $\phi_{jk}(x_j)=w_{jk}\,\psi\big((x_j-\mu_{jk})/|\gamma_{jk}|\big)$ to the value of input $j$. Each output sums its incoming edges and adds the linear path of \eqref{eq:kan}. Right: the highlighted edge enlarged and plotted against the input value, which shows that $\mu$ and $\gamma$ set an amplitude offset and width, not a position in time.}
-\label{fig:wavkan_micro}
-\end{figure}
 
 \paragraph{Prior-centred wavelet initialisation (PCWI)}
 \label{sec:pcwi}
@@ -178,7 +178,29 @@ Two properties limit what PCWI can encode. First, each block's prior is shared b
 
 \subsection{Training}
 \label{sec:training}
-Training uses AdamW (learning rate $10^{-3}$, weight decay $10^{-4}$), batch size 64, gradient-norm clipping at 1.0 and a cosine learning-rate schedule over a nominal 100-epoch budget. Early stopping monitors DS1-validation Macro-F1 with patience 15, and the checkpoint of the best validation epoch is retained. In the PC-WavKAN runs trained with class-balanced sampling, training stopped between epochs 17 and 40, so the learning rate changed little before the retained epoch. The baseline scripts did not log their stopping epoch.
+Table~\ref{tab:settings} collects the settings. Training uses AdamW (learning rate $10^{-3}$, weight decay $10^{-4}$), batch size 64, gradient-norm clipping at 1.0 and a cosine learning-rate schedule over a nominal 100-epoch budget. Early stopping monitors DS1-validation Macro-F1 with patience 15, and the checkpoint of the best validation epoch is retained. In the PC-WavKAN runs trained with class-balanced sampling, training stopped between epochs 17 and 40, so the learning rate changed little before the retained epoch. The baseline scripts did not log their stopping epoch.
+
+\begin{table}[!htbp]
+\centering
+\caption{Training and evaluation settings. Every setting above the rule is shared by all five models; the settings below it differ by design (\S\ref{sec:baselines}).}
+\label{tab:settings}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\ \midrule
+Inputs & beat window (360 samples) and five RR intervals \\
+Optimiser & AdamW; learning rate $10^{-3}$; weight decay $10^{-4}$ \\
+Learning-rate schedule & cosine annealing over a nominal 100 epochs \\
+Batch size; gradient clipping & 64; gradient norm 1.0 \\
+Early stopping & patience of 15 epochs on DS1-validation Macro-F1 \\
+Retained checkpoint & epoch with the best DS1-validation Macro-F1 \\
+Seeds & 20, identical for every model (\S\ref{sec:stats}) \\ \midrule
+Imbalance handling, PC-WavKAN & class-balanced sampling with unweighted cross-entropy \\
+Imbalance handling, baselines & natural sampling; inverse-frequency weighted cross-entropy \\
+ & (S weight $\times8$); focal loss without weights for CNN+Focal \\
+Augmentation & PC-WavKAN only: non-N beats (noise, baseline wander, scaling) \\ \bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{Class-balanced sampling} For the first 25 epochs, mini-batches are drawn by a sampler that selects each class with equal probability, and the loss is unweighted cross-entropy. The training script then enters a second phase in which the sampler is annealed towards the natural class distribution and the loss becomes a class-weighted focal loss. In all 60 runs that used this schedule (three configurations, 20 seeds each), the retained checkpoint came from the first phase (best epochs 2--25), because validation Macro-F1 never improved after the switch. The second phase therefore did not contribute to any reported model. We describe and evaluate the procedure by what determined those models: class-balanced sampling with unweighted cross-entropy and validation-based checkpoint selection, abbreviated CBS. The comparator, used by all four baselines and by the no-CBS arms, is natural-distribution sampling with inverse-frequency class-weighted cross-entropy, with the S-class weight multiplied by 8.
 
@@ -223,7 +245,7 @@ Every arm is trained with the same 20 seeds: 42, 101, 777, 2026, 9999, 1234, 202
 
 \emph{Outcome hierarchy.} Results are reported in \S\ref{sec:results}. The \emph{primary} outcome is DS2 five-class Macro-F1 of the adopted configuration against the four baselines. The \emph{pre-specified secondary} outcome is the effect of the imbalance mechanism on per-class recall, tested on the base configuration (\S\ref{sec:results_sampling}). Everything else is \emph{exploratory}. That includes the same comparison on the adopted configuration, which uses arms trained for the augmentation analysis, and the interval ablation, the cross-database evaluation, the prior-retention analysis and the artefact sensitivity analysis. The last four, and the four-class Macro-F1, were added during a final audit after the primary results were known, and are labelled as such where reported.
 
-\emph{Software.} Models are implemented in PyTorch. AI-assisted coding (Claude, Anthropic) was used to write and audit parts of the preprocessing, evaluation, statistics and figure code. Every quantitative claim in this paper is re-derived from the per-seed result files by a verification script released with the code (Code availability).
+\emph{Software.} Models are implemented in PyTorch. Every quantitative claim in this paper is re-derived from the per-seed result files by a verification script released with the code (Code availability).
 
 %% ---------------------------------------------------------------------------
 \section{Results}
@@ -353,25 +375,7 @@ PC-WavKAN is trained with minority-class augmentation and the baselines are not.
 
 \subsection{Interval Features, Lookahead and an Annotation-Derived Artefact}
 \label{sec:results_rr}
-Table~\ref{tab:rr_ablation} reports an exploratory leave-one-out analysis in which each interval position is masked at inference. It was run on the base configuration, whose rhythm features are identical to the adopted one's.
-
-\begin{table}[!htbp]
-\centering
-\caption{Leave-one-out interval ablation, base configuration, 20 seeds, DS2, exploratory. Baseline S-recall with the full vector: $0.1225\pm0.0524$. $p$ is Holm-adjusted across the five positions.}
-\label{tab:rr_ablation}
-\footnotesize
-\begin{tabular}{l c c}
-\toprule
-\textbf{Masked position} & \textbf{$\Delta$S-Recall} & \textbf{Holm $p$} \\ \midrule
-$RR_{-2}$ & $-0.0020\pm0.0077$ & $0.221$ \\
-$RR_{-1}$ & $-0.0016\pm0.0075$ & $0.221$ \\
-\textbf{$RR_{0}$} & $\mathbf{-0.0323\pm0.0492}$ & $\mathbf{3\times10^{-4}}$ \\
-$RR_{+1}$ & $+0.0022\pm0.0095$ & $0.358$ \\
-$RR_{+2}$ & $-0.0045\pm0.0103$ & $0.014$ \\ \bottomrule
-\end{tabular}
-\end{table}
-
-Masking $RR_0$ causes by far the largest degradation, as expected, since a shortened preceding interval is the classical sign of a premature beat. The effect of masking $RR_{+2}$ is small but survives correction. The model therefore draws signal from an interval that has not elapsed when beat $i$ occurs, which is one reason we treat the task as offline (\S\ref{sec:preprocessing}).
+An exploratory leave-one-out analysis masked each interval position at inference. It used the base configuration, whose rhythm features are identical to the adopted one's, with 20 seeds and Holm correction across the five positions. Masking $RR_0$ caused by far the largest loss of S-recall ($-0.0323\pm0.0492$, Holm $p = 3\times10^{-4}$). This is expected, since a shortened preceding interval is the classical sign of a premature beat. Masking $RR_{+2}$ caused a small loss that survives correction ($-0.0045\pm0.0103$, Holm $p = 0.014$). The other three positions had no corrected effect. The model therefore draws signal from an interval that has not elapsed when beat $i$ occurs, which is one reason we treat the task as offline (\S\ref{sec:preprocessing}).
 
 \paragraph{Annotation-derived artefact} Because the intervals are computed between consecutive annotation-file entries, including non-beat markers, 4,578 of 49,684 DS2 beats (9.2\%) have at least one interval that differs from the beat-to-beat value, and 1,433 (2.9\%) have a different $RR_0$. By class, $RR_0$ differs for 6.4\% of V beats, against 2.7\% of N beats and 1.3\% of S beats, and the recorded value is almost always shorter than the true interval, which mimics prematurity. A rhythm-change marker is placed where an arrhythmic episode begins, so this artefact carries annotation-derived information that would not be available on unannotated recordings, and it correlates with the label. We quantified its effect without retraining. We recomputed every DS2 interval between beat annotations only and re-evaluated all 100 published checkpoints (five models, 20 seeds). The recomputation leaves the beats and their order unchanged. As a check, the same re-evaluation with the published intervals reproduced every model's reported Macro-F1. Of the 100 checkpoints, 88 reproduced every DS2 prediction exactly. The remaining 12, all CNN+Focal, differed in 1 to 4 of 49,684 beats, which we attribute to floating-point differences of GPU inference. With beat-to-beat intervals, the Macro-F1 of every model rose slightly, in all 20 seeds. The mean increase was $+0.002$ to $+0.005$ across the five models (PC-WavKAN: $0.357\rightarrow0.360$), and PC-WavKAN's V-recall changed by $-0.001$. The primary comparison was unchanged: all Holm-adjusted $p \geq 0.38$, and every paired interval still includes zero. The artefact therefore did not inflate the reported performance and does not affect the comparative conclusions. The models were trained with it, and whether training on beat-to-beat intervals would change them was not tested.
 
@@ -427,7 +431,14 @@ B-Spline KAN & $0.367\pm0.017$ & $+0.83$ / $0.003$ & $0.820$ & $0.606$ & $0.267\
 }
 \end{table}
 
-PC-WavKAN shows no transfer advantage. On INCART its Macro-F1 of $0.390$ is significantly below ResNet1D and CNN+Focal (both $0.431$; $d_z \leq -1.53$, Holm $p < 0.001$). It is indistinguishable from the Transformer and above B-Spline KAN ($d_z = +0.83$, Holm $p = 0.003$). On SVDB it is significantly below all three non-KAN baselines (Holm $p < 0.001$) and indistinguishable from B-Spline KAN, and the two KAN-family models have the lowest Macro-F1 of the five.
+PC-WavKAN shows no transfer advantage. On INCART its Macro-F1 of $0.390$ is significantly below ResNet1D and CNN+Focal (both $0.431$; $d_z \leq -1.53$, Holm $p < 0.001$). It is indistinguishable from the Transformer and above B-Spline KAN ($d_z = +0.83$, Holm $p = 0.003$). On SVDB it is significantly below all three non-KAN baselines (Holm $p < 0.001$) and indistinguishable from B-Spline KAN, and the two KAN-family models have the lowest Macro-F1 of the five. Fig.~\ref{fig:forest} places the in-distribution and cross-database comparisons on one scale.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{macro_f1_forest.pdf}
+\caption{Paired Macro-F1 differences, PC-WavKAN minus each baseline, with 95\% confidence intervals over 20 seeds. The panels cover MIT-BIH DS2 (Table~\ref{tab:baseline_comparison}) and the two external databases (Table~\ref{tab:multidataset}). Filled markers indicate Holm-adjusted $p<0.05$ across the four baselines within a database. In distribution, every interval includes zero. Out of distribution, PC-WavKAN is below both convolutional baselines.}
+\label{fig:forest}
+\end{figure}
 
 On SVDB, both KAN-family models also have the highest S$\rightarrow$V confusion rates ($0.431$ and $0.451$, mean over seeds, against $0.231$--$0.395$ for the other models) and assign the largest share of beats to V ($18.7\%$ and $20.7\%$, against $8.4$--$17.6\%$). We report this as a descriptive pattern; the study does not identify its cause.
 
@@ -510,7 +521,7 @@ All datasets are publicly available from PhysioNet \cite{goldberger_physiobank_2
 \url{https://github.com/vrhsr/WavKAN-CL} contains the source code, preprocessing and training scripts, statistical and figure code, the per-seed records of every arm reported here (test metrics, training histories, confusion matrices), the 20 checkpoints of the evaluated PC-WavKAN configuration, and the 20 checkpoints of its isotropic-initialisation ablation arm used for the prior-retention null. Baseline checkpoints are available from the authors on request. \texttt{src/verify\_manuscript\_numbers.py} re-derives the quantitative claims of this manuscript from those files. The repository name is historical.
 
 \section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
-During the preparation of this work the authors used Claude (Anthropic) in order to assist with drafting and revising the manuscript text, writing and auditing analysis, verification and figure-generation code, and checking reported numbers against the result files. After using this tool, the authors reviewed and edited the content as needed and take full responsibility for the content of the published article.
+During the preparation of this work the authors used Claude (Anthropic) in order to assist with writing and code development. After using this tool, the authors reviewed and edited the content as needed and take full responsibility for the content of the published article.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{references}
