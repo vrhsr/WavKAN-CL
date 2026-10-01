@@ -43,17 +43,34 @@ NOTE = (r"\noindent\fbox{\parbox{\dimexpr\textwidth-2\fboxsep\relax}{\small\text
         "\n\\medskip\n")
 
 
+def find_perl():
+    """perl on PATH, else the copy that ships with Git for Windows (not on cmd.exe's PATH)."""
+    p = shutil.which("perl")
+    if p:
+        return p
+    cands = [r"C:\Program Files\Git\usr\bin\perl.exe", r"C:\Program Files (x86)\Git\usr\bin\perl.exe",
+             os.path.expandvars(r"%LOCALAPPDATA%\Programs\Git\usr\bin\perl.exe")]
+    git = shutil.which("git")
+    if git:  # ...\Git\cmd\git.exe -> ...\Git\usr\bin\perl.exe
+        cands.insert(0, os.path.join(os.path.dirname(os.path.dirname(git)), "usr", "bin", "perl.exe"))
+    for c in cands:
+        if os.path.isfile(c):
+            return c
+    sys.exit("perl not found: install Git for Windows (it includes perl) or Strawberry Perl")
+
+
 def find_latexdiff():
+    perl = find_perl()
     for cand in ("latexdiff-so", "latexdiff-so.pl"):
         p = shutil.which(cand)
         if p and not p.lower().endswith(".exe"):
-            return ["perl", p]
+            return [perl, p]
     for base in (os.path.expandvars(r"%LOCALAPPDATA%\Programs\MiKTeX\scripts\latexdiff"),
                  r"C:\Program Files\MiKTeX\scripts\latexdiff", "/usr/share/texlive/texmf-dist/scripts/latexdiff",
                  "/usr/local/texlive/texmf-dist/scripts/latexdiff"):
         p = os.path.join(base, "latexdiff-so")
         if os.path.isfile(p):
-            return ["perl", p]
+            return [perl, p]
     sys.exit("latexdiff-so not found (it bundles Algorithm::Diff, which plain latexdiff needs separately)")
 
 
