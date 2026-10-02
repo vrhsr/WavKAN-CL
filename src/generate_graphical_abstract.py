@@ -155,7 +155,7 @@ def generate(output):
              color="#26323F")
     ax1.text(1.5, 0.985, "below both\nCNN baselines", transform=tr, ha="center", va="top", fontsize=6.5,
              color="#26323F")
-    ax1.set_title("Accuracy", fontsize=8.6, fontweight="bold", color="#1F2A36", pad=3)
+    ax1.set_title("Macro-F1", fontsize=8.6, fontweight="bold", color="#1F2A36", pad=3)
     handles = [plt.Line2D([], [], marker=STYLE[m][1], color=STYLE[m][0], ls="", ms=STYLE[m][2]) for m in ARMS]
     p1 = ax1.get_position()
     fig.legend(handles, list(ARMS), loc="lower center", ncol=3, fontsize=6.6, frameon=False,
@@ -187,7 +187,14 @@ def generate(output):
 
     base, _ = os.path.splitext(output)
     fig.savefig(output)
-    fig.savefig(base + ".tiff", dpi=300, pil_kwargs={"compression": "tiff_lzw"})
+    # TIFF as RGB without an alpha channel (some submission converters mishandle RGBA);
+    # the rendered figure is fully opaque, so dropping alpha changes no pixel.
+    import io
+    from PIL import Image
+    _buf = io.BytesIO()
+    fig.savefig(_buf, format="png", dpi=300)
+    _buf.seek(0)
+    Image.open(_buf).convert("RGB").save(base + ".tiff", compression="tiff_lzw", dpi=(300, 300))
     fig.savefig(base + ".png", dpi=300)
     plt.close(fig)
     print(f"Saved -> {output}, {base}.tiff, {base}.png")

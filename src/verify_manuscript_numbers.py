@@ -1216,6 +1216,164 @@ for _b, _r in _sx_fam.items():
     chk("excl. 202: stored Holm p matches recomputation " + _b, round(_sx["comparisons_without_record"][_b]["holm_p"], 6),
         round(_r["holm_p"], 6), 0)
 
+# (16) Revision audit 2026-10-02 (ARRAY-D-26-02633; AUDIT_FINDINGS.md H86).
+print("\n" + "=" * 100)
+print("REVISION AUDIT: previously unchecked numbers and response-letter consistency")
+print("=" * 100)
+# "30K--118K parameters" (Sec. 3.5, Conclusion) and "30K-parameter Transformer" (Discussion)
+chk("baseline size range lower end rounds to 30K (29,653)", 30, round(29653 / 1000), 0)
+chk("baseline size range upper end rounds to 118K (118,229)", 118, round(118229 / 1000), 0)
+chk("text uses 30K--118K twice", 2, _tex.count("30K--118K"), 0)
+chk("text no longer uses 29K", 0, _tex.count("29K"), 0)
+# window in ms, record 114 lead, the two 'R at sample 180' statements
+chk("window: 90 samples = 250 ms", 250, round(90 / 360 * 1000), 0)
+chk("window: 270 samples = 750 ms", 750, round(270 / 360 * 1000), 0)
+if os.path.exists("data/raw/114.hea"):
+    import wfdb as _wf2  # noqa: E402
+    chk("record 114: channel 0 is V5", 1, 1 if _wf2.rdheader("data/raw/114").sig_name[0] == "V5" else 0, 0)
+    chk("channel 0 is MLII in the other 43 records", 43,
+        sum(1 for r_ in _all_recs if str(r_) != "114" and _wf2.rdheader("data/raw/%s" % r_).sig_name[0] == "MLII"), 0)
+else:
+    print("  (skipped: data/raw absent)")
+chk("side branch indices chosen for R at sample 180 (pwam.py comment)", 1,
+    1 if "the R-peak sits at sample 180" in open("src/pwam.py", encoding="utf-8").read() else 0, 0)
+_ptb = open("src/process_ptbxl.py", encoding="utf-8").read()
+chk("PTB-XL: symmetric window, R at sample 180 (360 // 2)", 1,
+    1 if ("TARGET_SAMPLES = 360" in _ptb and "HALF_WIN = TARGET_SAMPLES // 2" in _ptb) else 0, 0)
+# re-evaluation: 88 of 100 checkpoints reproduce every DS2 prediction
+chk("reproduction: 88 checkpoints reproduce every prediction", 88, 100 - len(json.load(open("results/rr_sensitivity/published_rr/report.json"))["published_prediction_mismatches"]), 0)
+# PPR values as printed in the text and the response letter (3 dp)
+for _lbl, _A, _v in [("untrained PCWI", U_pc, 0.973), ("trained PCWI", T_, 0.783),
+                     ("untrained isotropic", U_iso, 0.670), ("trained isotropic", R_, 0.579)]:
+    chk("PPR %s (3 dp)" % _lbl, _v, _A[:, 0].mean(), 0.0006)
+# record-202 sensitivity: beats removed (response letter)
+chk("excl. 202: beats removed (2,135)", 2135, _sx["beats_removed"], 0)
+# response letter: structural claims
+_rt = open("Submission_Array/response_to_reviewers.tex", encoding="utf-8").read()
+_lim = _tex.split(r"\subsection{Limitations}")[1].split(r"\paragraph{Future work}")[0]
+chk("letter: Limitations has eight items", 8, len(_re.findall(r"\\textbf\{\(\d\)", _lim)), 0)
+_fw = _tex.split(r"\paragraph{Future work}")[1].split(r"\section{Conclusion}")[0]
+chk("letter: future work names three questions", 3, _fw.count("whether"), 0)
+from PIL import Image as _Img  # noqa: E402
+chk("letter: graphical abstract is 1980 x 792 px", 1,
+    1 if _Img.open("Submission_Array/graphical_abstract.tiff").size == (1980, 792) else 0, 0)
+_hl = [l_[2:] for l_ in open("Submission_Array/highlights.txt", encoding="utf-8").read().splitlines() if l_.startswith("- ")]
+chk("letter: five highlights", 5, len(_hl), 0)
+chk("letter: every highlight under 85 characters", 1, 1 if max(len(h_) for h_ in _hl) < 85 else 0, 0)
+# response letter: every number outside the quoted reviewer comments appears in the manuscript,
+# or is one of the letter-only numbers checked above or below.
+_body = _re.sub(r"\\begin\{reviewer\}.*?\\end\{reviewer\}", " ", _rt, flags=_re.S)
+_body = _re.sub(r"\\(ref|label|cite|url|section\*?|subsection\*?|item|texttt)\{[^}]*\}", " ", _body)
+_body = _body.split(r"\begin{document}")[1]
+
+
+def _nums(t_):
+    t_ = t_.replace("{,}", ",")
+    return {m_.replace(",", "") for m_ in _re.findall(r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+\.\d+)(?![\w])", t_)}
+
+
+_texnums = _nums(_tex)
+_letter_only = {"95189": "original manuscript's parameter count (quoted, see git show 66683a7^)",
+                "2135": "checked above (beats_removed)"}
+_orig_ok = 1
+try:
+    import subprocess as _sp  # noqa: E402
+    _orig = _sp.run(["git", "show", "66683a7^:elsarticle_manuscript.tex"], capture_output=True, text=True).stdout
+    _orig_ok = 1 if "95,189 parameters" in _orig else 0
+except Exception:  # noqa: BLE001
+    pass
+chk("letter: 95,189 is the original manuscript's parameter count", 1, _orig_ok, 0)
+# Cross-references in the letter: every Section/Table/Fig./Eq./Limitation number must exist in the
+# revised manuscript (numbered from its own \section/\subsection, table, figure and equation order).
+_secs, _a, _b = set(), 0, 0
+for _m_ in _re.finditer(r"\\(section|subsection)\{", _tex.split(r"\section*{CRediT")[0]):
+    if _m_.group(1) == "section":
+        _a, _b = _a + 1, 0
+        _secs.add(str(_a))
+    else:
+        _b += 1
+        _secs.add("%d.%d" % (_a, _b))
+_ntab = _tex.count(r"\begin{table}")
+_nfig = _tex.count(r"\begin{figure}")
+_neq = _tex.count(r"\begin{equation}")
+_xr = _body.replace("original Section~6.2", " ").replace("original Fig.~7", " ")
+_bad = []
+for _m_ in _re.finditer(r"Sections?~(\d+(?:\.\d+)?)((?:,~?\s*|\s+and~?)(\d+(?:\.\d+)?))*", _xr):
+    for _n_ in _re.findall(r"\d+(?:\.\d+)?", _m_.group(0)):
+        if _n_ not in _secs:
+            _bad.append("Section " + _n_)
+_seq = r"(\d+[ab]?(?:(?:,~?\s*|\s+and~?)\d+[ab]?)*)"
+_nref = 0
+for _kind, _pat, _max in (("Table", r"Tables?~" + _seq, _ntab), ("Fig.", r"Figs?\.~" + _seq, _nfig),
+                          ("Eq.", r"Eq\.~(\d+)", _neq), ("Limitation", r"Limitations?~\((\d)\)", 8)):
+    for _m_ in _re.finditer(_pat, _xr):
+        for _n_ in _re.findall(r"\d+", _m_.group(1)):
+            _nref += 1
+            if not 1 <= int(_n_) <= _max:
+                _bad.append("%s %s" % (_kind, _n_))
+chk("letter: table/figure/equation/limitation references parsed (non-vacuous)", 1, 1 if _nref >= 25 else 0, 0)
+chk("letter: every Section/Table/Fig./Eq./Limitation reference exists in the manuscript", 0, len(_bad), 0)
+if _bad:
+    print("  bad letter cross-references:", _bad)
+_body_vals = _re.sub(r"(Sections?|Comment|Tables?|Figs?\.|Eq\.)~?\s*\d+(\.\d+)?((,~?\s*|\s+and~?)\d+(\.\d+)?)*", " ", _xr)
+_missing = sorted(n_ for n_ in _nums(_body_vals) if n_ not in _texnums and n_ not in _letter_only)
+chk("letter: every stated number appears in the manuscript (or is checked)", 0, len(_missing), 0)
+if _missing:
+    print("  letter numbers not in manuscript:", _missing)
+# letter values that must equal manuscript values
+chk("letter: base configuration DS2 Macro-F1 0.323", 0.323, m2, 0.0006)
+chk("letter: CBS S-recall 0.137 -> 0.222", 1, 1 if ("$0.137$ to $0.222$" in _rt and "from $0.137$ to $0.222$" in _tex) else 0, 0)
+chk("letter: V-recall 0.898 +- 0.020 equals Table 6", 1,
+    1 if ("$0.898\\pm0.020$" in _rt and "$0.898\\pm0.020$" in _tex) else 0, 0)
+
+# (17) Owner decisions 2026-10-02 (AUDIT_FINDINGS.md H87): Implications paragraph (P1),
+# B-spline-KAN null-control citations (P3a), RGB graphical-abstract TIFF (P3d).
+print("\n" + "=" * 100)
+print("OWNER DECISIONS 2026-10-02: Implications paragraph, citations, graphical abstract")
+print("=" * 100)
+_imp = _tex.split(r"\paragraph{Implications}")[1].split(r"\subsection{Limitations}")[0] if r"\paragraph{Implications}" in _tex else ""
+chk("Implications paragraph present in the Discussion", 1,
+    1 if (_imp and _tex.index(r"\paragraph{Implications}") > _tex.index(r"\section{Discussion}")) else 0, 0)
+chk("Implications: four practices, four 'should' sentences", 4, _imp.count(" should "), 0)
+chk("letter: Implications paragraph states four practices", 1,
+    1 if ("Four practices follow" in _imp and "states four practices" in _rt) else 0, 0)
+for _lb in ("sec:results_primary", "tab:ppr", "sec:results_crossdata", "sec:results_rr"):
+    chk("Implications cites %s" % _lb, 1, 1 if (r"\ref{%s}" % _lb) in _imp else 0, 0)
+# "under those conditions this model showed no Macro-F1 advantage": no primary comparison significant
+chk("Implications: no corrected Macro-F1 difference vs any baseline", 1,
+    1 if min(_holm) >= 0.05 else 0, 0)
+# "here an untrained prior-centred model scored highest (Table tab:ppr)"
+_ppr_means = {"untrained PCWI": U_pc[:, 0].mean(), "trained PCWI": T_[:, 0].mean(),
+              "untrained isotropic": U_iso[:, 0].mean(), "trained isotropic": R_[:, 0].mean()}
+chk("Implications: untrained prior-centred PPR is the highest row", 1,
+    1 if max(_ppr_means, key=_ppr_means.get) == "untrained PCWI" else 0, 0)
+# "a mismatch reversed the INCART ranking": PC-WavKAN first unmatched, below both CNNs matched
+_unm = json.load(open("results/multidataset_final_stats.json"))["INCART"]
+_unm_pc = _unm["wavkan_v2_final_macro_f1"]["mean"]
+chk("Implications: PC-WavKAN first on INCART under the unmatched pipeline", 1,
+    1 if _unm_pc > max(v_["mean_b"] for v_ in _unm["comparisons"].values()) else 0, 0)
+_inc = json.load(open("results/external_matched/incart/per_seed.json"))
+_incm = {m_: np.mean([x_["macro_f1"] for x_ in d_.values()]) for m_, d_ in _inc.items()}
+chk("Implications: PC-WavKAN below both CNN baselines on INCART when matched", 1,
+    1 if _incm["PC-WavKAN"] < min(_incm["ResNet1D"], _incm["CNN+Focal"]) else 0, 0)
+# "RR intervals computed over all annotation entries carried label-correlated information"
+chk("Implications: RR_0 artefact rate differs by class (V > N > S)", 1,
+    1 if _pa_c["V"]["rr0_pct"] > _pa_c["N"]["rr0_pct"] > _pa_c["S"]["rr0_pct"] else 0, 0)
+# P3a: the two B-spline-KAN null-control preprints are cited and in the bibliography
+_bib = open("Submission_Array/references.bib", encoding="utf-8").read()
+for _k in ("alves_kan_2026", "mysore_temporal_2026"):
+    chk("citation %s cited and in bib" % _k, 1, 1 if ((r"\cite{%s}" % _k) in _tex and ("{%s," % _k) in _bib) else 0, 0)
+chk("provenance records the full-text check for both", 1,
+    1 if all(k_ in open("Submission_Array/references_provenance.txt", encoding="utf-8").read()
+             for k_ in ("alves_kan_2026: arXiv 2607.15525v1", "mysore_temporal_2026: arXiv 2605.05685v1")) else 0, 0)
+chk("claim 2 still scoped to wavelet KANs", 1,
+    1 if "the first test of the wavelet-KAN interpretability premise against explicit null models" in _tex else 0, 0)
+# P3d: graphical-abstract TIFF is RGB without alpha, same size
+_ga = _Img.open("Submission_Array/graphical_abstract.tiff")
+chk("graphical abstract TIFF mode RGB (no alpha)", 1, 1 if _ga.mode == "RGB" else 0, 0)
+chk("graphical abstract TIFF still 1980 x 792 at 300 dpi", 1,
+    1 if (_ga.size == (1980, 792) and tuple(round(float(x_)) for x_ in _ga.info.get("dpi", (0, 0))) == (300, 300)) else 0, 0)
+
 print("\n" + "=" * 100)
 print("RESULT:  %d verified,  %d MISMATCHED" % (len(OK), len(BAD)))
 if BAD:

@@ -8,7 +8,7 @@
 \usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt}
+\setlength{\parskip}{5pt}
 \definecolor{revcol}{HTML}{3B4A5A}
 \newenvironment{reviewer}{\begin{quote}\itshape\color{revcol}}{\end{quote}}
 \newcommand{\resp}{\textbf{Response.}~}
@@ -32,7 +32,7 @@ We thank you and the two reviewers for careful and constructive reports. They id
 \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
 \item \textbf{Reframed as a controlled evaluation.} Following Reviewer~\#3's suggestion, the paper now reports what the experiments show, including null and negative findings, rather than proposing a superior method. The title, abstract and highlights were rewritten accordingly.
 \item \textbf{Unsupported claims withdrawn.} The claims of interpretability, of a reduced generalisation gap, of a beneficial curriculum and of real-time or wearable suitability are removed. Where a claim could be tested, it is now tested, and the result is reported whether or not it favours the model.
-\item \textbf{One protocol for every comparison.} Five models (the evaluated model and four baselines) are trained with the same data, split, inputs, optimiser, budget, early-stopping rule, checkpoint rule and 20 seeds. They are compared with seed-paired two-sided Wilcoxon tests, Holm--Bonferroni correction, effect sizes and 95\% confidence intervals. Architecture choices are made on DS1 validation data.
+\item \textbf{One protocol for every comparison.} Five models (the evaluated model and four baselines) are trained with the same data, split, inputs, optimiser, budget, early-stopping rule, checkpoint rule and 20 seeds. They are compared with seed-paired two-sided Wilcoxon tests, Holm--Bonferroni correction, effect sizes and 95\% confidence intervals. The reported architecture is the one a DS1-validation rule selects; its selection history is stated below.
 \item \textbf{Every number is re-derived by script.} A verification script released with the code recomputes every quantitative claim in the manuscript from the per-seed result files and fails on any mismatch. This removes the class of inconsistency listed in Reviewer~\#3's comment~5.
 \item \textbf{Methods match the code.} The description of the model, preprocessing, interval features and training now follows the released implementation, including properties that limit the conclusions (Section~3).
 \item \textbf{Required items added.} A graphical abstract, five highlights, and the data availability, CRediT, competing interest, funding, ethics, code availability and generative-AI statements.
@@ -42,7 +42,7 @@ We thank you and the two reviewers for careful and constructive reports. They id
 \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
 \item The original manuscript described a 95,189-parameter model and reported results drawn from runs of different configurations and seed counts. This is why its numbers disagreed across the abstract, tables and figures.
 \item The revision evaluates the architecture whose checkpoints produced the reported results. The configuration reported is the one selected on DS1 validation by a single-variable ablation (Table~4): 153,045 parameters, with a multilayer-perceptron rhythm encoder in place of self-attention. We renamed the model PC-WavKAN (prior-centred wavelet KAN), because its one non-standard ingredient is a prior-centred initialisation of the wavelet parameters.
-\item The adopted configuration is one of the alternatives that, as Reviewer~\#3 observed, outperformed the originally proposed configuration on the test set (DS2). It was first adopted after the DS2 results of all eight configurations had been seen. The validation analysis was applied afterwards and selects the same configuration. We disclose this in Section~4.1 (``Test-set exposure'') and Limitation~(3), read the primary result as a held-out estimate under a validation-based rule applied after DS2 had been inspected, and note that any bias from this exposure would favour our model.
+\item The adopted configuration was not among the alternatives in the original ablation table. It differs from the base configuration of the revised ablation only in the rhythm encoder, and its DS2 Macro-F1 is higher than the base configuration's ($0.357$ against $0.323$). It was first adopted after the DS2 results of all eight configurations had been seen. The validation analysis was applied afterwards and selects the same configuration. We disclose this in Section~4.1 (``Test-set exposure'') and Limitation~(3), read the primary result as a held-out estimate under a validation-based rule applied after DS2 had been inspected, and note that any bias from this exposure would favour our model.
 \item Even so, the primary result is a null one. PC-WavKAN's DS2 Macro-F1 ($0.357\pm0.019$) is not statistically distinguishable from any of the four baselines.
 \item The ``minority-first curriculum'' of the original manuscript is now described by what determined the reported models. In every run of the configurations whose test results are reported (and in 158 of all 160 runs that used the schedule), the retained checkpoint came from the curriculum's first, class-balanced phase, so the later phases did not shape any reported test result. We therefore evaluate it as class-balanced sampling (CBS) against inverse-frequency reweighting (Sections~3.4 and~4.4).
 \end{itemize}
@@ -60,7 +60,7 @@ The revisions required are significant, and it is important that all the revisio
 \begin{reviewer}
 Please note that we do not allow the addition or removal of authors at this stage.
 \end{reviewer}
-\resp The author list and order are unchanged: Venkateramanan Manivannan and Ramanathan Lakshmanan (corresponding author).
+\resp The author list and order are unchanged: Venkateramanan Manivannan and Ramanathan Lakshmanan (corresponding author). The revision gives each author's affiliation in full, with the second author's department (Department of IoT, School of Computer Science and Engineering), and lists both authors' email addresses.
 
 \begin{reviewer}
 Please ensure that you elaborate on the novel aspects and limitations of your work. [\ldots] More explanation about the novelty of the method is required.
@@ -72,6 +72,7 @@ Please ensure that you elaborate on the novel aspects and limitations of your wo
 \item A new paragraph in the Introduction (Section~1) states what is not new: the wavelet-KAN layer and its Mexican Hat basis are those of Wav-KAN, and interval features and class-balanced sampling are long established. It then states what is new. To our knowledge, this is the first assessment of a wavelet KAN under the de Chazal protocol with repeated seeds, protocol-matched baselines and multiplicity-corrected paired statistics, and the first test of the wavelet-KAN interpretability premise against explicit null models.
 \item The contribution list (Section~1) gives the four empirical findings.
 \item The Limitations (Section~5.1) now has eight items: parity rather than equivalence, minority-class performance, the selection history of the test set, the scope of the component evidence, the validation partition, non-causal inputs, external data, and baselines and hardware.
+\item A new ``Implications'' paragraph in the Discussion (Section~5) states four practices that follow from the results.
 \item The Discussion closes with three concrete questions for future work.
 \end{itemize}
 
@@ -83,7 +84,7 @@ Please note that you should evaluate the references suggested based on their rel
 \item we verified every entry against Crossref, the publisher or arXiv;
 \item we cite the published versions of works first available as preprints;
 \item we corrected metadata errors and removed one characterisation that the cited work does not support;
-\item we added references where the text needed them, for example the SMOTE paper, the fair KAN--MLP comparison of Yu et al., and PhysioNet's current standard citation.
+\item we added references where the text needed them, for example the SMOTE paper, the fair KAN--MLP comparison of Yu et al., two 2026 studies that apply null controls to B-spline KAN interpretability, and PhysioNet's current standard citation.
 \end{itemize}
 
 \begin{reviewer}
@@ -151,7 +152,7 @@ The ``generalization gap'' claim is an artifact: Table 5: baseline val 0.43, tes
 \begin{reviewer}
 ``Interpretable'' never demonstrated: Figure 7 plots six Mexican Hat wavelets at different scales. That is the parametric family itself, not evidence that the learned bases correspond to ECG morphology. There is no overlay on real beats, no edge, feature, class attribution, no case study, and no clinician assessment.
 \end{reviewer}
-\resp We agree. The interpretability claim is withdrawn, the word ``interpretable'' is removed from the title, and Fig.~7 is removed. We tested the premise instead, and the test is negative.
+\resp We agree. The interpretability claim is withdrawn, the word ``interpretable'' is removed from the title, and the original Fig.~7 is removed. We tested the premise instead, and the test is negative.
 
 \chg
 \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
@@ -178,7 +179,7 @@ The RR feature definition is inconsistent and non-causal: Eq. (2) defines a cent
 \item Eq.~1 defines the vector as $[RR_{-2},RR_{-1},RR_0,RR_{+1},RR_{+2}]$. The leave-one-out analysis (Section~4.6) uses the same five positions with the same labels, and now uses two-sided tests with Holm correction. Masking the future interval $RR_{+2}$ has a small but significant effect, so the model does use lookahead information.
 \item A ``Temporal scope'' paragraph (Section~3.1) states that the task is \emph{offline} beat classification for three reasons: two interval features follow the beat, the window often contains the next beat, and the filter is zero-phase.
 \item ``RR-interval history'' and every real-time and wearable claim are removed.
-\item Section~4.6 also reports an annotation-derived artefact in the interval features that we found during the revision, and shows that it does not inflate the results.
+\item Section~4.6 also reports an annotation-derived artefact in the interval features that we found after the original submission, and shows that it does not inflate the results.
 \end{itemize}
 
 \subsection*{Comment 3.5}
@@ -190,7 +191,7 @@ Numbers do not agree across abstract tables and figures: (a) V-recall appears as
 \chg
 \begin{enumerate}[label=(\alph*),leftmargin=1.6em,itemsep=2pt]
 \item The evaluated model's DS2 V-recall is $0.898\pm0.020$ over the same 20 runs (Table~6), wherever it is reported. The other V-recall values in the paper belong to explicitly labelled arms (Table~7) or databases (Table~9). There is no ``peak'' value, and no single-run number is presented as representative.
-\item The best-seed table is removed. No result is selected by test performance. All results are means and standard deviations over the 20 seeds.
+\item The best-seed table is removed. No seed or run is selected by test performance, and the configuration's selection history is disclosed in Section~4.1. All results are means and standard deviations over the 20 seeds.
 \item The confusion matrix (Fig.~3) is now the mean of the 20 per-seed matrices of the same runs as Table~6, and its diagonal equals the per-class recall in Table~6.
 \item The figure is removed. Every analysis uses the same 20 seeds, which are listed in Section~3.7.
 \item The window is 360 samples, which is 1\,s at 360\,Hz (Section~3.1). The architecture figure (Fig.~2) was redrawn with the actual tensor dimensions and parameter counts.
@@ -268,7 +269,7 @@ The manuscript explicitly states that records 201 and 202 ``originate from the s
 \chg
 \begin{itemize}[leftmargin=1.2em,itemsep=2pt]
 \item Section~3.2 now states the overlap directly. We retain the standard partition for comparability with prior work, so DS2 is patient-disjoint from training for 21 of its 22 records. The claim that all test patients are unseen is removed.
-\item As a sensitivity analysis (Section~4.2), we removed record 202 (2,135 beats) from DS2 and repeated the primary comparison for all five models and 20 seeds. Every model's Macro-F1 decreases slightly, by $0.002$ to $0.006$ (PC-WavKAN: $0.357\rightarrow0.354$). The comparison is unchanged: all Holm-adjusted $p\geq0.25$, and every paired interval lies within $\pm0.03$. The overlap therefore does not inflate the reported results or affect the conclusions.
+\item As a sensitivity analysis (Section~4.2), we removed record 202 (2,135 beats) from DS2 and repeated the primary comparison for all five models and 20 seeds. Every model's Macro-F1 decreases slightly, by $0.002$ to $0.006$ (PC-WavKAN: $0.357\rightarrow0.354$). The comparison is unchanged: all Holm-adjusted $p\geq0.25$, and every paired interval lies within $\pm0.03$. Including record 202 therefore raises each model's Macro-F1 by at most $0.006$ and does not affect the comparative conclusions.
 \end{itemize}
 
 \subsection*{Comment 4.5}

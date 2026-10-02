@@ -68,3 +68,20 @@ from the .bib so that they cannot appear in the compiled PDF.
   yu_kan_2024: added for one clause in Related Work. arXiv 2407.16674 (export.arxiv.org API; technical report; no formal version found). The abstract says that with parameters and FLOPs controlled, "except for symbolic formula representation tasks, MLP generally outperforms KAN". The DOI 10.48550/arXiv.2407.16674 resolves.
   Not added: a sentence citing record-normalised-RR inter-patient methods (Lin and Yang 2014; Wang et al. 2020 PeerJ CS; Farag 2023). The owner required every number to be verified against the primary papers' own tables. All three publishers (Hindawi/Wiley, PeerJ, MDPI) returned HTTP 403 to automated access, directly and through Unpaywall's links, and the only reachable copies were on PMC, which the owner excluded. Unverifiable from the primary source, so dropped.
   Collapsed-baseline sentence (manuscript, Baselines section): kept, and now states that those runs were not retained. The contemporaneous record is AUDIT_FINDINGS.md C15 (2026-08-17), which states that the prediction arrays of all four baselines were inspected at the time: ResNet1D, Transformer and CNN+Focal never predicted class N on the 49,684 DS2 beats. Only the arrays were deleted afterwards.
+
+[revision decisions 2026-10-02: P3a, verified against the FULL TEXTS, not the abstracts]
+  alves_kan_2026: arXiv 2607.15525v1 (17 Jul 2026), Felippe Alves and Renato Vicente; PDF downloaded from arxiv.org/pdf/2607.15525 and read.
+    - Section "Control analysis: random initialization versus trained edges": the trained edge-function audit of a grid-2 B-spline KAN is compared with "a randomly initialized (untrained) grid-2 KAN and ... an initialization-variance sweep".
+    - Top-four fPCA variance "is not diagnostic of training at grid 2": a freshly initialised grid-2 KAN already gives 99.9%. They call it "basis-imposed".
+    - Closed-form approximability is training-induced: 93-97% top-50 coverage when trained, against 63% for matched random-init grid-2 edges.
+    - Table 9 repeats the random-initialised control on BabyLM.
+    - The abstract does not mention the control.
+    - Supports: "an untrained random-initialisation control has shown one edge-function metric to be imposed by the basis rather than learned". The models are B-spline KANs, not wavelet KANs.
+  mysore_temporal_2026: arXiv 2605.05685v1 (7 May 2026), Naveen Mysore; PDF downloaded from arxiv.org/pdf/2605.05685 and read.
+    - Appendix, "Faithfulness sanity checks": "Following Adebayo et al. [2018], deletion ranking is tested after randomizing model weights."
+    - On Weather, top-50 deletion MSE is +2.20e-4 for the trained model, 0.0 with all KAN weights randomised, and +7.4e-5 with only the spline coefficients randomised.
+    - A random-deletion baseline is "consistent with zero (-0.01 +- 0.05 x 10^-4, 50 draws)".
+    - The edge functions are B-splines.
+    - The abstract does not mention the randomisation check.
+    - Supports: "a weight-randomisation check has been applied to KAN attributions".
+  Both DOIs (10.48550/arXiv.2607.15525, 10.48550/arXiv.2605.05685) resolve to the arXiv records. Neither paper uses a wavelet KAN or ECG data, so the manuscript's "first test of the wavelet-KAN interpretability premise against explicit null models" remains accurate as worded.

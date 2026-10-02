@@ -845,3 +845,74 @@ S-class AUPRC and a patient-level bootstrap are held for revision (owner decisio
 - `manuscript_highlighted.pdf` (`src/build_highlighted_version.py`): latexdiff against the original. Use latexdiff-so, because MiKTeX's latexdiff wrapper refuses to run until updates are checked and plain latexdiff lacks Algorithm::Diff.
 
 **Rebuild after any edit to the manuscript text.** Re-run the highlighted version after any wording change, and check that the response letter's section, table and figure numbers still hold.
+
+### H86 — Final revision audit of the ARRAY-D-26-02633 package (2026-10-02) — RESOLVED except where noted
+
+Scope: the response letter checked against the manuscript comment by comment, cross-file consistency (manuscript, highlights, graphical abstract, cover letter, letter), numbers, citations, package compliance and figures. No training. All section, table, figure and equation numbers were taken from the compiled `.aux`.
+
+**Response letter: four claims did not match the evidence. Fixed in the letter; the manuscript was right.**
+- **"The adopted configuration is one of the alternatives that, as Reviewer #3 observed, outperformed the originally proposed configuration."**
+  - The original ablation table's alternatives were Morlet, DOG, B-Spline, No Temporal Context, Morphology Only, Baseline CE and Focal Loss (`git show 66683a7^:elsarticle_manuscript.tex`, Table `tab:ablation`). The MLP rhythm encoder was not among them.
+  - Its DS2 Macro-F1 (0.357) is also below the original's reported 0.362.
+  - Now: it was not among the original alternatives, and it beats the revised base configuration (0.357 against 0.323).
+- **"The overlap therefore does not inflate the reported results."** Every model scores 0.002–0.006 *higher* with record 202 included, so this was not shown. Now: "raises each model's Macro-F1 by at most 0.006 and does not affect the comparative conclusions".
+- **"Architecture choices are made on DS1 validation data"** and **"No result is selected by test performance."** Both are stronger than the manuscript's selection-history disclosure (H81). They now refer to the validation rule and its disclosed history, and to "no seed or run".
+- **Timing:** the artefact "found during the revision" was found in the 2026-09-30 audit, before the decision letter. Now: "after the original submission".
+- **Fig. 7:** it now reads "the original Fig. 7" (the revision has five figures), matching "the original Section 6.2".
+
+**Cover letter.** Item 8's "the one selected on validation data" was aligned with the manuscript: a validation-based rule, applied after the test-set results had been seen.
+
+**Manuscript.**
+- **"29K–118K parameters"** (Sec. 3.5, Conclusion) became "30K–118K". The Transformer has 29,653 parameters, and the Discussion already said "30K-parameter Transformer".
+- **Outcome hierarchy (Sec. 3.7):** the record-202 sensitivity analysis is now listed among the analyses added after the primary results were known. It was already labelled exploratory where reported.
+
+**Graphical abstract.** The middle panel was titled "Accuracy" but plots Macro-F1, a different metric. Retitled "Macro-F1" in `src/generate_graphical_abstract.py` and regenerated; values unchanged.
+
+**Response-letter layout.** The letter had grown to 10 pages with the signature alone on the last. Paragraph spacing went from 6 pt to 5 pt; it is now 9 pages.
+
+**Verifier, block (16).**
+- Previously unchecked numbers: 30K/118K, 250/750 ms, record 114's V5 lead, both "R at sample 180" statements, the 88 reproduced checkpoints, PPR at 3 dp, and the 2,135 removed beats.
+- Response-letter checks:
+  - eight limitations and three future-work questions;
+  - the 1980 × 792 px graphical abstract and the five highlights under 85 characters;
+  - 95,189 as the original's parameter count;
+  - every Section/Table/Fig./Eq./Limitation reference in the letter exists in the manuscript (non-vacuous: at least 25 references parsed);
+  - every number the letter states outside the quoted comments appears in the manuscript or is checked.
+- **687 verified, 0 mismatched.**
+
+**Spot-check.** Five statistics were recomputed independently through `paired_stats` from per-seed files: primary vs B-Spline KAN; record-202 minimum Holm p; CBS S-recall; SVDB vs CNN+Focal; the validation ablation. All five match the manuscript.
+
+**Not verifiable here.** The reviewer comments quoted in the letter could not be compared with the decision letter, which is not in the repository. They are consistent with the original manuscript's numbers and section references.
+
+**Noted for the owner, not changed:**
+- **Affiliations differ from the original submission.** The second author is now listed under the Department of IoT, and the first author's email was added. Names and order are unchanged, as the editor requires.
+- **Highlighted version, page 1:** carries only the explanatory note.
+
+### H87 — Owner decisions on the revision check (2026-10-02) — RESOLVED
+
+**P1 — Implications paragraph (approved).** Added to the Discussion, before the Limitations, as drafted (99 words; four practices). Each sentence cites the result it rests on: Sec. 4.2, Table 8, Sec. 4.8 and Sec. 4.6. The verifier checks each supporting fact:
+- no corrected Macro-F1 difference;
+- untrained prior-centred PPR is the highest row;
+- PC-WavKAN was first on INCART unmatched and below both CNN baselines matched;
+- the RR₀ artefact rate differs by class.
+
+The response letter lists the paragraph under the editor's novelty comment.
+
+**P2 — similarity line (approved).** Added to `cover_letter_array.txt`: the public repository contains the manuscript source.
+
+**P3a — B-spline-KAN null-control citations (approved; verified from the full texts).**
+- **Sources read:** both PDFs, downloaded from arxiv.org. Neither abstract mentions the controls.
+- **Alves & Vicente** (arXiv:2607.15525), section "Control analysis": a randomly initialised, untrained grid-2 B-spline KAN gives 99.9% top-four fPCA variance, which the authors call "basis-imposed". Closed-form approximability is training-induced: 93–97% trained against 63% random-init.
+- **Mysore** (arXiv:2605.05685), appendix "Faithfulness sanity checks": an Adebayo-style weight randomisation removes the deletion-ranking effect (+2.20e-4 trained; 0.0 with all KAN weights randomised).
+- **Added:** one sentence in Sec. 4.7, with both entries and provenance in `references_provenance.txt`.
+- **Claim 2** ("the first test of the wavelet-KAN interpretability premise against explicit null models") stays accurate: neither paper uses a wavelet KAN. The verifier checks that it keeps that scope.
+
+**P3b — declined; my report was wrong.** The §4.3 qualifier already exists at manuscript.tex:342: "Its S-recall advantage over ResNet1D and CNN+Focal comes largely from record 232 … (Limitation~2)". The Check 2 row in `FINAL_REVISION_CHECK.md` that called it missing has been corrected.
+
+**P3c — affiliations (approved; the owner confirms the current affiliations are correct and intended).** One sentence added under the editor's author-list comment in the response letter.
+
+**P3d — graphical abstract (approved).** The TIFF is now saved as RGB without alpha (`src/generate_graphical_abstract.py`). The rendered figure was fully opaque, so it is pixel-identical (maximum difference 0). The verifier checks the RGB mode, 1980 × 792 px and 300 dpi.
+
+**P3e — skipped.**
+
+**Verifier:** block (17) — 705 verified, 0 mismatched.

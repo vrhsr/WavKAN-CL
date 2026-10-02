@@ -25,7 +25,7 @@ The reviewers identified real errors, and we agree with all of their major point
 5. The interpretability premise tested. Null models show that the trained wavelet parameters do not support a physiological reading. The analysis is stated to be at the parameter level only.
 6. Records 201 and 202. These come from the same subject, as Reviewer #4 noted. The overlap is now stated, and removing record 202 leaves the comparison unchanged.
 7. Novelty stated precisely. We claim no new KAN formulation or training algorithm. The contribution is the controlled evaluation.
-8. The evaluated configuration and its selection history. The reported configuration is the one selected on validation data. Its selection history, including that test-set results of all configurations had been seen, is disclosed in the manuscript.
+8. The evaluated configuration and its selection history. The reported configuration is the one a validation-based rule selects. The rule was applied after the test-set results of all configurations had been seen, and the manuscript discloses this.
 
 The submission includes:
 - a point-by-point response to every reviewer and editor comment;
@@ -35,6 +35,8 @@ The submission includes:
 - five highlights.
 
 The manuscript contains data availability, code availability, CRediT, competing interest, funding, ethics and generative-AI statements. The author list is unchanged.
+
+The public code repository cited under Code availability also contains the manuscript source, so a similarity report may match it.
 
 This manuscript is original, has not been published, and is not under consideration elsewhere. Both authors approved the revision. The authors declare no competing interests.
 

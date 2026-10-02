@@ -1301,3 +1301,37 @@ On the GPU box, preflight 2b passed on freshly regenerated data (max |diff| 0.00
   - manuscript build: 0 errors, 0 undefined references, 0 overfull boxes, 24 pages;
   - response letter: 0 errors, 9 pages;
   - highlighted version: 0 errors, 32 pages; its 15 undefined references are labels of removed tables and figures inside deleted text, as its first-page note explains.
+
+## 2026-10-02: final revision audit of the ARRAY-D-26-02633 package (`AUDIT_FINDINGS.md` H86)
+- **Response letter, five corrections where the letter did not match the evidence:**
+  - the adopted configuration was not among the original ablation's alternatives;
+  - record 202 raises Macro-F1 by at most 0.006, rather than "does not inflate";
+  - the selection wording matches the disclosed history (two places);
+  - the artefact was found after the original submission;
+  - "the original Fig. 7".
+  - The closing was kept on page 9 by tightening paragraph spacing.
+- **Cover letter:** item 8 now uses the validation-rule wording.
+- **Manuscript:**
+  - "29K–118K" → "30K–118K" (twice);
+  - the outcome hierarchy lists the record-202 sensitivity analysis.
+- **Graphical abstract:** middle-panel title "Accuracy" → "Macro-F1"; regenerated (PDF, TIFF).
+- **Verifier:** block (16) adds the previously unchecked manuscript numbers, plus response-letter checks: cross-references, numbers, structural claims and the graphical-abstract size. 687 verified, 0 mismatched.
+- **Builds:**
+  - manuscript: 24 pages, 0 errors, 0 undefined references, 0 overfull or underfull boxes;
+  - response letter: 9 pages, clean;
+  - highlighted version: 32 pages, 0 LaTeX errors (its undefined references are the original's removed tables and figures, as its first-page note says).
+- **Checks:** pytest 135 passed; `check_manuscript.py` and `check_citations.py` clean.
+
+## 2026-10-02 (continued): owner decisions on the revision check (`AUDIT_FINDINGS.md` H87)
+- **P1:** "Implications" paragraph added to the Discussion (four practices, each citing its result). The response letter mentions it under the editor's novelty comment.
+- **P2:** cover letter notes that the public repository contains the manuscript source.
+- **P3a:** Alves & Vicente 2026 and Mysore 2026 cited in Sec. 4.7, after their null controls were confirmed from the full texts. Provenance records what each did. The response letter's reference list mentions them.
+- **P3b:** declined. The qualifier was already at manuscript.tex:342; the report's error is corrected.
+- **P3c:** affiliation sentence added to the response letter.
+- **P3d:** graphical-abstract TIFF saved as RGB (pixel-identical).
+- **Verifier:** block (17); 705 verified, 0 mismatched.
+- **Builds:**
+  - manuscript: 25 pages, 0 errors, 0 undefined references, 0 overfull or underfull boxes;
+  - response letter: 9 pages, clean;
+  - highlighted version: 32 pages, 0 LaTeX errors.
+- **Checks:** pytest 135 passed; `check_manuscript.py` and `check_citations.py` clean (36 citations).
